@@ -224,6 +224,8 @@ added to `/admin` must be tenant-scoped.
 - `src/Security/` — roles, voters
 - `src/Factory/` — Foundry factories (used by both tests and fixtures)
 - `src/Exception/` — `ExceptionInterface` and shared exceptions
+- `src/Command/` — the console commands that bootstrap a fresh instance; see
+  *Deploying*
 - `src/DataFixtures/` — dev dataset
 - `config/packages/` — per-bundle config
 - `templates/form/` — the public form theme
@@ -309,6 +311,61 @@ App served at `https://localhost`. Fixture accounts:
 nothing leaves the machine. It is declared in `compose.override.yaml`, which is
 dev-only, so a deployment built from `compose.yaml` never ships a mail trap. Ports
 are overridable with `MAILPIT_SMTP_PORT` / `MAILPIT_HTTP_PORT`.
+
+## Deploying
+
+Production is `https://benevolat.cvvfcm.fr`, on the shared OKE cluster, in the
+`benevolio` namespace, alongside meteoprint. `.github/workflows/cd.yaml` builds and
+deploys on every push to `main` — CI runs on the same push and **does not gate it**,
+so a red merge still ships. The nets are the migration Job (`--all-or-nothing`) and
+`helm upgrade --wait --rollback-on-failure`.
+
+The image is **GHCR**, `ghcr.io/cvvfcm/benevolio/app`, public, authenticated with
+the workflow's own `GITHUB_TOKEN`. Not Docker Hub: the name is nested and Docker
+Hub only understands `namespace/repo`. Deploys pin `image.tag` to the commit sha,
+so a rollback is `helm upgrade --set image.tag=<older sha>` and never waits on a
+moving tag.
+
+**Secrets come from two places, and the split matters.** Infrastructure ones are
+**organization** secrets shared with the other repos — `OCI_*`, `OKE_KUBECONFIG`,
+`CLOUDFLARE_API_TOKEN`. Application ones belong to this repo's **`prod`
+environment** — `APP_SECRET`, `DATABASE_PASSWORD`, `MAILER_DSN`. Never move an
+application secret up to the organization: it would hand every other repo the keys
+to this database.
+
+`DATABASE_PASSWORD` is **write-once in practice**. It seeds the `benevolio-pg-auth`
+Secret, which is created by CD *outside* the Helm release so it survives
+`helm uninstall`. Changing it does not re-key the existing volume — Postgres was
+initialised with the old one and would simply refuse the new.
+
+**`secrets.mailerDsn` is `required` in the chart, on purpose.** Since a declaration
+is only final once the volunteer opens an emailed link, an instance that cannot
+send mail is an instance in which nothing can be declared. Symfony's default
+`null://null` would swallow every message without an error, so the chart refuses to
+render instead of letting the failure be silent. `MAIL_FROM` defaults to
+`noreply@<host>`; the relay behind the DSN has to be allowed to send as it.
+
+### Bootstrapping a fresh instance
+
+A new database has no association and no account, so `/admin` cannot be logged into
+and `/a/<slug>/declaration` 404s. Fixtures are not an option — they are dev-only and
+carry demo data. Two commands in `src/Command/`, run once:
+
+```bash
+kubectl -n benevolio exec -it deploy/benevolio-web -- \
+  php bin/console app:organization:create "Nom complet de l'association" son-slug
+kubectl -n benevolio exec -it deploy/benevolio-web -- \
+  php bin/console app:user:create vous@exemple.org --role=super-admin
+# an association's own admin instead:
+#   … app:user:create tresorier@exemple.org --organization=son-slug
+```
+
+`app:organization:create` is the **third** creation path for an `Organization`, so
+it calls `DefaultEventTypes::createFor()` explicitly — see the warning under *Event
+types are rows, not code*. `app:user:create` reads the password from a hidden
+prompt and has no `--password` option by design: that would put a live credential
+in shell history and in `ps`. It validates through the entity, so
+`Assert\NotCompromisedPassword` calls haveibeenpwned — the command needs egress.
 
 ## Conventions
 

@@ -1,6 +1,6 @@
 apiVersion: v2
 name: benevolio
-description: Printable weather reports — Symfony + FrankenPHP app
+description: Volunteer contribution manager for French associations loi 1901 — Symfony + FrankenPHP app
 type: application
 version: 0.1.0
 # Matches the application image, not the chart.

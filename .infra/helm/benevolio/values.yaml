@@ -1,9 +1,9 @@
 # Default values for benevolio.
 
 image:
-  # Fully qualified: OKE's runtime enforces short-name mode and rejects the bare
-  # "cvvfcm/benevolio/app" as ambiguous.
-  repository: docker.io/cvvfcm/benevolio/app
+  # Fully qualified: OKE's runtime enforces short-name mode and rejects an
+  # unqualified name as ambiguous. The package is public, so no pull secret.
+  repository: ghcr.io/cvvfcm/benevolio/app
   tag: latest
   pullPolicy: IfNotPresent
 
@@ -42,6 +42,10 @@ app:
   serverName: ":80"
   # Base URL for URLs generated in CLI context. Empty → derived as https://<host>.
   defaultUri: ""
+  # Envelope sender for the confirmation mails. Empty → derived as noreply@<host>.
+  # Whatever relay secrets.mailerDsn points at must be allowed to send as this
+  # address, or the mail is accepted here and dropped there.
+  mailFrom: ""
 
 # Bundled PostgreSQL (Bitnami subchart). When enabled, DATABASE_URL is derived
 # automatically from postgresql.auth below and externalDatabase.url is ignored.
@@ -91,6 +95,12 @@ externalDatabase:
 # Secret values. Supply via --set, a values.local.yaml, or a sealed-secret.
 secrets:
   appSecret: ""
+  # Full Symfony mailer DSN, e.g. smtp://user:pass@relay.example.org:587.
+  # REQUIRED — the chart refuses to render without it. A declaration is not final
+  # until the volunteer opens a link sent by mail, so an app that cannot send is
+  # an app in which nothing can be declared. The default null://null would make
+  # that failure silent, which is precisely what must not happen in production.
+  mailerDsn: ""
 
 # Database migration job (Helm post-install/post-upgrade hook).
 migrations:
