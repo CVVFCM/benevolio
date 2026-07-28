@@ -8,7 +8,9 @@
   "private": true,
   "scripts": {
     "lint:js": "eslint assets",
-    "lint:css": "stylelint \"assets/**/*.css\""
+    "lint:css": "stylelint \"assets/**/*.css\"",
+    "fix:js": "eslint assets --fix",
+    "fix:css": "stylelint \"assets/**/*.css\" --fix"
   },
   "dependencies": {
     "@eslint/js": "^10.0.1",

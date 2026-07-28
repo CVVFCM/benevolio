@@ -17,6 +17,8 @@
 .infra/docker/tls/*
 
 /node_modules/
+/.php-cs-fixer.cache
+/.configured
 
 # IDE
 /.idea/
@@ -27,3 +29,8 @@
 /.opencode/
 /.claude/skills/impeccable/
 /.claude/settings.local.json
+
+###> phpunit/phpunit ###
+/phpunit.xml
+/.phpunit.cache/
+###< phpunit/phpunit ###

@@ -1,4 +1,7 @@
 {
+    "dama/doctrine-test-bundle": {
+        "version": "v8.6.0"
+    },
     "doctrine/deprecations": {
         "version": "1.1",
         "recipe": {
@@ -57,6 +60,24 @@
         },
         "files": [
             "config/routes/easyadmin.yaml"
+        ]
+    },
+    "phpstan/phpstan": {
+        "version": "2.2.6"
+    },
+    "phpunit/phpunit": {
+        "version": "13.2",
+        "recipe": {
+            "repo": "github.com/symfony/recipes",
+            "branch": "main",
+            "version": "11.1",
+            "ref": "ca0bc067abfb40a8de1b2561b96cbfc2b833c314"
+        },
+        "files": [
+            ".env.test",
+            "phpunit.dist.xml",
+            "tests/bootstrap.php",
+            "bin/phpunit"
         ]
     },
     "symfony/asset-mapper": {
@@ -154,6 +175,15 @@
         "files": [
             "config/packages/mailer.yaml"
         ]
+    },
+    "symfony/maker-bundle": {
+        "version": "1.67",
+        "recipe": {
+            "repo": "github.com/symfony/recipes",
+            "branch": "main",
+            "version": "1.0",
+            "ref": "fadbfe33303a76e25cb63401050439aa9b1a9c7f"
+        }
     },
     "symfony/monolog-bundle": {
         "version": "4.0",
@@ -291,5 +321,21 @@
     },
     "twig/extra-bundle": {
         "version": "v3.24.0"
+    },
+    "vincentlanglet/twig-cs-fixer": {
+        "version": "4.0.2"
+    },
+    "zenstruck/foundry": {
+        "version": "2.11",
+        "recipe": {
+            "repo": "github.com/symfony/recipes",
+            "branch": "main",
+            "version": "2.7",
+            "ref": "9bd824886195ebe64a24438db1b6d17eb833ac56"
+        },
+        "files": [
+            "config/packages/zenstruck_foundry.yaml",
+            "src/Story/AppStory.php"
+        ]
     }
 }

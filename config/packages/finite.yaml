@@ -1,0 +1,40 @@
+# yohang/finite wiring, done by hand instead of through FiniteBundle.
+#
+# WHY NOT THE BUNDLE: Finite\Extension\Symfony\Bundle\FiniteBundle overrides
+# Bundle::registerCommands() and calls $application->add(), which Symfony 8
+# removed in favour of Application::addCommand(). Registering the bundle makes
+# every bin/console call fail with:
+#
+#   Call to undefined method Symfony\Bundle\FrameworkBundle\Console\Application::add()
+#
+# The bundle's DependencyInjection\FiniteExtension is otherwise fine — it only
+# declares the three services below. So we declare them ourselves and register
+# the dump command directly, which gives the exact same feature set (the
+# StateMachine service, the finite_can/finite_reachable_transitions Twig
+# functions, and finite:state-machine:dump).
+#
+# Once yohang/finite ships a Symfony 8 compatible bundle, delete this file and
+# register the bundle in config/bundles.php instead.
+services:
+    # Reflection-based state property extraction, memoized per class.
+    Finite\Extractor\StatePropertyExtractor:
+        class: Finite\Extractor\MemoizedStatePropertyExtractor
+        arguments:
+            $decorated: !service { class: Finite\Extractor\ReflectionStatePropertyExtractor }
+
+    # Symfony's event_dispatcher is a PSR-14 EventDispatcherInterface, so guards
+    # (CanTransitionEvent) and post-transition hooks are plain Symfony listeners.
+    Finite\StateMachine:
+        arguments:
+            $dispatcher: '@event_dispatcher'
+            $statePropertyExtractor: '@Finite\Extractor\StatePropertyExtractor'
+
+    Finite\Extension\Twig\FiniteExtension:
+        arguments:
+            $stateMachine: '@Finite\StateMachine'
+        tags:
+            - { name: twig.extension }
+
+    Finite\Extension\Symfony\Command\DumpStateMachineCommand:
+        tags:
+            - { name: console.command, command: 'finite:state-machine:dump' }

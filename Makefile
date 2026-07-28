@@ -74,16 +74,34 @@ clean: ## Stop the containers and remove all the data
 cs: ## Fix code style
 	@docker run --rm -v $(PWD):/app -w /app ghcr.io/php-cs-fixer/php-cs-fixer:3-php8.5 fix
 	@$(DOCKER_COMPOSE) exec -T php ./vendor/bin/twig-cs-fixer fix
-	@npx eslint assets --fix
-	@npx stylelint "assets/**/*.css" --fix
+	@npm run --silent fix:js
+	@npm run --silent fix:css
+
+.PHONY: cs-check
+cs-check: ## Check code style without writing (what the CI runs)
+	@docker run --rm -v $(PWD):/app -w /app ghcr.io/php-cs-fixer/php-cs-fixer:3-php8.5 check --diff
+	@$(DOCKER_COMPOSE) exec -T php ./vendor/bin/twig-cs-fixer lint
+	@npm run --silent lint:js
+	@npm run --silent lint:css
 
 .PHONY: test
-test: vendor/
+test: vendor/ ## Run the test suite
 	@$(DOCKER_COMPOSE) exec -T php ./vendor/bin/phpunit --testdox --colors=always
 
 .PHONY: stan
-stan: vendor/
+stan: vendor/ ## Run the static analysis
 	@$(DOCKER_COMPOSE) exec -T php ./vendor/bin/phpstan analyse --ansi --memory-limit 1G
+
+.PHONY: lint
+lint: ## Lint the container, YAML, Twig and translation files
+	@$(DOCKER_COMPOSE) exec -T php bin/console lint:container
+	@$(DOCKER_COMPOSE) exec -T php bin/console lint:yaml config translations
+	@$(DOCKER_COMPOSE) exec -T php bin/console lint:twig templates
+	@$(DOCKER_COMPOSE) exec -T php bin/console lint:xliff translations
+	@$(DOCKER_COMPOSE) exec -T php bin/console doctrine:schema:validate
+
+.PHONY: qa
+qa: cs-check lint stan test ## Run every check the CI runs
 
 .PHONY: mate
 mate: ## Run the mate command
