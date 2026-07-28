@@ -32,16 +32,39 @@ Two consequences that are easy to get wrong:
 - The volunteer mileage scale (*barème kilométrique bénévole*) is its own, lower
   scale — not the general one used for salaried employees.
 
-**Volunteers have no account.** They are not `User`s. They identify themselves on
-a public form under `/a/{organizationSlug}/…` with an email one-time code. Only
-back-office staff log in.
+**Volunteers have no account.** They are not `User`s. They identify themselves by
+filling the first step of the public form under `/a/{organizationSlug}/declaration`.
+Only back-office staff log in.
+
+### The declaration model
+
+A **`Declaration`** is one submission of that form: a `Person`, a set of
+`DeclarationAction` lines, and the two legal statements. **Both statements are
+mandatory**, so every declaration carries the waiver — which is what makes the
+declared expenses a donation at all.
+
+A single `DeclarationAction` carries *both* kinds of contribution, accounted for
+differently, so never sum them together:
+
+| Field | Meaning |
+|---|---|
+| `workHours` | `DECIMAL(5,2)`, in hours. Donated time → 864/870, never receiptable. Totals are summed in exact integer hundredths (`getWorkHoursInHundredths()`), not as floats; ext-bcmath is not installed. |
+| `distanceKm` | Kilometres of **one journey, one way**. |
+| `journeys` | Number of **one-way** journeys — a return trip is two. Total distance is `distanceKm × journeys`. |
+| `fiscalPower` | An enum of the *barème* brackets (≤3 CV, 4, 5, 6, ≥7 CV), because the scale distinguishes only those. Required exactly when `ownVehicle` is true. **No euro rates anywhere**: the scale is republished yearly and belongs with valuation, keyed by financial year. |
+| `consecutiveDays` | The action may span several days from `date`. |
+
+A `Person` is matched by **(organization, email)**, and `Email` lowercases itself
+so that holds when the volunteer types a different case next year. Their address
+is the *current* one, overwritten by each declaration; if a re-issued receipt ever
+needs the address as it was at the time, that snapshot belongs on `Declaration`.
 
 ### Deferred — do not assume these exist
 
 Not built yet, by explicit decision: accounting entries and their export, tax
-receipts, the `Contribution` entity and its state machine, mission types and
-valuation rates, and the public volunteer form. When you add them, update this
-file.
+receipts, valuation rates and mission types, the email one-time code that will
+identify a returning volunteer, and any acknowledgement email. When you add them,
+update this file.
 
 ## Stack
 
@@ -53,16 +76,21 @@ file.
 - **FrankenPHP** (Caddy) runtime — `Dockerfile`, `.infra/docker/php/Caddyfile`
 - **AssetMapper** + importmap (`assets/`, `importmap.php`); no Node build step
 - **PHPUnit 13** + **Zenstruck Foundry** + **dama/doctrine-test-bundle**
-
-Stimulus is allowed but **not installed**. Add `symfony/stimulus-bundle` when a
-real interaction needs it, not before.
+- **Stimulus** (`symfony/stimulus-bundle`), installed for the one interaction that
+  needed it: adding rows to the actions collection. Its recipe also brought
+  `assets/controllers/csrf_protection_controller.js`, which is what makes the
+  stateless CSRF token work in a browser — the token renders as a placeholder that
+  JavaScript fills from a cookie, falling back to an `Origin` check.
+- **symfony/expression-language**, required by `Assert\Expression` and
+  `Assert\When`. Without it those constraints throw at validation time rather
+  than failing to load, so the gap is invisible until something is validated.
 
 ## Multi-tenancy — the rule that matters most
 
 `Organization` is the tenant. Every business entity belongs to exactly one.
 
 ```php
-final class Contribution implements TenantAware   // src/Tenant/TenantAware.php
+class Declaration implements TenantAware            // src/Tenant/TenantAware.php
 {
     use TenantAwareTrait;                          // gives it the mapping + getter
 
@@ -93,6 +121,18 @@ Two resolvers run in priority order, first match wins:
 - **`Organization` and `User` are not `TenantAware`.** `Organization` *is* the
   tenant; filtering `User` would break authentication, because the user provider
   runs before any tenant is known.
+- **`DeclarationAction` is the one documented exception**, by decision: it is
+  reached through its `Declaration`, which is tenant-scoped. The filter therefore
+  does *not* touch it, and anything querying it directly must scope itself. Three
+  places do, and all three are covered by
+  `tests/Controller/Admin/DeclarationActionIsolationTest`:
+  `createIndexQueryBuilder()` joins the declaration (index and autocomplete),
+  `Crud::setEntityPermission()` runs `DeclarationActionVoter` (detail), and the
+  custom transition actions check for themselves — because
+  **`setEntityPermission()` does not cover custom CRUD actions**: EasyAdmin marks
+  the entity inaccessible and hands the action a `null` instance instead of
+  refusing the request. If you ever give this entity an `organization` FK, delete
+  all three and the voter with them.
 - **The filter is OFF in CLI** — console commands, migrations, fixtures. That is
   deliberate (a migration must touch every tenant), but any command acting on
   behalf of one association must scope its own queries.
@@ -118,21 +158,71 @@ added to `/admin` must be tenant-scoped.
 ## Layout
 
 - `src/Entity/` — domain model
+- `src/ValueObject/` — self-validating value objects (`Address`, `Email`). Also a
+  Doctrine mapping, because `Address` is an `#[ORM\Embeddable]`.
+- `src/Enum/` — closed business sets (`EventType`, `FiscalPower`)
+- `src/State/` — finite state enums, and `Listener/` for their guards
 - `src/Repository/` — Doctrine repositories
-- `src/Controller/` — invokable controllers; `Admin/` and `Platform/` hold the
-  two EasyAdmin dashboards
+- `src/Controller/` — invokable controllers; `Admin/` and `Platform/` hold the two
+  EasyAdmin dashboards, `Public/` the anonymous volunteer pages
+- `src/Form/` — form types and the DTOs they bind to
+- `src/Declaration/` — the declaration use cases (`DeclarationSubmitter`,
+  `DeclarationDecider`) and their exceptions
 - `src/Tenant/` — tenant contract, resolvers, context, request listener
-- `src/Doctrine/Filter/` — the tenant SQL filter
+- `src/Doctrine/Filter/` — the tenant SQL filter; `src/Doctrine/Type/` — DBAL types
 - `src/Security/` — roles, voters
 - `src/Factory/` — Foundry factories (used by both tests and fixtures)
 - `src/Exception/` — `ExceptionInterface` and shared exceptions
 - `src/DataFixtures/` — dev dataset
 - `config/packages/` — per-bundle config
+- `templates/form/` — the public form theme
 - `migrations/`, `templates/`, `translations/`, `assets/`
 - `.infra/` — Caddyfile, entrypoint, TLS certs, Helm chart
 
-Add `src/ValueObject/` when the domain needs it. There is no `src/Bridge/` and no
-third-party integration; if one arrives, give it its own namespace then.
+There is no `src/Bridge/` and no third-party integration; if one arrives, give it
+its own namespace then.
+
+## The public declaration form
+
+`/a/{organizationSlug}/declaration`, anonymous, built on Symfony 8.1's native
+**`FormFlow`** (`Symfony\Component\Form\Flow`). Three things about it decide the
+design, and getting any of them wrong fails quietly:
+
+- **`validation_groups` defaults to `['Default', <current step>]`.** So every
+  constraint on `DeclarationDraft` and `ActionDraft` names its step, and **nothing
+  is in `Default`** — a constraint left there fires on every step, and step 1
+  would fail on the still-empty step 2 fields. `tests/Controller/Public/DeclarationFlowTest`
+  pins this down explicitly.
+- **`step_property_path` is required**, hence `DeclarationDraft::$step`.
+- **The session key must include the organization id.** The flow keeps its draft in
+  the session and the session is not scoped to the URL prefix, so a shared key
+  would surface a half-filled declaration on another association's form in the
+  same browser. Also tested.
+
+Other things worth knowing before touching it:
+
+- The route placeholder **must** stay `organizationSlug`: it is what
+  `UrlPrefixTenantResolver` reads, and the only way a tenant resolves for a visitor
+  with no account. An unknown or inactive slug is a **404**, not the
+  `LogicException` that `TenantContext::getOrganization()` would raise.
+- Advancing a step renders the next one directly — `FormFlow` does no
+  POST-redirect-GET between steps and guards against a POST reload itself. Only the
+  final submit redirects.
+- `DeclarationDraft` seeds one blank `ActionDraft` in its constructor, or the
+  actions step renders no fields at all for a visitor without JavaScript.
+- `NavigatorFlowType` cannot label its buttons, so the three are added
+  individually; `FormFlow` still prunes whichever does not apply.
+- The form is **`novalidate`**. Native validation bubbles cannot be styled or
+  translated, appear in the browser's locale rather than the page's, and pre-empt
+  the server-side messages — which are the only ones able to express the real
+  rules. One error system, in French.
+- `templates/form/public_theme.html.twig` owns how a field is composed. Add fields
+  through it rather than styling one in place.
+
+`DeclarationSubmitter` is the boundary where the value objects are built. Their
+assertions should be unreachable there, because the form validated the same rules
+and reported them per field; reaching one means the two rule sets have drifted,
+which is when a loud failure is wanted.
 
 ## Running (Docker, via Makefile)
 
@@ -159,7 +249,8 @@ migrations on container start.
 
 App served at `https://localhost`. Fixture accounts:
 `super-admin@benevolio.test` and `admin@association-demo.test`, password in
-`App\Factory\UserFactory::DEFAULT_PASSWORD`.
+`App\Factory\UserFactory::DEFAULT_PASSWORD`. The demo association's public form is
+at `/a/association-demo/declaration`.
 
 ## Conventions
 
@@ -188,26 +279,33 @@ App served at `https://localhost`. Fixture accounts:
 
 ### State machines (finite)
 
-The state enum implements `Finite\State` and declares its own transitions:
+The state enum implements `Finite\State` and declares its own transitions — see
+`src/State/DeclarationActionState.php` for the live example. Put behaviour on the
+enum as methods rather than testing the state in domain code. Guards and side
+effects are PSR-14 listeners on `CanTransitionEvent` / `PostTransitionEvent`, i.e.
+ordinary Symfony listeners.
 
-```php
-enum ContributionState: string implements State
-{
-    case DRAFT = 'draft';
-    case SUBMITTED = 'submitted';
+**Entities have no `setState()`.** Finite writes the state property through
+reflection, so a setter would exist only as a way to bypass the machine and its
+guard. Go through `Finite\StateMachine::apply()`.
 
-    public static function getTransitions(): array
-    {
-        return [new Transition('submit', [self::DRAFT], self::SUBMITTED)];
-    }
+### The two declaration machines, and the guard between them
 
-    public function isEditable(): bool { return self::DRAFT === $this; }
-}
-```
+`Declaration` and `DeclarationAction` each have their own machine
+(`submitted → validated | refused`). Nothing structural stops them disagreeing, so
+`App\State\Listener\DeclarationTransitionGuard` blocks the whole-declaration
+verdict until every line already agrees with it.
 
-Put behaviour on the enum as methods rather than testing the state in domain
-code. Guards and side effects are PSR-14 listeners on `CanTransitionEvent` /
-`PostTransitionEvent`, i.e. ordinary Symfony listeners.
+**Known consequence, accepted:** a genuinely mixed basket — one line validated,
+one refused — has no terminal state and stays *soumise*. If that becomes a
+problem the fix is a `partially_validated` state or a derived status, **not**
+weakening the guard. Note that `{refused, submitted}` is *not* mixed: refusing the
+rest is still a coherent verdict, and `DeclarationDecider::refuseAll()` does it.
+
+`DeclarationDecider` is the only thing that applies a bulk verdict. It refuses an
+impossible one **up front** rather than discovering it mid-loop: a transaction
+would roll the database back, but the in-memory entities would already be mutated,
+which is nasty to leave behind on a request that continues.
 
 `FiniteBundle` is **deliberately not registered**: `yohang/finite` 2.0.0
 overrides `Bundle::registerCommands()` and calls `Application::add()`, which
@@ -285,10 +383,19 @@ Two traps, both already handled but worth knowing:
   boots the kernel on first persist, and `WebTestCase` refuses to build a client
   once the kernel is booted. Create the client in `setUp()`.
 
-`tests/Fixtures/Entity/TenantProbe.php` is a throwaway `TenantAware` entity,
-mapped in the test environment only, that exists so the isolation test can run a
-real Doctrine query. **Delete it** once a real tenant-scoped business entity can
-carry that test.
+Two harness traps that have already bitten, both in `WebTestCase`:
+
+- **Create the client before any factory.** Foundry boots the kernel on first
+  persist and `WebTestCase` refuses to build a client afterwards. Create it in
+  `setUp()`.
+- **Clear the EntityManager before a request that reads a collection you just
+  built.** `WebTestCase` shares its EntityManager with the requests it makes, and
+  Foundry's `createMany()` leaves the *inverse* side stale — three rows created,
+  one element in the collection. Through the identity map the controller gets that
+  same object, so "validate all" once saw one line out of three and the guard was
+  satisfied by a collection that did not match the database. A real request always
+  gets a fresh EntityManager, so this is a harness artefact — but it makes tests
+  lie, which is worse than failing.
 
 Run `make reset-test` once, then `make test`.
 

@@ -1,0 +1,58 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Factory;
+
+use App\Entity\Declaration;
+use App\Entity\Organization;
+use App\Entity\Person;
+use Zenstruck\Foundry\Persistence\PersistentObjectFactory;
+
+/**
+ * @extends PersistentObjectFactory<Declaration>
+ */
+final class DeclarationFactory extends PersistentObjectFactory
+{
+    public static function class(): string
+    {
+        return Declaration::class;
+    }
+
+    /**
+     * A declaration and its person must share a tenant, and nothing in the mapping
+     * enforces that — so this is the way to build one for a known organization.
+     */
+    public function for(Organization $organization): self
+    {
+        return $this->with([
+            'organization' => $organization,
+            'person' => PersonFactory::new()->with(['organization' => $organization]),
+        ]);
+    }
+
+    public function forPerson(Person $person): self
+    {
+        return $this->with([
+            'organization' => $person->getOrganization(),
+            'person' => $person,
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function defaults(): array
+    {
+        $organization = OrganizationFactory::new();
+
+        return [
+            'organization' => $organization,
+            'person' => PersonFactory::new()->with(['organization' => $organization]),
+            // Both statements are mandatory in the real form, so fixtures must not
+            // produce a declaration that could never have been submitted.
+            'accuracyAttested' => true,
+            'expensesWaived' => true,
+        ];
+    }
+}

@@ -1,0 +1,92 @@
+{% extends 'public/layout.html.twig' %}
+
+{% form_theme flow 'form/public_theme.html.twig' %}
+
+{% set current_step = flow.vars.cursor.currentStep %}
+{% set current_index = flow.vars.cursor.stepIndex %}
+
+{% block title %}Déclarer mon bénévolat — {{ organization.name }}{% endblock %}
+
+{% block main %}
+    <h1>Déclarer mon bénévolat</h1>
+
+    <p class="lede">
+        Indiquez le temps que vous avez donné à {{ organization.name }} et les frais
+        que vous avez engagés. Vos réponses sont conservées entre les étapes : vous
+        pouvez revenir en arrière sans rien perdre.
+    </p>
+
+    {# Built from the view vars FormFlowType exposes, so the indicator cannot drift
+       out of sync with the steps actually configured. #}
+    <nav aria-label="Progression">
+        <ol class="steps">
+            {% for name, step in flow.vars.visible_steps %}
+                {% set state = step.is_current_step ? 'current' : (step.index < current_index ? 'done' : 'todo') %}
+                <li
+                    class="steps__item steps__item--{{ state }}"
+                    {% if step.is_current_step %}aria-current="step"{% endif %}
+                >
+                    <span class="steps__position" aria-hidden="true">{{ step.position }}</span>
+                    <span class="steps__label">
+                        {{ ('declaration.step.' ~ name)|trans }}
+                        {%- if state == 'done' %} <span class="visually-hidden">(étape terminée)</span>{% endif -%}
+                    </span>
+                </li>
+            {% endfor %}
+        </ol>
+    </nav>
+
+    {# novalidate: the browser's own validation bubbles cannot be styled or
+       translated, they appear in the browser's locale rather than the page's, and
+       they pre-empt the server-side messages below — which are the only ones able
+       to express the real rules (a French postcode is five digits, fiscal power is
+       required only with a personal vehicle, a declaration needs one action). One
+       error system, in French, is worth the round trip. #}
+    {{ form_start(flow, {attr: {novalidate: 'novalidate'}}) }}
+        {% if not flow.vars.valid %}
+            {# The only role="alert" on the page: the per-field messages would talk
+               over each other if each announced itself. #}
+            <div class="alert alert--danger" role="alert">
+                <p class="alert__title">Le formulaire n'a pas pu être envoyé.</p>
+                <p class="alert__hint">
+                    Corrigez les champs signalés ci-dessous, puis réessayez.
+                </p>
+                {{ form_errors(flow) }}
+            </div>
+        {% endif %}
+
+        {# A section with a heading rather than fieldset/legend: a flow step is a
+           region of the form, not a group of related controls, and a legend is
+           rendered in the fieldset's border slot no matter what CSS says. The
+           genuine control groups — an action, its travel block — do use fieldsets. #}
+        <section class="form__section" aria-labelledby="step-heading">
+            <h2 class="form__legend" id="step-heading">{{ ('declaration.step.' ~ current_step)|trans }}</h2>
+
+            {% if current_step == 'actions' %}
+                {{ include('public/declaration/_actions.html.twig', {actions: flow.actions.actions}) }}
+            {% elseif current_step == 'person' %}
+                <div class="form__grid form__grid--person">
+                    {{ form_row(flow.person.firstName, {row_attr: {class: 'field field--span-2'}}) }}
+                    {{ form_row(flow.person.lastName, {row_attr: {class: 'field field--span-2'}}) }}
+                    {{ form_row(flow.person.email, {row_attr: {class: 'field field--wide'}}) }}
+                    {{ form_row(flow.person.addressNumber) }}
+                    {{ form_row(flow.person.addressStreet, {row_attr: {class: 'field field--span-3'}}) }}
+                    {{ form_row(flow.person.addressPostcode) }}
+                    {{ form_row(flow.person.addressCity, {row_attr: {class: 'field field--span-3'}}) }}
+                    {{ form_row(flow.person.addressCountry, {row_attr: {class: 'field field--span-2'}}) }}
+                </div>
+            {% else %}
+                <div class="form__grid">
+                    {{ form_widget(attribute(flow, current_step)) }}
+                </div>
+            {% endif %}
+        </section>
+
+        <div class="navigator">
+            {# Only the buttons valid for this step still exist — FormFlow removed
+               the others through their include_if option — so form_rest() renders
+               exactly the right set without the template knowing which. #}
+            {{ form_rest(flow) }}
+        </div>
+    {{ form_end(flow) }}
+{% endblock %}

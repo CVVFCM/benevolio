@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\DataFixtures;
 
+use App\Factory\DeclarationActionFactory;
+use App\Factory\DeclarationFactory;
 use App\Factory\OrganizationFactory;
 use App\Factory\UserFactory;
 use Doctrine\Bundle\FixturesBundle\Fixture;
@@ -36,5 +38,20 @@ final class AppFixtures extends Fixture
         UserFactory::new()
             ->superAdmin()
             ->create(['email' => self::DEMO_SUPER_ADMIN_EMAIL]);
+
+        // A handful of submitted declarations to work with in the back-office.
+        // Fixed line counts rather than random ones: a reproducible dataset is
+        // worth more than a varied one when reading a list by hand.
+        foreach ([1, 2, 3] as $lineCount) {
+            $declaration = DeclarationFactory::new()->for($organization)->create();
+            DeclarationActionFactory::createMany($lineCount, ['declaration' => $declaration]);
+        }
+
+        // One with travel in the volunteer's own vehicle, so the fiscal-power path
+        // is visible without having to build it by hand.
+        $withOwnVehicle = DeclarationFactory::new()->for($organization)->create();
+        DeclarationActionFactory::new()
+            ->withOwnVehicle()
+            ->create(['declaration' => $withOwnVehicle]);
     }
 }
