@@ -17,6 +17,7 @@ use App\Repository\PersonRepository;
 use App\ValueObject\Address;
 use App\ValueObject\Email;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Clock\ClockInterface;
 
 use function assert;
 
@@ -31,18 +32,48 @@ use function assert;
  */
 final readonly class DeclarationSubmitter
 {
+    /**
+     * How long a volunteer has to click the link. Long enough to survive a weekend
+     * and a spam folder; short enough that a stale link is not left live for months.
+     */
+    public const string TOKEN_LIFETIME = '+7 days';
+
     public function __construct(
         private PersonRepository $people,
         private EventTypeRepository $eventTypes,
         private EntityManagerInterface $entityManager,
+        private DeclarationConfirmationMailer $mailer,
+        private ClockInterface $clock,
     ) {
     }
 
+    /**
+     * Persists the declaration and emails its confirmation link.
+     *
+     * The mail is sent AFTER the transaction commits. Sending inside it would mean
+     * a link that arrives for a declaration the database then rolled back — and
+     * with a synchronous transport, a mail server hiccup would lose the whole
+     * declaration.
+     */
     public function submit(Organization $organization, DeclarationDraft $draft): Declaration
     {
-        return $this->entityManager->wrapInTransaction(
-            fn (): Declaration => $this->createDeclaration($organization, $draft),
+        $token = ConfirmationToken::generate();
+
+        $declaration = $this->entityManager->wrapInTransaction(
+            function () use ($organization, $draft, $token): Declaration {
+                $declaration = $this->createDeclaration($organization, $draft);
+                $declaration->issueConfirmationToken(
+                    $token,
+                    $this->clock->now()->modify(self::TOKEN_LIFETIME),
+                );
+
+                return $declaration;
+            },
         );
+
+        $this->mailer->send($declaration, $token);
+
+        return $declaration;
     }
 
     private function createDeclaration(Organization $organization, DeclarationDraft $draft): Declaration

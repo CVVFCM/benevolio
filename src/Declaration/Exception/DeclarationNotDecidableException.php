@@ -39,6 +39,15 @@ final class DeclarationNotDecidableException extends RuntimeException implements
         );
     }
 
+    public static function awaitingConfirmation(): self
+    {
+        return new self(
+            'This declaration has not been confirmed by the volunteer yet.',
+            'Cette déclaration n\'a pas encore été confirmée par le bénévole : '
+            .'le lien envoyé par courriel n\'a pas été utilisé.',
+        );
+    }
+
     public static function hasNoAction(): self
     {
         return new self(

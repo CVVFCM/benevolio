@@ -129,7 +129,10 @@ final class DeclarationFlowTest extends WebTestCase
         self::assertResponseRedirects('/a/les-jardins/declaration/merci');
         $this->client->followRedirect();
         self::assertResponseIsSuccessful();
-        self::assertSelectorTextContains('h1', 'Votre déclaration est enregistrée');
+        // Not "enregistrée": the declaration exists but does nothing until the
+        // volunteer opens the emailed link.
+        self::assertSelectorTextContains('h1', 'Vérifiez votre boîte mail');
+        $this->assertPageContainsText('jean.dupont@example.test');
 
         $entityManager = $this->entityManager();
         $people = $entityManager->getRepository(Person::class)->findAll();
@@ -146,7 +149,8 @@ final class DeclarationFlowTest extends WebTestCase
         self::assertCount(1, $declarations);
         $declaration = $declarations[0];
 
-        self::assertSame(DeclarationState::SUBMITTED, $declaration->getState());
+        self::assertSame(DeclarationState::AWAITING_CONFIRMATION, $declaration->getState());
+        self::assertFalse($declaration->isConfirmed());
         self::assertTrue($declaration->isAccuracyAttested());
         self::assertTrue($declaration->areExpensesWaived());
         self::assertCount(1, $declaration->getActions());

@@ -7,6 +7,9 @@ namespace App\Factory;
 use App\Entity\Declaration;
 use App\Entity\Organization;
 use App\Entity\Person;
+use App\State\DeclarationState;
+use DateTimeImmutable;
+use Finite\StateMachine;
 use Zenstruck\Foundry\Persistence\PersistentObjectFactory;
 
 /**
@@ -14,6 +17,12 @@ use Zenstruck\Foundry\Persistence\PersistentObjectFactory;
  */
 final class DeclarationFactory extends PersistentObjectFactory
 {
+    public function __construct(
+        private readonly StateMachine $stateMachine,
+    ) {
+        parent::__construct();
+    }
+
     public static function class(): string
     {
         return Declaration::class;
@@ -29,6 +38,23 @@ final class DeclarationFactory extends PersistentObjectFactory
             'organization' => $organization,
             'person' => PersonFactory::new()->with(['organization' => $organization]),
         ]);
+    }
+
+    /**
+     * A declaration the volunteer has confirmed — the normal starting point for
+     * anything the back-office is meant to act on.
+     *
+     * Goes through the state machine rather than writing the column, so the
+     * transition rules are exercised exactly as they are in production.
+     */
+    public function confirmed(): self
+    {
+        return $this->afterPersist(
+            function (Declaration $declaration): void {
+                $this->stateMachine->apply($declaration, DeclarationState::TRANSITION_CONFIRM);
+                $declaration->markConfirmed(new DateTimeImmutable());
+            },
+        );
     }
 
     public function forPerson(Person $person): self
