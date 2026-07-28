@@ -91,6 +91,29 @@ final class ActionDraft
      * What this catches is the opposite mistake — kilometres with no journeys, or
      * journeys with no distance — which would silently value at zero.
      */
+    /**
+     * The start date is already constrained above, but consecutiveDays can still
+     * push the end past today — five days from last Friday has not happened yet.
+     * DeclarationAction enforces the same rule, through the same arithmetic.
+     */
+    #[Assert\Callback(groups: [self::GROUP])]
+    public function validateHasFinished(ExecutionContextInterface $context): void
+    {
+        if (null === $this->date) {
+            return;
+        }
+
+        $endDate = DeclarationAction::endDateFor($this->date, $this->consecutiveDays);
+
+        if ($endDate <= new DateTimeImmutable('today')) {
+            return;
+        }
+
+        $context->buildViolation('Cette action n\'est pas terminée : sa date de fin est dans le futur.')
+            ->atPath('consecutiveDays')
+            ->addViolation();
+    }
+
     #[Assert\Callback(groups: [self::GROUP])]
     public function validateTravelIsCoherent(ExecutionContextInterface $context): void
     {

@@ -13,6 +13,9 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Validator\Context\ExecutionContextInterface;
+
+use function sprintf;
 
 /**
  * One contributed action inside a declaration: an event the person helped at, the
@@ -159,6 +162,25 @@ class DeclarationAction
     }
 
     /**
+     * An action cannot be declared before it is over. The start date alone is not
+     * enough: five consecutive days from last Friday still ends in the future.
+     *
+     * On the entity as well as on the form DTO, so fixtures, the back-office and
+     * any future import are held to the same rule.
+     */
+    #[Assert\Callback]
+    public function validateHasFinished(ExecutionContextInterface $context): void
+    {
+        if ($this->getEndDate() <= new DateTimeImmutable('today')) {
+            return;
+        }
+
+        $context->buildViolation('Cette action n\'est pas terminée : sa date de fin est dans le futur.')
+            ->atPath('consecutiveDays')
+            ->addViolation();
+    }
+
+    /**
      * There is deliberately no setState() — see App\Entity\Declaration.
      */
     public function getState(): DeclarationActionState
@@ -189,6 +211,29 @@ class DeclarationAction
     public function getConsecutiveDays(): int
     {
         return $this->consecutiveDays;
+    }
+
+    /**
+     * Last day of the action. A one-day action ends the day it starts, so the
+     * span is consecutiveDays - 1.
+     */
+    public function getEndDate(): DateTimeImmutable
+    {
+        return self::endDateFor($this->date, $this->consecutiveDays);
+    }
+
+    /**
+     * Shared with App\Form\Declaration\ActionDraft, which has to apply the same
+     * rule to scalars before an entity exists.
+     *
+     * Normalises to midnight. The constructor already does that for a stored
+     * action, but a draft carries whatever the caller built — and an end date of
+     * "today at 17:30" would otherwise compare as later than "today", rejecting an
+     * action that finished this morning.
+     */
+    public static function endDateFor(DateTimeImmutable $date, int $consecutiveDays): DateTimeImmutable
+    {
+        return $date->setTime(0, 0)->modify(sprintf('+%d days', max(0, $consecutiveDays - 1)));
     }
 
     public function getJourneys(): int
