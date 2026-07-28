@@ -64,9 +64,23 @@ but persisting from inside `postPersist` needs a second flush and is fragile; th
 cost is that a third creation path would silently skip seeding, which
 `DefaultEventTypesTest` exists to catch.
 
-Deleting a type an action references is refused by the FK (`ON DELETE RESTRICT`):
-a filed declaration must not lose the label it was filed under. Retire one with
-`active` instead — it vanishes from new forms and still renders on old actions.
+Deleting a type an action references is refused by the FK: a filed declaration
+must not lose the label it was filed under. Retire one with `active` instead — it
+vanishes from new forms and still renders on old actions.
+
+**TRAP — that FK is `ON DELETE NO ACTION`, and the word matters.** `RESTRICT`
+refuses the delete just as firmly, but makes PostgreSQL raise SQLSTATE **23001**
+(`restrict_violation`), and DBAL's PostgreSQL `ExceptionConverter` only maps
+**23503** to `ForeignKeyConstraintViolationException`. Under `RESTRICT` the error
+is therefore a generic driver exception that no `catch` in this codebase — nor
+EasyAdmin's own, in `AbstractCrudController::delete()` — will ever see, and the
+admin gets a 500. `NO ACTION` yields 23503 and the catch works. Any other FK meant
+to refuse a delete must use `NO ACTION` for the same reason.
+
+`EventTypeCrudController::deleteEntity()` still overrides EasyAdmin's handling:
+left alone, EasyAdmin turns the caught exception into its own 409 page, whose
+message tells a *developer* to disable the delete action or add `cascade`, in
+English. A treasurer gets a French sentence naming the type instead.
 
 A `Person` is matched by **(organization, email)**, and `Email` lowercases itself
 so that holds when the volunteer types a different case next year. Their address
@@ -196,7 +210,7 @@ added to `/admin` must be tenant-scoped.
 - `src/Entity/` — domain model
 - `src/ValueObject/` — self-validating value objects (`Address`, `Email`). Also a
   Doctrine mapping, because `Address` is an `#[ORM\Embeddable]`.
-- `src/Enum/` — closed business sets (`EventType`, `FiscalPower`)
+- `src/Enum/` — closed business sets (`FiscalPower`)
 - `src/State/` — finite state enums, and `Listener/` for their guards
 - `src/Repository/` — Doctrine repositories
 - `src/Controller/` — invokable controllers; `Admin/` and `Platform/` hold the two

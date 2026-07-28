@@ -84,10 +84,15 @@ final class EventTypeCrudController extends AbstractCrudController
     }
 
     /**
-     * The database refuses to delete a type an action still references
-     * (ON DELETE RESTRICT), because a filed declaration must not lose the label it
-     * was filed under. That surfaces as a driver exception, which would reach the
-     * admin as a 500 — so it is turned into something a treasurer can act on.
+     * The database refuses to delete a type an action still references, because a
+     * filed declaration must not lose the label it was filed under. Left alone that
+     * reaches the admin as EasyAdmin's own 409 page, whose message is written for a
+     * developer ("disable the delete action or configure cascade") and in English —
+     * so it is turned into something a treasurer can act on instead.
+     *
+     * This catch only fires because the constraint is NO ACTION and not RESTRICT;
+     * see App\Entity\DeclarationAction for why that distinction decides whether the
+     * exception is catchable at all.
      */
     public function deleteEntity(EntityManagerInterface $entityManager, object $entityInstance): void
     {

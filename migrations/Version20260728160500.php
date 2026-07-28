@@ -93,7 +93,7 @@ final class Version20260728160500 extends AbstractMigration
             SQL);
 
         $this->addSql('ALTER TABLE declaration_action ALTER COLUMN event_type_id SET NOT NULL');
-        $this->addSql('ALTER TABLE declaration_action ADD CONSTRAINT FK_65DD7F44401B253C FOREIGN KEY (event_type_id) REFERENCES event_type (id) ON DELETE RESTRICT NOT DEFERRABLE');
+        $this->addSql('ALTER TABLE declaration_action ADD CONSTRAINT FK_65DD7F44401B253C FOREIGN KEY (event_type_id) REFERENCES event_type (id) NOT DEFERRABLE');
         $this->addSql('CREATE INDEX IDX_65DD7F44401B253C ON declaration_action (event_type_id)');
         $this->addSql('ALTER TABLE declaration_action DROP event_type');
     }

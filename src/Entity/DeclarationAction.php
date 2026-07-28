@@ -59,12 +59,18 @@ class DeclarationAction
     private DeclarationActionState $state = DeclarationActionState::SUBMITTED;
 
     /**
-     * RESTRICT, not CASCADE: deleting a type must never delete the declarations
+     * NO ACTION, not CASCADE: deleting a type must never delete the declarations
      * filed under it. An association retires a type with EventType::$active
      * instead.
+     *
+     * NO ACTION rather than RESTRICT, which refuses the delete just as firmly but
+     * makes PostgreSQL raise SQLSTATE 23001 (restrict_violation). DBAL only maps
+     * 23503 to ForeignKeyConstraintViolationException, so under RESTRICT the error
+     * escapes every catch — including EasyAdmin's own — and the admin gets a 500
+     * instead of a sentence.
      */
     #[ORM\ManyToOne(targetEntity: EventType::class)]
-    #[ORM\JoinColumn(nullable: false, onDelete: 'RESTRICT')]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'NO ACTION')]
     private EventType $eventType;
 
     #[ORM\Column(length: self::TITLE_MAX_LENGTH)]
