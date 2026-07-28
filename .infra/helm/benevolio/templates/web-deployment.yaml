@@ -50,6 +50,10 @@ spec:
           env:
             {{- include "benevolio.dbEnv" . | nindent 12 }}
           {{- end }}
+          # /health, not /: this application routes nothing at the root, so the
+          # original probe 404'd forever and the pod never turned ready. Not a
+          # tenant URL either — see App\Controller\HealthController for why.
+          #
           # Generous on purpose. docker-entrypoint waits for the database and then
           # applies migrations BEFORE FrankenPHP binds :80, so nothing answers here
           # until that finishes. The previous budget (20 × 3s = 1 min) expired
@@ -59,19 +63,19 @@ spec:
           # Readiness and liveness below stay tight: this only widens the first start.
           startupProbe:
             httpGet:
-              path: /a/cvvfcm/declaration
+              path: /health
               port: http
             periodSeconds: 5
             failureThreshold: 60
           readinessProbe:
             httpGet:
-              path: /a/cvvfcm/declaration
+              path: /health
               port: http
             periodSeconds: 10
             timeoutSeconds: 5
           livenessProbe:
             httpGet:
-              path: /a/cvvfcm/declaration
+              path: /health
               port: http
             periodSeconds: 30
             timeoutSeconds: 10

@@ -40,6 +40,9 @@ security:
 
     # Note: Only the *first* matching rule is applied
     access_control:
+        # Probed by Kubernetes, which carries no credentials and must not be
+        # redirected to the login form. See App\Controller\HealthController.
+        - { path: ^/health$, roles: PUBLIC_ACCESS }
         - { path: ^/login$, roles: PUBLIC_ACCESS }
         # The volunteer declaration form. Volunteers have no account, so this whole
         # prefix is anonymous by design; the tenant comes from the {organizationSlug}

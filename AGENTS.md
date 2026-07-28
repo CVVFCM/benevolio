@@ -345,6 +345,17 @@ send mail is an instance in which nothing can be declared. Symfony's default
 render instead of letting the failure be silent. `MAIL_FROM` defaults to
 `noreply@<host>`; the relay behind the DSN has to be allowed to send as it.
 
+**Kubernetes probes `/health`** (`App\Controller\HealthController`), and it is the
+only route outside a tenant or the backoffice. There is nothing else safe to probe:
+`/` is not routed at all, so the chart's original probe on it 404'd forever and the
+pod never turned ready. The endpoint **does not touch the database** — the same URL
+backs the liveness probe, and failing it on a database blip would restart every pod
+over something the application does not control. Do not "improve" it into a tenant
+URL either: `/a/<slug>/declaration` cannot answer before an organization exists (so
+a first deployment could never go ready), it pins one association into a chart
+meant for many, and on liveness, unticking that association's *active* box would
+take production down.
+
 ### Bootstrapping a fresh instance
 
 A new database has no association and no account, so `/admin` cannot be logged into
