@@ -44,6 +44,18 @@
                 <target>Bénévoles</target>
             </segment>
         </unit>
+        <unit id="menu.configuration">
+            <segment>
+                <source>menu.configuration</source>
+                <target>Configuration</target>
+            </segment>
+        </unit>
+        <unit id="menu.event_types">
+            <segment>
+                <source>menu.event_types</source>
+                <target>Types d'événement</target>
+            </segment>
+        </unit>
 
         <unit id="dashboard.no_sections_yet">
             <segment>

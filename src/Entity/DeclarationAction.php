@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
-use App\Enum\EventType;
 use App\Enum\FiscalPower;
 use App\Repository\DeclarationActionRepository;
 use App\State\DeclarationActionState;
@@ -56,7 +55,13 @@ class DeclarationAction
     #[ORM\Column(enumType: DeclarationActionState::class)]
     private DeclarationActionState $state = DeclarationActionState::SUBMITTED;
 
-    #[ORM\Column(enumType: EventType::class)]
+    /**
+     * RESTRICT, not CASCADE: deleting a type must never delete the declarations
+     * filed under it. An association retires a type with EventType::$active
+     * instead.
+     */
+    #[ORM\ManyToOne(targetEntity: EventType::class)]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'RESTRICT')]
     private EventType $eventType;
 
     #[ORM\Column(length: self::TITLE_MAX_LENGTH)]

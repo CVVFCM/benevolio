@@ -174,14 +174,12 @@ final class DeclarationDeciderTest extends KernelTestCase
     public function totals_are_summed_exactly_across_lines(): void
     {
         $declaration = DeclarationFactory::createOne();
-        DeclarationActionFactory::createOne([
-            'declaration' => $declaration,
+        DeclarationActionFactory::new()->forDeclaration($declaration)->create([
             'workHours' => '2.25',
             'distanceKm' => 10,
             'journeys' => 2,
         ]);
-        DeclarationActionFactory::createOne([
-            'declaration' => $declaration,
+        DeclarationActionFactory::new()->forDeclaration($declaration)->create([
             'workHours' => '3.50',
             'distanceKm' => 7,
             'journeys' => 4,
@@ -211,7 +209,7 @@ final class DeclarationDeciderTest extends KernelTestCase
     private function declarationWithActions(int $count): Declaration
     {
         $declaration = DeclarationFactory::createOne();
-        DeclarationActionFactory::createMany($count, ['declaration' => $declaration]);
+        DeclarationActionFactory::new()->forDeclaration($declaration)->many($count)->create();
 
         $id = $declaration->getId();
         $this->entityManager->clear();

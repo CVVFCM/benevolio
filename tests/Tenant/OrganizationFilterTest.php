@@ -7,6 +7,7 @@ namespace App\Tests\Tenant;
 use App\Doctrine\Filter\OrganizationFilter;
 use App\Entity\Declaration;
 use App\Entity\DeclarationAction;
+use App\Entity\EventType;
 use App\Entity\Organization;
 use App\Entity\Person;
 use App\Entity\User;
@@ -15,12 +16,15 @@ use App\Factory\DeclarationFactory;
 use App\Factory\OrganizationFactory;
 use App\Factory\PersonFactory;
 use App\Factory\UserFactory;
+use App\Organization\DefaultEventTypes;
 use App\ValueObject\Email;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Zenstruck\Foundry\Test\Factories;
 use Zenstruck\Foundry\Test\ResetDatabase;
+
+use function count;
 
 /**
  * The gate for every tenant-scoped entity: a query on a TenantAware entity cannot
@@ -132,6 +136,31 @@ final class OrganizationFilterTest extends KernelTestCase
     }
 
     /**
+     * EventType is tenant-scoped, so one association can never be offered — or
+     * shown — another's categories. This is the isolation test AGENTS.md requires
+     * of every new TenantAware entity.
+     */
+    #[Test]
+    public function it_hides_event_types_belonging_to_another_organization(): void
+    {
+        $first = OrganizationFactory::createOne(['slug' => 'first']);
+        OrganizationFactory::createOne(['slug' => 'second']);
+        $this->entityManager->clear();
+
+        $this->armFilterFor($first);
+        $repository = $this->entityManager->getRepository(EventType::class);
+
+        // Each organization was seeded with the same starter list, so an unfiltered
+        // query would return twice as many.
+        self::assertCount(count(DefaultEventTypes::NAMES), $repository->findAll());
+        self::assertCount(count(DefaultEventTypes::NAMES), $repository->findActive());
+
+        foreach ($repository->findAll() as $eventType) {
+            self::assertSame($first->getId()->toRfc4122(), $eventType->getOrganization()->getId()->toRfc4122());
+        }
+    }
+
+    /**
      * DeclarationAction is deliberately NOT TenantAware, so the filter does not
      * touch it. Asserted so the omission stays a recorded decision rather than
      * looking like a bug: the back-office scopes it by hand instead, which
@@ -142,8 +171,8 @@ final class OrganizationFilterTest extends KernelTestCase
     {
         $first = OrganizationFactory::createOne(['slug' => 'first']);
         $second = OrganizationFactory::createOne(['slug' => 'second']);
-        DeclarationActionFactory::createOne(['declaration' => DeclarationFactory::new()->for($first)]);
-        DeclarationActionFactory::createOne(['declaration' => DeclarationFactory::new()->for($second)]);
+        DeclarationActionFactory::new()->for($first)->create();
+        DeclarationActionFactory::new()->for($second)->create();
         $this->entityManager->clear();
 
         $this->armFilterFor($first);

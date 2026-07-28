@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Declaration;
 
+use App\Declaration\Exception\EventTypeNoLongerAvailableException;
 use App\Entity\Declaration;
 use App\Entity\DeclarationAction;
+use App\Entity\EventType;
 use App\Entity\Organization;
 use App\Entity\Person;
 use App\Form\Declaration\ActionDraft;
 use App\Form\Declaration\DeclarationDraft;
+use App\Repository\EventTypeRepository;
 use App\Repository\PersonRepository;
 use App\ValueObject\Address;
 use App\ValueObject\Email;
@@ -30,6 +33,7 @@ final readonly class DeclarationSubmitter
 {
     public function __construct(
         private PersonRepository $people,
+        private EventTypeRepository $eventTypes,
         private EntityManagerInterface $entityManager,
     ) {
     }
@@ -102,14 +106,34 @@ final readonly class DeclarationSubmitter
         );
     }
 
+    /**
+     * Re-reads the event type from the database.
+     *
+     * NOT redundant. The flow keeps its draft in the session between steps, and
+     * SessionDataStorage deep-clones it — which detaches any Doctrine entity it
+     * holds. Passing that copy straight to the action makes Doctrine treat it as a
+     * brand-new entity ("A new entity was found through the relationship …") and
+     * the whole submission dies.
+     *
+     * Re-fetching also earns something: the lookup goes through the tenant-filtered
+     * repository, so a type belonging to another association — or one deleted while
+     * the volunteer was filling the form — cannot slip through.
+     */
+    private function resolveEventType(?EventType $detached): EventType
+    {
+        assert(null !== $detached);
+
+        return $this->eventTypes->find($detached->getId())
+            ?? throw EventTypeNoLongerAvailableException::forId($detached->getId());
+    }
+
     private function createAction(Declaration $declaration, ActionDraft $draft): DeclarationAction
     {
-        assert(null !== $draft->eventType);
         assert(null !== $draft->date);
 
         return new DeclarationAction(
             $declaration,
-            $draft->eventType,
+            $this->resolveEventType($draft->eventType),
             (string) $draft->title,
             '' === $draft->description ? null : $draft->description,
             $draft->date,

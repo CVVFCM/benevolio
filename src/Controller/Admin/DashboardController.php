@@ -74,6 +74,9 @@ final class DashboardController extends AbstractDashboardController
         yield MenuItem::linkTo(DeclarationActionCrudController::class, 'menu.declaration_actions', 'fa fa-list-check');
         yield MenuItem::linkTo(PersonCrudController::class, 'menu.people', 'fa fa-users');
 
+        yield MenuItem::section('menu.configuration');
+        yield MenuItem::linkTo(EventTypeCrudController::class, 'menu.event_types', 'fa fa-tags');
+
         // Valuation rates and tax receipts land here in the following lots.
     }
 }

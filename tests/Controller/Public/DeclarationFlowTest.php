@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Tests\Controller\Public;
 
 use App\Entity\Declaration;
+use App\Entity\DeclarationAction;
+use App\Entity\EventType;
 use App\Entity\Organization;
 use App\Entity\Person;
 use App\Factory\OrganizationFactory;
@@ -159,6 +161,39 @@ final class DeclarationFlowTest extends WebTestCase
         self::assertSame(24, $action->getTotalDistanceKm());
     }
 
+    /**
+     * The event type is a Doctrine entity carried inside the session-stored draft,
+     * which SessionDataStorage deep-clones — detaching it. DeclarationSubmitter
+     * re-fetches it for that reason; without that the submission dies with
+     * "A new entity was found through the relationship". This asserts the action
+     * ends up pointing at the *existing* row rather than a duplicate.
+     */
+    #[Test]
+    public function the_chosen_event_type_survives_the_session_round_trip(): void
+    {
+        $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
+        $typesBefore = $this->entityManager()->getRepository(EventType::class)->count(['organization' => $organization]);
+
+        $this->completeFlow();
+        $this->client->followRedirect();
+
+        $entityManager = $this->entityManager();
+        // No stray copy of the type was created by the round trip.
+        self::assertSame(
+            $typesBefore,
+            $entityManager->getRepository(EventType::class)->count(['organization' => $organization]),
+        );
+
+        $actions = $entityManager->getRepository(DeclarationAction::class)->findAll();
+        self::assertCount(1, $actions);
+        $eventType = reset($actions)->getEventType();
+        // And it belongs to this association, not to a detached orphan.
+        self::assertSame(
+            $organization->getId()->toRfc4122(),
+            $eventType->getOrganization()->getId()->toRfc4122(),
+        );
+    }
+
     #[Test]
     public function the_legal_step_refuses_an_unticked_box(): void
     {
@@ -264,8 +299,11 @@ final class DeclarationFlowTest extends WebTestCase
         // via isCurrentStepSubmitted()). Only the final submit redirects.
         $this->client->submitForm('Suivant', $this->personStep($personOverrides));
 
+        // The event type is a database row now, not an enum value, so the submitted
+        // value is its id — taken from the rendered select rather than hardcoded, so
+        // the test breaks if the option ever stops being offered.
         $this->client->submitForm('Suivant', [
-            self::FORM.'[actions][actions][0][eventType]' => 'regate',
+            self::FORM.'[actions][actions][0][eventType]' => $this->firstEventTypeId(),
             self::FORM.'[actions][actions][0][title]' => 'Régate du printemps',
             self::FORM.'[actions][actions][0][date]' => '2026-05-10',
             self::FORM.'[actions][actions][0][consecutiveDays]' => '2',
@@ -301,6 +339,20 @@ final class DeclarationFlowTest extends WebTestCase
     private function assertPageDoesNotContainText(string $needle): void
     {
         self::assertStringNotContainsString($needle, $this->client->getCrawler()->filter('body')->text());
+    }
+
+    /**
+     * The id of the first event type the form actually offers.
+     */
+    private function firstEventTypeId(): string
+    {
+        $option = $this->client->getCrawler()
+            ->filter('select[name="'.self::FORM.'[actions][actions][0][eventType]"] option[value!=""]')
+            ->first();
+
+        self::assertGreaterThan(0, $option->count(), 'The actions step offers no event type.');
+
+        return (string) $option->attr('value');
     }
 
     private function entityManager(): EntityManagerInterface

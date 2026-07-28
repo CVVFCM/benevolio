@@ -44,14 +44,15 @@ final class AppFixtures extends Fixture
         // worth more than a varied one when reading a list by hand.
         foreach ([1, 2, 3] as $lineCount) {
             $declaration = DeclarationFactory::new()->for($organization)->create();
-            DeclarationActionFactory::createMany($lineCount, ['declaration' => $declaration]);
+            DeclarationActionFactory::new()->forDeclaration($declaration)->many($lineCount)->create();
         }
 
         // One with travel in the volunteer's own vehicle, so the fiscal-power path
         // is visible without having to build it by hand.
         $withOwnVehicle = DeclarationFactory::new()->for($organization)->create();
         DeclarationActionFactory::new()
+            ->forDeclaration($withOwnVehicle)
             ->withOwnVehicle()
-            ->create(['declaration' => $withOwnVehicle]);
+            ->create();
     }
 }

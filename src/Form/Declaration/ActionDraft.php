@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Form\Declaration;
 
 use App\Entity\DeclarationAction;
-use App\Enum\EventType;
+use App\Entity\EventType;
 use App\Enum\FiscalPower;
 use DateTimeImmutable;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -29,6 +29,11 @@ final class ActionDraft
     private const int MAX_JOURNEYS = 200;
     private const string MAX_WORK_HOURS = '999.99';
 
+    /**
+     * The entity, not an enum: each association manages its own list. The form's
+     * choices are already restricted to the current tenant by OrganizationFilter,
+     * so a draft cannot carry another association's type.
+     */
     #[Assert\NotNull(message: 'Choisissez un type d\'événement.', groups: [self::GROUP])]
     public ?EventType $eventType = null;
 

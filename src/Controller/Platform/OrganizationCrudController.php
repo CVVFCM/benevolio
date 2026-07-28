@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Controller\Platform;
 
 use App\Entity\Organization;
+use App\Organization\DefaultEventTypes;
+use Doctrine\ORM\EntityManagerInterface;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
 use EasyCorp\Bundle\EasyAdminBundle\Field\BooleanField;
@@ -23,6 +25,11 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('ROLE_SUPER_ADMIN')]
 final class OrganizationCrudController extends AbstractCrudController
 {
+    public function __construct(
+        private readonly DefaultEventTypes $defaultEventTypes,
+    ) {
+    }
+
     public static function getEntityFqcn(): string
     {
         return Organization::class;
@@ -54,5 +61,19 @@ final class OrganizationCrudController extends AbstractCrudController
 
         yield DateTimeField::new('createdAt', 'organization.created_at')
             ->onlyOnIndex();
+    }
+
+    /**
+     * A brand-new association needs event types or its public declaration form
+     * has nothing to offer. One of the two explicit call sites of
+     * DefaultEventTypes — see that class for why it is not a Doctrine listener.
+     */
+    public function persistEntity(EntityManagerInterface $entityManager, object $entityInstance): void
+    {
+        parent::persistEntity($entityManager, $entityInstance);
+
+        // $entityInstance is narrowed to Organization by the @extends generic.
+        $this->defaultEventTypes->createFor($entityInstance);
+        $entityManager->flush();
     }
 }
