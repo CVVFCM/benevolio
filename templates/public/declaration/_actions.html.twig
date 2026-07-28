@@ -1,5 +1,5 @@
 {# The actions collection. Rows are added and removed by the form-collection
-   Stimulus controller; without JavaScript the server-rendered rows still submit. #}
+   Stimulus controller; without JavaScript the server-rendered row still submits. #}
 <div
     {{ stimulus_controller('form-collection') }}
     {# The prototype is a FormView, so it has to be rendered through the same row
@@ -8,15 +8,17 @@
     data-form-collection-prototype-value="{{ include('public/declaration/_action_row.html.twig', {action: actions.vars.prototype})|e('html_attr') }}"
     data-form-collection-index-value="{{ actions|length }}"
 >
-    <div data-form-collection-target="container">
+    {{ form_errors(actions) }}
+
+    <div class="actions-list" data-form-collection-target="container">
         {% for action in actions %}
             {{ include('public/declaration/_action_row.html.twig', {action: action}) }}
         {% endfor %}
     </div>
 
-    {{ form_errors(actions) }}
-
-    <button type="button" data-action="form-collection#add">
-        Ajouter une action
-    </button>
+    <p class="actions-list__add">
+        <button type="button" class="button button--quiet" data-action="form-collection#add">
+            Ajouter une action
+        </button>
+    </p>
 </div>

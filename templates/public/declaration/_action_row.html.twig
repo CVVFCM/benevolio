@@ -1,27 +1,51 @@
-{# One action. Also used as the CollectionType prototype, so it must not depend on
-   the row's index for anything but the fields Symfony already names. #}
-<fieldset data-form-collection-row>
-    <legend>Action bénévole</legend>
+{# One action. Also used as the CollectionType prototype, so nothing here may
+   depend on the row's position: the index only exists once JavaScript clones it.
 
-    {{ form_row(action.eventType) }}
-    {{ form_row(action.title) }}
-    {{ form_row(action.date) }}
-    {{ form_row(action.consecutiveDays) }}
-    {{ form_row(action.workHours) }}
-    {{ form_row(action.description) }}
+   The fieldsets carry no border or padding of their own — the visible panel is an
+   inner element. A <legend> is rendered in the fieldset's border slot whatever CSS
+   says, so keeping the border off the fieldset is what lets the title sit in
+   normal flow. #}
+<fieldset class="action" data-form-collection-row>
+    {# The visible number comes from a CSS counter, so a cloned row is numbered
+       correctly without JavaScript renaming anything. #}
+    <legend class="action__legend"><span class="action__legend-text">Action bénévole</span></legend>
 
-    <div class="travel">
-        <p class="travel__hint">
-            Déplacements : indiquez la distance d'un aller simple et le nombre de
-            trajets effectués (un aller-retour compte pour 2).
+    <div class="action__panel">
+        <div class="action__grid">
+            {{ form_row(action.eventType) }}
+            {{ form_row(action.date) }}
+            {{ form_row(action.title, {row_attr: {class: 'field field--wide'}}) }}
+            {{ form_row(action.workHours) }}
+            {{ form_row(action.consecutiveDays) }}
+            {{ form_row(action.description, {row_attr: {class: 'field field--wide'}}) }}
+        </div>
+
+        {# Travel is the part that becomes a donation, so it is enclosed and
+           explained rather than mixed in with the hours above. #}
+        <fieldset class="action__travel">
+            <legend class="action__travel-legend">Déplacements</legend>
+
+            <div class="action__travel-body">
+                <p class="action__hint">
+                    Indiquez la distance d'un aller simple entre votre domicile et le
+                    lieu de l'événement, puis le nombre de trajets effectués — un
+                    aller-retour compte pour deux trajets. Laissez à zéro si vous ne
+                    vous êtes pas déplacé.
+                </p>
+
+                <div class="action__grid">
+                    {{ form_row(action.distanceKm) }}
+                    {{ form_row(action.journeys) }}
+                    {{ form_row(action.ownVehicle, {row_attr: {class: 'field field--checkbox field--wide'}}) }}
+                    {{ form_row(action.fiscalPower, {row_attr: {class: 'field field--wide'}}) }}
+                </div>
+            </div>
+        </fieldset>
+
+        <p class="action__remove">
+            <button type="button" class="button button--danger" data-action="form-collection#remove">
+                Retirer cette action
+            </button>
         </p>
-        {{ form_row(action.distanceKm) }}
-        {{ form_row(action.journeys) }}
-        {{ form_row(action.ownVehicle) }}
-        {{ form_row(action.fiscalPower) }}
     </div>
-
-    <button type="button" data-action="form-collection#remove">
-        Retirer cette action
-    </button>
 </fieldset>

@@ -39,6 +39,15 @@ export default class extends Controller {
       return;
     }
 
+    // The one authored moment on this page: the row settles in from an already
+    // visible state rather than appearing from nothing.
+    added.classList.add('action--entering');
+    added.addEventListener(
+      'animationend',
+      () => added.classList.remove('action--entering'),
+      { once: true },
+    );
+
     this.containerTarget.append(added);
     this.indexValue += 1;
 

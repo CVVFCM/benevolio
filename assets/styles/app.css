@@ -1,3 +1,646 @@
+/*
+ * Benevolio — public volunteer surface.
+ *
+ * The people using these pages are association volunteers filling in paperwork
+ * once or twice a year, usually at home, on a phone as often as a laptop. So the
+ * surface is built to read like an official document that respects them: warm
+ * paper, ink-navy text, one deep-sea accent for the things you press, generous
+ * room around anything you have to think about.
+ *
+ * Typography is the system font stack on purpose. A French association must not
+ * pull fonts from a third-party CDN (the CNIL has ruled on exactly that), and
+ * self-hosting a variable font for a form nobody lingers on is weight this page
+ * has not earned. The character comes from scale, weight and measure instead.
+ */
+
+:root {
+    /* Warm paper, so the page does not read as a clinical white sheet. */
+    --surface: #f7f4ee;
+    --surface-raised: #fffdfa;
+    --surface-sunken: #efeae1;
+    --ink: #16202b;
+    --ink-muted: #4c5563;
+    --ink-faint: #646d7a;
+    --rule: #ded6c9;
+    --rule-strong: #b9ae9c;
+
+    /* Deep sea: the colour of every action you can take. */
+    --accent: #0f5570;
+    --accent-hover: #0b4156;
+    --accent-contrast: #fffdfa;
+    --accent-tint: #e4eef3;
+
+    /* Brass, for the step you are standing on. */
+    --marker: #8a5f1a;
+    --marker-tint: #f6ecd9;
+
+    /* Semantic colours, tinted from the page hue rather than pure red/green. */
+    --danger: #9c1f1f;
+    --danger-tint: #fbe9e7;
+    --success: #1a5c31;
+    --success-tint: #e6f1e8;
+    --focus: #0f5570;
+    --radius: 6px;
+    --radius-lg: 10px;
+
+    /* A 4px base scale — every gap below is a step on it. */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.5rem;
+    --space-6: 2rem;
+    --space-7: 3rem;
+    --space-8: 4rem;
+    --shadow-raised: 0 1px 2px rgb(22 32 43 / 4%), 0 4px 12px -4px rgb(22 32 43 / 8%);
+    --font-sans:
+        system-ui, -apple-system, "Segoe UI", roboto, "Helvetica Neue", arial,
+        "Noto Sans", sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --surface: #14191f;
+        --surface-raised: #1c2329;
+        --surface-sunken: #0f1418;
+        --ink: #e9e4da;
+        --ink-muted: #aab2bb;
+        --ink-faint: #929aa4;
+        --rule: #2e363e;
+        --rule-strong: #4c565f;
+        --accent: #7cbedb;
+        --accent-hover: #9ad0e8;
+        --accent-contrast: #0e1418;
+        --accent-tint: #1b2a33;
+        --marker: #d9ac5e;
+        --marker-tint: #2a2417;
+        --danger: #f2a49b;
+        --danger-tint: #2c1a1a;
+        --success: #93cfa6;
+        --success-tint: #17251b;
+        --focus: #9ad0e8;
+        --shadow-raised: 0 1px 2px rgb(0 0 0 / 30%), 0 4px 12px -4px rgb(0 0 0 / 40%);
+    }
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    /* stylelint-disable-next-line property-no-vendor-prefix --
+       only the -webkit- form is honoured by iOS Safari, which is exactly the
+       browser that inflates text in landscape. The unprefixed property would be
+       decoration here. */
+    -webkit-text-size-adjust: 100%;
+}
+
 body {
-    background-color: skyblue;
+    margin: 0;
+    background-color: var(--surface);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+}
+
+/* ----------------------------------------------------------------- shell -- */
+
+.public {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.public__header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+    align-items: baseline;
+    justify-content: space-between;
+    padding: var(--space-4) var(--space-5);
+    border-bottom: 1px solid var(--rule);
+    background-color: var(--surface-raised);
+}
+
+.public__org {
+    margin: 0;
+    font-size: 1.0625rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+.public__app {
+    margin: 0;
+    color: var(--ink-faint);
+    font-size: 0.8125rem;
+    font-weight: 500;
+}
+
+.public__main {
+    width: min(100% - 2 * var(--space-4), 54rem);
+    margin-inline: auto;
+    padding-block: var(--space-6) var(--space-8);
+}
+
+.public__footer {
+    margin-top: auto;
+    padding: var(--space-5);
+    border-top: 1px solid var(--rule);
+    color: var(--ink-faint);
+    font-size: 0.8125rem;
+    text-align: center;
+}
+
+.public__footer p {
+    margin: 0;
+}
+
+/* -------------------------------------------------------------- headings -- */
+
+.public__main h1 {
+    margin-block: 0 var(--space-6);
+    font-size: clamp(1.75rem, 1.35rem + 1.6vw, 2.5rem);
+    font-weight: 650;
+    letter-spacing: -0.025em;
+    line-height: 1.15;
+    text-wrap: balance;
+}
+
+.lede {
+    max-width: 62ch;
+    margin-block: calc(-1 * var(--space-4)) var(--space-6);
+    color: var(--ink-muted);
+    font-size: 1.0625rem;
+}
+
+/* ------------------------------------------------------------- step list -- */
+
+.steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-5);
+    margin-block: 0 var(--space-6);
+    padding: 0;
+
+    /* The markers are drawn by .steps__position; the list's own numbering would
+       render a second one right beside it. */
+    list-style: none;
+}
+
+.steps__item {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+    color: var(--ink-faint);
+    font-size: 0.9375rem;
+}
+
+.steps__position {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 1px solid var(--rule-strong);
+    border-radius: 50%;
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+.steps__item--done {
+    color: var(--ink-muted);
+}
+
+.steps__item--done .steps__position {
+    border-color: transparent;
+    background-color: var(--accent-tint);
+    color: var(--accent);
+}
+
+.steps__item--current {
+    color: var(--ink);
+    font-weight: 600;
+}
+
+.steps__item--current .steps__position {
+    border-color: var(--marker);
+    background-color: var(--marker-tint);
+    color: var(--marker);
+}
+
+/* ------------------------------------------------------------------ form -- */
+
+.form__section {
+    margin: 0 0 var(--space-6);
+    padding: var(--space-6);
+    min-width: 0;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-lg);
+    background-color: var(--surface-raised);
+    box-shadow: var(--shadow-raised);
+}
+
+.form__legend {
+    margin-block: 0 var(--space-5);
+    font-size: 1.25rem;
+    font-weight: 650;
+    letter-spacing: -0.015em;
+}
+
+.form__grid {
+    display: grid;
+    gap: var(--space-5);
+}
+
+@media (width >= 44rem) {
+    /* Four columns, so a house number can be narrow while the street it belongs
+       to is wide. Equal halves would give "Numéro" as much room as "Rue". */
+    .form__grid--person {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .form__grid--person > .field--span-2 {
+        grid-column: span 2;
+    }
+
+    .form__grid--person > .field--span-3 {
+        grid-column: span 3;
+    }
+
+    .form__grid--person > .field--wide {
+        grid-column: 1 / -1;
+    }
+}
+
+/* ---------------------------------------------------------------- fields -- */
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+}
+
+.field__label {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.field__help {
+    margin: 0;
+    color: var(--ink-muted);
+    font-size: 0.8125rem;
+    line-height: 1.45;
+}
+
+.field__errors {
+    margin: 0;
+    padding: 0;
+    color: var(--danger);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    list-style: none;
+}
+
+.input {
+    width: 100%;
+    padding: 0.5rem 0.6875rem;
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--radius);
+    background-color: var(--surface);
+    color: inherit;
+    font: inherit;
+
+    /* Stays at 16px so iOS does not zoom the page on focus. */
+    font-size: 1rem;
+    transition: border-color 120ms ease-out, box-shadow 120ms ease-out;
+}
+
+.input:hover {
+    border-color: var(--ink-faint);
+}
+
+.input:focus {
+    border-color: var(--accent);
+    outline: none;
+    box-shadow: 0 0 0 3px var(--accent-tint);
+}
+
+.input::placeholder {
+    color: var(--ink-faint);
+}
+
+.input--select {
+    padding-right: var(--space-3);
+}
+
+.field--invalid .input {
+    border-color: var(--danger);
+}
+
+.field--invalid .input:focus {
+    box-shadow: 0 0 0 3px var(--danger-tint);
+}
+
+.field--checkbox {
+    gap: var(--space-1);
+}
+
+.field--checkbox .field__control {
+    display: flex;
+    gap: var(--space-3);
+    align-items: flex-start;
+}
+
+.field--checkbox .field__label {
+    font-weight: 400;
+}
+
+.field--checkbox .field__help {
+    padding-left: calc(1.125rem + var(--space-3));
+}
+
+.checkbox {
+    flex: none;
+    width: 1.125rem;
+    height: 1.125rem;
+
+    /* Nudged onto the first line's optical centre. */
+    margin-block-start: 0.24rem;
+    accent-color: var(--accent);
+}
+
+/* ---------------------------------------------------------------- alerts -- */
+
+.alert {
+    margin-block: 0 var(--space-5);
+    padding: var(--space-4) var(--space-5);
+    border: 1px solid;
+    border-radius: var(--radius-lg);
+}
+
+.alert p {
+    margin: 0;
+}
+
+.alert__title {
+    font-weight: 650;
+}
+
+.alert__hint {
+    margin-top: var(--space-1);
+    font-size: 0.9375rem;
+}
+
+.alert--danger {
+    border-color: color-mix(in oklab, var(--danger) 35%, transparent);
+    background-color: var(--danger-tint);
+    color: var(--danger);
+}
+
+/* --------------------------------------------------------- action panels -- */
+
+.actions-list {
+    display: grid;
+    gap: var(--space-5);
+    counter-reset: action;
+}
+
+
+.action {
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+    border: 0;
+}
+
+.action__panel {
+    padding: var(--space-5);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    background-color: var(--surface);
+}
+
+/* Numbered rather than a repeated uppercase label: with several actions on the
+   page the sequence is information the volunteer needs ("which one am I in?"),
+   and a counter keeps working for rows JavaScript clones. */
+.action__legend {
+    margin-block: 0 var(--space-2);
+    padding: 0;
+    color: var(--ink-muted);
+    font-size: 0.9375rem;
+    font-weight: 650;
+    counter-increment: action;
+}
+
+.action__legend::before {
+    content: "Action " counter(action);
+}
+
+.action__legend-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.action__grid {
+    display: grid;
+    gap: var(--space-4);
+}
+
+@media (width >= 44rem) {
+    .action__grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .action__grid > .field--wide {
+        grid-column: 1 / -1;
+    }
+}
+
+/* Travel is a distinct idea inside an action — it is the part that becomes a
+   donation — so it gets its own enclosure rather than more fields in a row. */
+.action__travel {
+    margin: var(--space-5) 0 0;
+    padding: 0;
+    min-width: 0;
+    border: 0;
+    border-top: 1px solid var(--rule);
+}
+
+.action__travel-legend {
+    margin-block: var(--space-4) var(--space-2);
+    padding: 0;
+    font-size: 0.9375rem;
+    font-weight: 600;
+}
+
+.action__hint {
+    max-width: 60ch;
+    margin-block: 0 var(--space-4);
+    color: var(--ink-muted);
+    font-size: 0.8125rem;
+}
+
+.action__remove {
+    margin-top: var(--space-4);
+}
+
+/* With one action left there is nothing to remove down to, so the control would
+   be dead. Hiding it beats disabling it. */
+.actions-list:has(> .action:only-child) .action__remove {
+    display: none;
+}
+
+.actions-list__add {
+    margin-top: var(--space-5);
+}
+
+/* --------------------------------------------------------------- buttons -- */
+
+.button,
+.button-link {
+    display: inline-flex;
+    gap: var(--space-2);
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    padding: 0.5rem 1.25rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    background-color: var(--accent);
+    color: var(--accent-contrast);
+    font: inherit;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 120ms ease-out, border-color 120ms ease-out;
+}
+
+.button:hover,
+.button-link:hover {
+    background-color: var(--accent-hover);
+}
+
+.button--quiet {
+    border-color: var(--rule-strong);
+    background-color: transparent;
+    color: var(--ink);
+}
+
+.button--quiet:hover {
+    border-color: var(--ink-faint);
+    background-color: var(--surface-sunken);
+}
+
+.button--danger {
+    min-height: 2.25rem;
+    padding-inline: var(--space-3);
+    background-color: transparent;
+    color: var(--danger);
+    font-size: 0.875rem;
+}
+
+.button--danger:hover {
+    background-color: var(--danger-tint);
+}
+
+.navigator {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+
+    /* DOM order is previous, next/finish — so back lands on the left and forward
+       on the right, which is the direction the flow itself moves. */
+    justify-content: flex-end;
+}
+
+@media (width < 30rem) {
+    .navigator {
+        /* Stacked, the primary path belongs on top, within easier reach. */
+        flex-direction: column-reverse;
+    }
+
+    .navigator .button {
+        width: 100%;
+    }
+}
+
+/* ---------------------------------------------------------- confirmation -- */
+
+.done {
+    max-width: 62ch;
+}
+
+.done__mark {
+    display: grid;
+    place-items: center;
+    width: 3rem;
+    height: 3rem;
+    margin-bottom: var(--space-5);
+    border-radius: 50%;
+    background-color: var(--success-tint);
+    color: var(--success);
+}
+
+.done__mark svg {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
+.done p {
+    margin-block: 0 var(--space-4);
+    color: var(--ink-muted);
+    font-size: 1.0625rem;
+}
+
+.done__note {
+    margin-block: var(--space-5) var(--space-6);
+    padding: var(--space-4) var(--space-5);
+    border-left: 1px solid var(--marker);
+    background-color: var(--marker-tint);
+    color: var(--ink);
+    font-size: 0.9375rem;
+}
+
+.done__note p {
+    color: inherit;
+    font-size: inherit;
+}
+
+/* One authored moment: a newly added action settles into place from an already
+   visible state, so the list never appears to jump. */
+@media (prefers-reduced-motion: no-preference) {
+    .action--entering {
+        animation: action-settle 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+}
+
+@keyframes action-settle {
+    from {
+        transform: translateY(-0.375rem);
+        opacity: 0.4;
+    }
+
+    to {
+        transform: none;
+        opacity: 1;
+    }
 }

@@ -165,7 +165,7 @@ final class DeclarationFlowTest extends WebTestCase
         OrganizationFactory::createOne(['slug' => 'les-jardins']);
         $this->reachLegalStep();
 
-        $this->client->submitForm('Terminer', [
+        $this->client->submitForm('Enregistrer ma déclaration', [
             self::FORM.'[legal][accuracyAttested]' => '1',
             // expensesWaived deliberately left unticked: the waiver is what makes
             // the declared expenses a donation, so it cannot be optional.
@@ -282,7 +282,7 @@ final class DeclarationFlowTest extends WebTestCase
     {
         $this->reachLegalStep($personOverrides);
 
-        $this->client->submitForm('Terminer', [
+        $this->client->submitForm('Enregistrer ma déclaration', [
             self::FORM.'[legal][accuracyAttested]' => '1',
             self::FORM.'[legal][expensesWaived]' => '1',
         ]);

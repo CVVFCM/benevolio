@@ -53,9 +53,12 @@ final class DeclarationFlowType extends AbstractFlowType
         // in an application that is French-only. FormFlow prunes whichever of these
         // does not apply to the current step, through their include_if option.
         $builder
-            ->add('previous', PreviousFlowType::class, ['label' => 'Précédent'])
+            ->add('previous', PreviousFlowType::class, [
+                'label' => 'Précédent',
+                'attr' => ['class' => 'button--quiet'],
+            ])
             ->add('next', NextFlowType::class, ['label' => 'Suivant'])
-            ->add('finish', FinishFlowType::class, ['label' => 'Terminer']);
+            ->add('finish', FinishFlowType::class, ['label' => 'Enregistrer ma déclaration']);
 
         // Per-tenant session key. A shared key would let a half-filled declaration
         // started on one association's public form reappear on another's, in the

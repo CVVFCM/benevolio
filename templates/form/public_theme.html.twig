@@ -1,0 +1,83 @@
+{# Form theme for the public volunteer pages.
+   One place that decides how a field is composed — label, control, help, error —
+   so no individual template has to remember the order or the a11y wiring. #}
+{% use 'form_div_layout.html.twig' %}
+
+{% block form_row %}
+    {%- set has_errors = form.vars.errors|length > 0 -%}
+    {#- row_attr is honoured so a caller can widen a field in a grid without
+        reaching past the theme. -#}
+    {%- set row_class = (row_attr.class|default('field') ~ (has_errors ? ' field--invalid' : ''))|trim -%}
+    <div class="{{ row_class }}">
+        {{- form_label(form) -}}
+        {{- form_errors(form) -}}
+        {{- form_widget(form) -}}
+        {{- form_help(form) -}}
+    </div>
+{% endblock %}
+
+{% block checkbox_row %}
+    {%- set has_errors = form.vars.errors|length > 0 -%}
+    {%- set row_class = (row_attr.class|default('field field--checkbox') ~ (has_errors ? ' field--invalid' : ''))|trim -%}
+    <div class="{{ row_class }}">
+        {{- form_errors(form) -}}
+        <div class="field__control">
+            {{- form_widget(form) -}}
+            {{- form_label(form) -}}
+        </div>
+        {{- form_help(form) -}}
+    </div>
+{% endblock %}
+
+{% block form_label %}
+    {%- if label is not same as(false) -%}
+        {%- set label_attr = label_attr|merge({class: (label_attr.class|default('') ~ ' field__label')|trim}) -%}
+        {{- parent() -}}
+    {%- endif -%}
+{% endblock %}
+
+{% block form_help %}
+    {%- if help is not empty -%}
+        {%- set help_attr = help_attr|merge({class: (help_attr.class|default('') ~ ' field__help')|trim}) -%}
+        {{- parent() -}}
+    {%- endif -%}
+{% endblock %}
+
+{# Errors sit next to the field they belong to and name the problem. role="alert"
+   is deliberately NOT used here: on a page that re-renders with several field
+   errors at once, each one announcing itself talks over the others. The summary
+   at the top of the form carries the alert role instead. #}
+{% block form_errors %}
+    {%- if errors|length > 0 -%}
+        <ul class="field__errors">
+            {%- for error in errors -%}
+                <li>{{ error.message }}</li>
+            {%- endfor -%}
+        </ul>
+    {%- endif -%}
+{% endblock %}
+
+{% block form_widget_simple %}
+    {%- set attr = attr|merge({class: (attr.class|default('') ~ ' input')|trim}) -%}
+    {{- parent() -}}
+{% endblock %}
+
+{% block textarea_widget %}
+    {%- set attr = attr|merge({class: (attr.class|default('') ~ ' input')|trim}) -%}
+    {{- parent() -}}
+{% endblock %}
+
+{% block choice_widget_collapsed %}
+    {%- set attr = attr|merge({class: (attr.class|default('') ~ ' input input--select')|trim}) -%}
+    {{- parent() -}}
+{% endblock %}
+
+{% block checkbox_widget %}
+    {%- set attr = attr|merge({class: (attr.class|default('') ~ ' checkbox')|trim}) -%}
+    {{- parent() -}}
+{% endblock %}
+
+{% block button_widget %}
+    {%- set attr = attr|merge({class: (attr.class|default('') ~ ' button')|trim}) -%}
+    {{- parent() -}}
+{% endblock %}
