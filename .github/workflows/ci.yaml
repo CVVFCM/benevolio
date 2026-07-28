@@ -60,6 +60,14 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --no-progress --prefer-dist
 
+      # assets/vendor/ is downloaded content, so it is gitignored — which means a
+      # fresh checkout has none of it. Any template calling importmap() then throws
+      # "The "@hotwired/stimulus" vendor asset is missing", and every functional
+      # test rendering a page fails. Local runs pass only because the directory is
+      # already there from `make run`.
+      - name: Install importmap vendor assets
+        run: bin/console importmap:install
+
       - name: Lint the service container
         run: bin/console lint:container
 
