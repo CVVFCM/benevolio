@@ -14,6 +14,8 @@ doctrine:
         # which PostgreSQL stores in its native uuid column type.
         types:
             uuid: Symfony\Bridge\Doctrine\Types\UuidType
+            # App\ValueObject\Email in a single column — see App\Doctrine\Type\EmailType.
+            app_email: App\Doctrine\Type\EmailType
     orm:
         validate_xml_mapping: true
         naming_strategy: doctrine.orm.naming_strategy.underscore
@@ -27,6 +29,14 @@ doctrine:
                 dir: '%kernel.project_dir%/src/Entity'
                 prefix: 'App\Entity'
                 alias: App
+            # #[ORM\Embeddable] value objects live with the other value objects,
+            # not under src/Entity. Classes here without mapping attributes (Email,
+            # which is a DBAL type instead) are transient and simply ignored.
+            AppValueObject:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/ValueObject'
+                prefix: 'App\ValueObject'
         filters:
             # Multi-tenant isolation. Declared disabled on purpose: it carries a
             # per-request parameter, and App\Tenant\TenantRequestListener arms it
