@@ -77,6 +77,13 @@ final readonly class DeclarationDecider
      */
     private function canDecideAll(Declaration $declaration, DeclarationActionState $conflicting): bool
     {
+        // Awaiting confirmation is undecided but not actionable: the volunteer has
+        // not clicked the link, so there is nothing to rule on yet. isDecided()
+        // alone would let it through.
+        if ($declaration->getState()->isAwaitingConfirmation()) {
+            return false;
+        }
+
         if ($declaration->getState()->isDecided() || $declaration->getActions()->isEmpty()) {
             return false;
         }
@@ -96,6 +103,10 @@ final readonly class DeclarationDecider
         string $actionTransition,
         string $declarationTransition,
     ): void {
+        if ($declaration->getState()->isAwaitingConfirmation()) {
+            throw DeclarationNotDecidableException::awaitingConfirmation();
+        }
+
         if ($declaration->getState()->isDecided()) {
             throw DeclarationNotDecidableException::alreadyDecided($declaration);
         }

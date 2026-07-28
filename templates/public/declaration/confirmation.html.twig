@@ -1,31 +1,41 @@
 {% extends 'public/layout.html.twig' %}
 
-{% block title %}Déclaration enregistrée — {{ organization.name }}{% endblock %}
+{% block title %}Confirmez votre déclaration — {{ organization.name }}{% endblock %}
 
 {% block main %}
     <div class="done">
-        <div class="done__mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+        <div class="done__mark done__mark--pending" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                  stroke-linecap="round" stroke-linejoin="round">
-                <path d="m4 12.5 5 5 11-11"/>
+                <path d="M3 7.5 12 13l9-5.5"/>
+                <rect x="3" y="5" width="18" height="14" rx="2"/>
             </svg>
         </div>
 
-        <h1>Votre déclaration est enregistrée</h1>
+        <h1>Vérifiez votre boîte mail</h1>
 
         <p>
-            Merci. {{ organization.name }} va l'examiner. Vous n'avez rien d'autre à
-            faire pour l'instant.
+            Nous avons envoyé un lien de confirmation à
+            <strong>{{ email }}</strong>.
         </p>
 
+        {# The declaration exists but does nothing until the link is used. Saying it
+           is "enregistrée" here — as this page used to — would be a lie. #}
         <div class="done__note">
             <p>
-                Vous avez confirmé renoncer au remboursement des frais que vous avez
-                déclarés. C'est cette renonciation qui permettra à l'association
-                d'établir un reçu fiscal pour ces frais, une fois votre déclaration
-                validée.
+                {# No association name here: French needs an article before it
+                   ("par le Club…", "par l'Association…") and which one depends on
+                   the name. The page header already says whose form this is. #}
+                <strong>Votre déclaration n'est pas encore transmise.</strong>
+                Elle ne sera examinée qu'une fois ce lien ouvert, et il reste
+                valable 7 jours.
             </p>
         </div>
+
+        <p>
+            Rien reçu ? Regardez dans les indésirables. Si l'adresse comporte une
+            erreur, refaites la déclaration avec la bonne adresse.
+        </p>
 
         <p>
             <a class="button-link" href="{{ path('declaration', {organizationSlug: organization.slug}) }}">

@@ -605,6 +605,17 @@ body {
     height: 1.5rem;
 }
 
+/* Waiting on the volunteer, not finished — so not the success green. */
+.done__mark--pending {
+    background-color: var(--accent-tint);
+    color: var(--accent);
+}
+
+.done__mark--expired {
+    background-color: var(--danger-tint);
+    color: var(--danger);
+}
+
 .done p {
     margin-block: 0 var(--space-4);
     color: var(--ink-muted);

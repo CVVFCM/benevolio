@@ -1,0 +1,69 @@
+{% extends 'public/layout.html.twig' %}
+
+{% set expired = result.name == 'EXPIRED' %}
+
+{% block title %}
+    {{ expired ? 'Lien expiré' : 'Déclaration confirmée' }} — {{ organization.name }}
+{% endblock %}
+
+{% block main %}
+    <div class="done">
+        {% if expired %}
+            <div class="done__mark done__mark--expired" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="9"/>
+                    <path d="M12 7v5l3 2"/>
+                </svg>
+            </div>
+
+            <h1>Ce lien a expiré</h1>
+
+            <p>
+                Les liens de confirmation sont valables 7 jours. Votre déclaration
+                n'a donc pas été transmise.
+            </p>
+
+            <p>
+                Vous pouvez la refaire — cela ne prend que quelques minutes.
+            </p>
+
+            <p>
+                <a class="button-link" href="{{ path('declaration', {organizationSlug: organization.slug}) }}">
+                    Refaire ma déclaration
+                </a>
+            </p>
+        {% else %}
+            <div class="done__mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m4 12.5 5 5 11-11"/>
+                </svg>
+            </div>
+
+            <h1>Votre déclaration est confirmée</h1>
+
+            <p>
+                {# A repeat click says the same thing: nothing went wrong, and the
+                   volunteer does not need to know they clicked twice. #}
+                {# Same article problem as the "check your inbox" page. #}
+                Merci, elle va être examinée. Vous n'avez rien d'autre à faire.
+            </p>
+
+            <div class="done__note">
+                <p>
+                    Vous avez confirmé renoncer au remboursement des frais que vous
+                    avez déclarés. C'est cette renonciation qui permettra à
+                    l'association d'établir un reçu fiscal pour ces frais, une fois
+                    votre déclaration validée.
+                </p>
+            </div>
+
+            <p>
+                <a class="button-link" href="{{ path('declaration', {organizationSlug: organization.slug}) }}">
+                    Faire une autre déclaration
+                </a>
+            </p>
+        {% endif %}
+    </div>
+{% endblock %}

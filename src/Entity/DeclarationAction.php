@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
-use App\Enum\EventType;
 use App\Enum\FiscalPower;
 use App\Repository\DeclarationActionRepository;
 use App\State\DeclarationActionState;
@@ -14,6 +13,9 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Validator\Context\ExecutionContextInterface;
+
+use function sprintf;
 
 /**
  * One contributed action inside a declaration: an event the person helped at, the
@@ -56,7 +58,19 @@ class DeclarationAction
     #[ORM\Column(enumType: DeclarationActionState::class)]
     private DeclarationActionState $state = DeclarationActionState::SUBMITTED;
 
-    #[ORM\Column(enumType: EventType::class)]
+    /**
+     * NO ACTION, not CASCADE: deleting a type must never delete the declarations
+     * filed under it. An association retires a type with EventType::$active
+     * instead.
+     *
+     * NO ACTION rather than RESTRICT, which refuses the delete just as firmly but
+     * makes PostgreSQL raise SQLSTATE 23001 (restrict_violation). DBAL only maps
+     * 23503 to ForeignKeyConstraintViolationException, so under RESTRICT the error
+     * escapes every catch — including EasyAdmin's own — and the admin gets a 500
+     * instead of a sentence.
+     */
+    #[ORM\ManyToOne(targetEntity: EventType::class)]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'NO ACTION')]
     private EventType $eventType;
 
     #[ORM\Column(length: self::TITLE_MAX_LENGTH)]
@@ -154,6 +168,25 @@ class DeclarationAction
     }
 
     /**
+     * An action cannot be declared before it is over. The start date alone is not
+     * enough: five consecutive days from last Friday still ends in the future.
+     *
+     * On the entity as well as on the form DTO, so fixtures, the back-office and
+     * any future import are held to the same rule.
+     */
+    #[Assert\Callback]
+    public function validateHasFinished(ExecutionContextInterface $context): void
+    {
+        if ($this->getEndDate() <= new DateTimeImmutable('today')) {
+            return;
+        }
+
+        $context->buildViolation('Cette action n\'est pas terminée : sa date de fin est dans le futur.')
+            ->atPath('consecutiveDays')
+            ->addViolation();
+    }
+
+    /**
      * There is deliberately no setState() — see App\Entity\Declaration.
      */
     public function getState(): DeclarationActionState
@@ -184,6 +217,29 @@ class DeclarationAction
     public function getConsecutiveDays(): int
     {
         return $this->consecutiveDays;
+    }
+
+    /**
+     * Last day of the action. A one-day action ends the day it starts, so the
+     * span is consecutiveDays - 1.
+     */
+    public function getEndDate(): DateTimeImmutable
+    {
+        return self::endDateFor($this->date, $this->consecutiveDays);
+    }
+
+    /**
+     * Shared with App\Form\Declaration\ActionDraft, which has to apply the same
+     * rule to scalars before an entity exists.
+     *
+     * Normalises to midnight. The constructor already does that for a stored
+     * action, but a draft carries whatever the caller built — and an end date of
+     * "today at 17:30" would otherwise compare as later than "today", rejecting an
+     * action that finished this morning.
+     */
+    public static function endDateFor(DateTimeImmutable $date, int $consecutiveDays): DateTimeImmutable
+    {
+        return $date->setTime(0, 0)->modify(sprintf('+%d days', max(0, $consecutiveDays - 1)));
     }
 
     public function getJourneys(): int

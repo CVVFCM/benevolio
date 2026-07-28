@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Form\Declaration;
 
 use App\Entity\DeclarationAction;
-use App\Enum\EventType;
+use App\Entity\EventType;
 use App\Enum\FiscalPower;
 use DateTimeImmutable;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -29,6 +29,11 @@ final class ActionDraft
     private const int MAX_JOURNEYS = 200;
     private const string MAX_WORK_HOURS = '999.99';
 
+    /**
+     * The entity, not an enum: each association manages its own list. The form's
+     * choices are already restricted to the current tenant by OrganizationFilter,
+     * so a draft cannot carry another association's type.
+     */
     #[Assert\NotNull(message: 'Choisissez un type d\'événement.', groups: [self::GROUP])]
     public ?EventType $eventType = null;
 
@@ -86,6 +91,29 @@ final class ActionDraft
      * What this catches is the opposite mistake — kilometres with no journeys, or
      * journeys with no distance — which would silently value at zero.
      */
+    /**
+     * The start date is already constrained above, but consecutiveDays can still
+     * push the end past today — five days from last Friday has not happened yet.
+     * DeclarationAction enforces the same rule, through the same arithmetic.
+     */
+    #[Assert\Callback(groups: [self::GROUP])]
+    public function validateHasFinished(ExecutionContextInterface $context): void
+    {
+        if (null === $this->date) {
+            return;
+        }
+
+        $endDate = DeclarationAction::endDateFor($this->date, $this->consecutiveDays);
+
+        if ($endDate <= new DateTimeImmutable('today')) {
+            return;
+        }
+
+        $context->buildViolation('Cette action n\'est pas terminée : sa date de fin est dans le futur.')
+            ->atPath('consecutiveDays')
+            ->addViolation();
+    }
+
     #[Assert\Callback(groups: [self::GROUP])]
     public function validateTravelIsCoherent(ExecutionContextInterface $context): void
     {

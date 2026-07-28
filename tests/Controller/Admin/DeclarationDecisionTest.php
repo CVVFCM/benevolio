@@ -37,6 +37,32 @@ final class DeclarationDecisionTest extends WebTestCase
         $this->client = self::createClient();
     }
 
+    /**
+     * An unconfirmed declaration is listed so the treasurer can see it exists —
+     * a volunteer who says "I declared" should not be a mystery — but it offers no
+     * verdict, and reaching the URL directly is refused.
+     */
+    #[Test]
+    public function an_unconfirmed_declaration_is_visible_but_not_decidable(): void
+    {
+        $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
+        $declaration = DeclarationFactory::new()->for($organization)->create();
+        DeclarationActionFactory::new()->forDeclaration($declaration)->many(2)->create();
+        $this->loginAsAdminOf($organization);
+
+        $this->client->request('GET', $this->detailUrl($declaration));
+
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('En attente de confirmation', $this->bodyText());
+        self::assertStringNotContainsString('Valider tout', $this->bodyText());
+
+        // …and the URL is not a way round the missing button.
+        $this->client->request('GET', $this->validateAllUrl($declaration));
+        $this->client->followRedirect();
+        self::assertStringContainsString('pas encore été confirmée', $this->bodyText());
+        self::assertTrue($this->reload($declaration)->getState()->isAwaitingConfirmation());
+    }
+
     #[Test]
     public function validate_all_decides_the_declaration_and_all_its_lines(): void
     {
@@ -138,8 +164,8 @@ final class DeclarationDecisionTest extends WebTestCase
      */
     private function declarationWithLines(Organization $organization, int $count): Declaration
     {
-        $declaration = DeclarationFactory::new()->for($organization)->create();
-        DeclarationActionFactory::createMany($count, ['declaration' => $declaration]);
+        $declaration = DeclarationFactory::new()->for($organization)->confirmed()->create();
+        DeclarationActionFactory::new()->forDeclaration($declaration)->many($count)->create();
 
         $reloaded = $this->reload($declaration);
         self::assertCount($count, $reloaded->getActions());

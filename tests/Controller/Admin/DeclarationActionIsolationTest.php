@@ -7,7 +7,6 @@ namespace App\Tests\Controller\Admin;
 use App\Entity\DeclarationAction;
 use App\Entity\Organization;
 use App\Factory\DeclarationActionFactory;
-use App\Factory\DeclarationFactory;
 use App\Factory\OrganizationFactory;
 use App\Factory\UserFactory;
 use PHPUnit\Framework\Attributes\Test;
@@ -130,10 +129,9 @@ final class DeclarationActionIsolationTest extends WebTestCase
 
     private function actionFor(Organization $organization, string $title): DeclarationAction
     {
-        return DeclarationActionFactory::createOne([
-            'declaration' => DeclarationFactory::new()->for($organization),
-            'title' => $title,
-        ]);
+        return DeclarationActionFactory::new()
+            ->for($organization)
+            ->create(['title' => $title]);
     }
 
     private function loginAsAdminOf(Organization $organization): void

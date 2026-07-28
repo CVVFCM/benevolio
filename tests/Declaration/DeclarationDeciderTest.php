@@ -148,7 +148,9 @@ final class DeclarationDeciderTest extends KernelTestCase
     #[Test]
     public function a_declaration_without_a_line_cannot_be_decided(): void
     {
-        $declaration = DeclarationFactory::createOne();
+        // Confirmed, so the missing line is the only thing standing in the way —
+        // otherwise this would pass for the wrong reason.
+        $declaration = DeclarationFactory::new()->confirmed()->create();
 
         self::assertFalse($this->decider->canValidateAll($declaration));
         self::assertFalse($this->stateMachine->can($declaration, DeclarationState::TRANSITION_VALIDATE));
@@ -170,18 +172,38 @@ final class DeclarationDeciderTest extends KernelTestCase
         $this->decider->validateAll($declaration);
     }
 
+    /**
+     * Double opt-in: until the volunteer clicks the link, there is nothing for the
+     * treasurer to rule on. The state machine refuses the transition on its own —
+     * `validate` names SUBMITTED as its only source — and the decider says so in
+     * French rather than throwing a transition error.
+     */
+    #[Test]
+    public function an_unconfirmed_declaration_cannot_be_decided(): void
+    {
+        $declaration = DeclarationFactory::createOne();
+        DeclarationActionFactory::new()->forDeclaration($declaration)->many(2)->create();
+        $declaration = $this->reload($declaration);
+
+        self::assertTrue($declaration->getState()->isAwaitingConfirmation());
+        self::assertFalse($this->decider->canValidateAll($declaration));
+        self::assertFalse($this->decider->canRefuseAll($declaration));
+        self::assertFalse($this->stateMachine->can($declaration, DeclarationState::TRANSITION_VALIDATE));
+
+        $this->expectException(DeclarationNotDecidableException::class);
+        $this->decider->validateAll($declaration);
+    }
+
     #[Test]
     public function totals_are_summed_exactly_across_lines(): void
     {
         $declaration = DeclarationFactory::createOne();
-        DeclarationActionFactory::createOne([
-            'declaration' => $declaration,
+        DeclarationActionFactory::new()->forDeclaration($declaration)->create([
             'workHours' => '2.25',
             'distanceKm' => 10,
             'journeys' => 2,
         ]);
-        DeclarationActionFactory::createOne([
-            'declaration' => $declaration,
+        DeclarationActionFactory::new()->forDeclaration($declaration)->create([
             'workHours' => '3.50',
             'distanceKm' => 7,
             'journeys' => 4,
@@ -208,10 +230,22 @@ final class DeclarationDeciderTest extends KernelTestCase
      * element for two created rows). Reloading also matches what the back-office
      * actually does — it loads a declaration and its lines from the database.
      */
+    private function reload(Declaration $declaration): Declaration
+    {
+        $id = $declaration->getId();
+        $this->entityManager->clear();
+        $reloaded = $this->entityManager->getRepository(Declaration::class)->find($id);
+        self::assertNotNull($reloaded);
+
+        return $reloaded;
+    }
+
     private function declarationWithActions(int $count): Declaration
     {
-        $declaration = DeclarationFactory::createOne();
-        DeclarationActionFactory::createMany($count, ['declaration' => $declaration]);
+        // Confirmed: a declaration awaiting the volunteer's click is not something
+        // the treasurer can rule on, which the decider refuses outright.
+        $declaration = DeclarationFactory::new()->confirmed()->create();
+        DeclarationActionFactory::new()->forDeclaration($declaration)->many($count)->create();
 
         $id = $declaration->getId();
         $this->entityManager->clear();

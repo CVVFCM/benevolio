@@ -2,7 +2,9 @@ HTTP_PORT ?= 80
 HTTPS_PORT ?= 443
 HTTP3_PORT ?= 443
 DATABASE_PORT ?= 5432
-DOCKER_COMPOSE = EXTERNAL_USER_ID=$(shell id -u) HTTP_PORT=$(HTTP_PORT) HTTPS_PORT=$(HTTPS_PORT) HTTP3_PORT=$(HTTP3_PORT) DATABASE_PORT=$(DATABASE_PORT) docker compose
+MAILPIT_SMTP_PORT ?= 1025
+MAILPIT_HTTP_PORT ?= 8025
+DOCKER_COMPOSE = EXTERNAL_USER_ID=$(shell id -u) HTTP_PORT=$(HTTP_PORT) HTTPS_PORT=$(HTTPS_PORT) HTTP3_PORT=$(HTTP3_PORT) DATABASE_PORT=$(DATABASE_PORT) MAILPIT_SMTP_PORT=$(MAILPIT_SMTP_PORT) MAILPIT_HTTP_PORT=$(MAILPIT_HTTP_PORT) docker compose
 
 .PHONY: help
 help: ## display this help message
@@ -32,7 +34,7 @@ vendor/: ## Uh ?
 	@$(DOCKER_COMPOSE) run --rm php composer install
 
 .PHONY: up
-up: ## Just turn-on the containers
+up: ## Start the containers. Mail sent in dev is caught by Mailpit on http://localhost:$(MAILPIT_HTTP_PORT)
 	@mkdir -p var/data
 	@$(DOCKER_COMPOSE) up -d --remove-orphans --wait
 

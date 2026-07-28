@@ -52,19 +52,68 @@ differently, so never sum them together:
 | `distanceKm` | Kilometres of **one journey, one way**. |
 | `journeys` | Number of **one-way** journeys — a return trip is two. Total distance is `distanceKm × journeys`. |
 | `fiscalPower` | An enum of the *barème* brackets (≤3 CV, 4, 5, 6, ≥7 CV), because the scale distinguishes only those. Required exactly when `ownVehicle` is true. **No euro rates anywhere**: the scale is republished yearly and belongs with valuation, keyed by financial year. |
-| `consecutiveDays` | The action may span several days from `date`. |
+| `consecutiveDays` | The action may span several days from `date`. The action must be **over**: `DeclarationAction::endDateFor()` is the shared arithmetic, applied on the DTO *and* the entity, and it normalises to midnight — an end date of "today at 17:30" would otherwise read as later than "today". |
+| `eventType` | A per-association **entity**, not an enum. See below. |
+
+**Event types are rows, not code.** `EventType` is `TenantAware`; each association
+manages its own list in `/admin`. `App\Organization\DefaultEventTypes` seeds five
+starters (*Travaux, Régate, Encadrement, Arbitrage, Autre*) and is called from the
+**two** places an organization is born — the platform CRUD and
+`OrganizationFactory`. A `postPersist` listener would be one place instead of two,
+but persisting from inside `postPersist` needs a second flush and is fragile; the
+cost is that a third creation path would silently skip seeding, which
+`DefaultEventTypesTest` exists to catch.
+
+Deleting a type an action references is refused by the FK: a filed declaration
+must not lose the label it was filed under. Retire one with `active` instead — it
+vanishes from new forms and still renders on old actions.
+
+**TRAP — that FK is `ON DELETE NO ACTION`, and the word matters.** `RESTRICT`
+refuses the delete just as firmly, but makes PostgreSQL raise SQLSTATE **23001**
+(`restrict_violation`), and DBAL's PostgreSQL `ExceptionConverter` only maps
+**23503** to `ForeignKeyConstraintViolationException`. Under `RESTRICT` the error
+is therefore a generic driver exception that no `catch` in this codebase — nor
+EasyAdmin's own, in `AbstractCrudController::delete()` — will ever see, and the
+admin gets a 500. `NO ACTION` yields 23503 and the catch works. Any other FK meant
+to refuse a delete must use `NO ACTION` for the same reason.
+
+`EventTypeCrudController::deleteEntity()` still overrides EasyAdmin's handling:
+left alone, EasyAdmin turns the caught exception into its own 409 page, whose
+message tells a *developer* to disable the delete action or add `cascade`, in
+English. A treasurer gets a French sentence naming the type instead.
 
 A `Person` is matched by **(organization, email)**, and `Email` lowercases itself
 so that holds when the volunteer types a different case next year. Their address
 is the *current* one, overwritten by each declaration; if a re-issued receipt ever
 needs the address as it was at the time, that snapshot belongs on `Declaration`.
 
+### Double opt-in — a declaration is not final when it is submitted
+
+Submitting stores the declaration in **`awaiting_confirmation`** and emails the
+volunteer a link. Until they open it, the association cannot act on it. The click
+also proves the address works, which is what a CERFA receipt will have to be sent
+to.
+
+- The token lives on `Declaration` (`confirmationToken`, its expiry, `confirmedAt`),
+  is valid **7 days**, and is **kept after use** rather than cleared — it can only
+  ever cause one confirmation, and keeping it is what lets a second click, or a
+  mail client prefetching the link, land on a success page instead of a 404.
+- Stored unhashed, deliberately: hashing needs a separate plaintext selector to
+  stay findable, and the threat it defends against already has the declarations.
+- `DeclarationConfirmer` returns one of three outcomes plus "unknown", each with
+  its own page. **A repeat click is a success, not an error.**
+- `Declaration` is `TenantAware`, so a token cannot be redeemed through another
+  association's URL — the filter refuses to find it. Tested.
+- There is **no resend** yet. A mistyped address means refilling the form.
+- `DeclarationState::isDecided()` means validated-or-refused. Awaiting confirmation
+  is *undecided but not actionable*, so anything asking "can a verdict be applied"
+  must check `isAwaitingConfirmation()` too — `DeclarationDecider` does.
+
 ### Deferred — do not assume these exist
 
 Not built yet, by explicit decision: accounting entries and their export, tax
-receipts, valuation rates and mission types, the email one-time code that will
-identify a returning volunteer, and any acknowledgement email. When you add them,
-update this file.
+receipts, valuation rates and mission types, resending a confirmation link, and
+purging declarations never confirmed. When you add them, update this file.
 
 ## Stack
 
@@ -76,6 +125,7 @@ update this file.
 - **FrankenPHP** (Caddy) runtime — `Dockerfile`, `.infra/docker/php/Caddyfile`
 - **AssetMapper** + importmap (`assets/`, `importmap.php`); no Node build step
 - **PHPUnit 13** + **Zenstruck Foundry** + **dama/doctrine-test-bundle**
+- **Mailpit** as the development mail catcher (dev compose only)
 - **Stimulus** (`symfony/stimulus-bundle`), installed for the one interaction that
   needed it: adding rows to the actions collection. Its recipe also brought
   `assets/controllers/csrf_protection_controller.js`, which is what makes the
@@ -160,14 +210,15 @@ added to `/admin` must be tenant-scoped.
 - `src/Entity/` — domain model
 - `src/ValueObject/` — self-validating value objects (`Address`, `Email`). Also a
   Doctrine mapping, because `Address` is an `#[ORM\Embeddable]`.
-- `src/Enum/` — closed business sets (`EventType`, `FiscalPower`)
+- `src/Enum/` — closed business sets (`FiscalPower`)
 - `src/State/` — finite state enums, and `Listener/` for their guards
 - `src/Repository/` — Doctrine repositories
 - `src/Controller/` — invokable controllers; `Admin/` and `Platform/` hold the two
   EasyAdmin dashboards, `Public/` the anonymous volunteer pages
 - `src/Form/` — form types and the DTOs they bind to
 - `src/Declaration/` — the declaration use cases (`DeclarationSubmitter`,
-  `DeclarationDecider`) and their exceptions
+  `DeclarationConfirmer`, `DeclarationDecider`) and their exceptions
+- `src/Organization/` — organization-level services (`DefaultEventTypes`)
 - `src/Tenant/` — tenant contract, resolvers, context, request listener
 - `src/Doctrine/Filter/` — the tenant SQL filter; `src/Doctrine/Type/` — DBAL types
 - `src/Security/` — roles, voters
@@ -176,6 +227,8 @@ added to `/admin` must be tenant-scoped.
 - `src/DataFixtures/` — dev dataset
 - `config/packages/` — per-bundle config
 - `templates/form/` — the public form theme
+- `templates/emails/` — mail bodies. Inline styles and table layout: mail clients
+  strip `<style>` and have no grid, so these share nothing with the site stylesheet.
 - `migrations/`, `templates/`, `translations/`, `assets/`
 - `.infra/` — Caddyfile, entrypoint, TLS certs, Helm chart
 
@@ -248,9 +301,14 @@ Run `bin/console` and `composer` **inside the php container** (`make cli`, or
 migrations on container start.
 
 App served at `https://localhost`. Fixture accounts:
-`super-admin@benevolio.test` and `admin@association-demo.test`, password in
-`App\Factory\UserFactory::DEFAULT_PASSWORD`. The demo association's public form is
-at `/a/association-demo/declaration`.
+`super-admin@benevolio.test` and `admin@cvvfcm.test`, password in
+`App\Factory\UserFactory::DEFAULT_PASSWORD`. The association's public form is at
+`/a/cvvfcm/declaration`.
+
+**Mail sent in development is caught by Mailpit at `http://localhost:8025`** —
+nothing leaves the machine. It is declared in `compose.override.yaml`, which is
+dev-only, so a deployment built from `compose.yaml` never ships a mail trap. Ports
+are overridable with `MAILPIT_SMTP_PORT` / `MAILPIT_HTTP_PORT`.
 
 ## Conventions
 
@@ -291,8 +349,10 @@ guard. Go through `Finite\StateMachine::apply()`.
 
 ### The two declaration machines, and the guard between them
 
-`Declaration` and `DeclarationAction` each have their own machine
-(`submitted → validated | refused`). Nothing structural stops them disagreeing, so
+`Declaration` runs `awaiting_confirmation → submitted → validated | refused`;
+`DeclarationAction` runs `submitted → validated | refused`. Because `validate` and
+`refuse` name `submitted` as their only source, an unconfirmed declaration is
+undecidable without any guard. Nothing structural stops them disagreeing, so
 `App\State\Listener\DeclarationTransitionGuard` blocks the whole-declaration
 verdict until every line already agrees with it.
 
@@ -383,7 +443,14 @@ Two traps, both already handled but worth knowing:
   boots the kernel on first persist, and `WebTestCase` refuses to build a client
   once the kernel is booted. Create the client in `setUp()`.
 
-Two harness traps that have already bitten, both in `WebTestCase`:
+Three harness traps that have already bitten:
+
+- **Do not put a Doctrine entity in a `FormFlow` DTO and expect it to stay
+  managed.** The draft lives in the session between steps and `SessionDataStorage`
+  deep-clones it, which detaches the entity — persisting it then fails with "A new
+  entity was found through the relationship". `DeclarationSubmitter` re-fetches the
+  event type for exactly this reason, which also re-checks the tenant.
+
 
 - **Create the client before any factory.** Foundry boots the kernel on first
   persist and `WebTestCase` refuses to build a client afterwards. Create it in
@@ -396,6 +463,15 @@ Two harness traps that have already bitten, both in `WebTestCase`:
   satisfied by a collection that did not match the database. A real request always
   gets a fresh EntityManager, so this is a harness artefact — but it makes tests
   lie, which is worse than failing.
+- **A test helper that reads the database must disable the tenant filter.** The
+  filter is request-scoped, so after a request to another association's URL a plain
+  `findAll()` returns nothing — the filter working correctly, and the helper
+  reporting a falsehood.
+
+Also: `Foundry`'s `defaults()` is evaluated whether or not the caller overrides
+the keys it sets. Creating an entity in there to make two attributes consistent
+produces one orphan per object built — `DeclarationActionFactory` learned this the
+expensive way and now exposes `for()` / `forDeclaration()` instead.
 
 Run `make reset-test` once, then `make test`.
 

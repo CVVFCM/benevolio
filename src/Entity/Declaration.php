@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Declaration\ConfirmationToken;
 use App\Repository\DeclarationRepository;
 use App\State\DeclarationActionState;
 use App\State\DeclarationState;
@@ -45,7 +46,7 @@ class Declaration implements TenantAware
     private Person $person;
 
     #[ORM\Column(enumType: DeclarationState::class)]
-    private DeclarationState $state = DeclarationState::SUBMITTED;
+    private DeclarationState $state = DeclarationState::AWAITING_CONFIRMATION;
 
     /**
      * @var Collection<int, DeclarationAction>
@@ -70,6 +71,29 @@ class Declaration implements TenantAware
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private DateTimeImmutable $submittedAt;
 
+    /**
+     * The secret in the confirmation link.
+     *
+     * Kept after use rather than cleared. It can only ever cause one confirmation
+     * — `confirm` has AWAITING_CONFIRMATION as its only source state, and
+     * confirmedAt is the record — so retaining it is harmless, and it is what lets
+     * a second click (or a mail client prefetching the link) land on a success
+     * page instead of a 404.
+     */
+    #[ORM\Column(length: ConfirmationToken::MAX_LENGTH, unique: true, nullable: true)]
+    private ?string $confirmationToken = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $confirmationTokenExpiresAt = null;
+
+    /**
+     * When the volunteer proved the address works. Kept after the token is
+     * cleared: a tax receipt has to be able to show the donation was confirmed,
+     * and when.
+     */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $confirmedAt = null;
+
     public function __construct(
         Organization $organization,
         Person $person,
@@ -88,6 +112,54 @@ class Declaration implements TenantAware
     public function __toString(): string
     {
         return sprintf('%s — %s', $this->person->getFullName(), $this->submittedAt->format('d/m/Y'));
+    }
+
+    /**
+     * Arms the confirmation link. Called once, by DeclarationSubmitter, before the
+     * email goes out.
+     */
+    public function issueConfirmationToken(ConfirmationToken $token, DateTimeImmutable $expiresAt): void
+    {
+        $this->confirmationToken = $token->value;
+        $this->confirmationTokenExpiresAt = $expiresAt;
+    }
+
+    public function getConfirmationToken(): ?ConfirmationToken
+    {
+        return null === $this->confirmationToken ? null : new ConfirmationToken($this->confirmationToken);
+    }
+
+    public function getConfirmationTokenExpiresAt(): ?DateTimeImmutable
+    {
+        return $this->confirmationTokenExpiresAt;
+    }
+
+    public function isConfirmationTokenExpired(DateTimeImmutable $now): bool
+    {
+        return null === $this->confirmationTokenExpiresAt || $this->confirmationTokenExpiresAt < $now;
+    }
+
+    public function getConfirmedAt(): ?DateTimeImmutable
+    {
+        return $this->confirmedAt;
+    }
+
+    public function isConfirmed(): bool
+    {
+        return null !== $this->confirmedAt;
+    }
+
+    /**
+     * Records the confirmation. The state transition itself is the state machine's
+     * job — see App\Declaration\DeclarationConfirmer.
+     *
+     * The expiry is dropped because it no longer means anything, but the token
+     * stays so the link keeps resolving to a friendly page.
+     */
+    public function markConfirmed(DateTimeImmutable $now): void
+    {
+        $this->confirmedAt = $now;
+        $this->confirmationTokenExpiresAt = null;
     }
 
     public function getId(): Uuid

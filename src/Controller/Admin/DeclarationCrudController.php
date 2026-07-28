@@ -7,6 +7,7 @@ namespace App\Controller\Admin;
 use App\Declaration\DeclarationDecider;
 use App\Declaration\Exception\DeclarationNotDecidableException;
 use App\Entity\Declaration;
+use App\State\DeclarationState;
 use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminRoute;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
@@ -94,13 +95,16 @@ final class DeclarationCrudController extends AbstractCrudController
         yield DateTimeField::new('submittedAt', 'Déposée le');
 
         yield ChoiceField::new('state', 'État')
-            ->setChoices(['Soumise' => 'submitted', 'Validée' => 'validated', 'Refusée' => 'refused'])
+            // Built from the enum so a new state cannot be forgotten here.
+            ->setChoices(array_combine(
+                array_map(static fn (DeclarationState $state): string => $state->label(), DeclarationState::cases()),
+                array_map(static fn (DeclarationState $state): string => $state->value, DeclarationState::cases()),
+            ))
             ->formatValue(static fn (mixed $value, Declaration $declaration): string => $declaration->getState()->label())
-            ->renderAsBadges([
-                'submitted' => 'warning',
-                'validated' => 'success',
-                'refused' => 'danger',
-            ]);
+            ->renderAsBadges(array_combine(
+                array_map(static fn (DeclarationState $state): string => $state->value, DeclarationState::cases()),
+                array_map(static fn (DeclarationState $state): string => $state->badgeStyle(), DeclarationState::cases()),
+            ));
 
         yield IntegerField::new('actions.count', 'Actions')
             ->onlyOnIndex();

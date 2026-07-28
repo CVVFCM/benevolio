@@ -128,8 +128,7 @@ final class DeclarationActionCrudController extends AbstractCrudController
         yield DateField::new('date', 'Date');
         yield TextField::new('title', 'Intitulé');
 
-        yield ChoiceField::new('eventType', 'Type')
-            ->formatValue(static fn (mixed $value, DeclarationAction $action): string => $action->getEventType()->label());
+        yield AssociationField::new('eventType', 'Type');
 
         yield AssociationField::new('declaration', 'Déclaration');
 

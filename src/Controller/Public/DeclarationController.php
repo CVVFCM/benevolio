@@ -13,6 +13,7 @@ use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -69,7 +70,18 @@ final readonly class DeclarationController
             $draft = $flow->getData();
             assert($draft instanceof DeclarationDraft);
 
-            $this->submitter->submit($organization, $draft);
+            $declaration = $this->submitter->submit($organization, $draft);
+
+            // The confirmation page needs to name the address the link went to, and
+            // an email address does not belong in a URL — it ends up in chat
+            // windows, logs and referrers. A flash carries it exactly once.
+            $session = $request->getSession();
+            if ($session instanceof Session) {
+                $session->getFlashBag()->add(
+                    DeclarationConfirmationController::PENDING_EMAIL_FLASH,
+                    $declaration->getPerson()->getEmail()->value,
+                );
+            }
 
             return new RedirectResponse($this->urlGenerator->generate('declaration_confirmation', [
                 'organizationSlug' => $organization->getSlug(),
