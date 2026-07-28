@@ -9,6 +9,7 @@ data:
   APP_DEBUG: {{ .Values.app.debug | quote }}
   SERVER_NAME: {{ .Values.app.serverName | quote }}
   DEFAULT_URI: {{ .Values.app.defaultUri | default (printf "https://%s" .Values.host) | quote }}
+  MAIL_FROM: {{ .Values.app.mailFrom | default (printf "noreply@%s" .Values.host) | quote }}
   # Bound FrankenPHP threads/workers (it otherwise sizes from the host core count and
   # OOMs the pod's memory limit). CLI pods (migrate) ignore these.
   FRANKENPHP_CONFIG: {{ printf "num_threads %d" (.Values.web.frankenphp.numThreads | int) | quote }}

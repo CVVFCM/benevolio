@@ -1,0 +1,154 @@
+name: CD
+
+# CI runs on the same push and the two do not gate each other, so a merge whose
+# tests fail still reaches production. The safety nets are the migration job
+# (--all-or-nothing) and `helm upgrade --wait --rollback-on-failure`. Gate this on
+# CI with `workflow_run` if that ever proves too loose.
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE_PREFIX: ghcr.io/cvvfcm/benevolio/
+
+jobs:
+  build:
+    name: Build the production image
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      # GHCR rather than Docker Hub: the image name is nested
+      # (benevolio/app), which Docker Hub's namespace/repo scheme cannot
+      # express. GITHUB_TOKEN is enough — no registry secret to rotate.
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Always tagged with the commit sha: that is what the deploy job pins, so a
+      # rollback is `helm upgrade --set image.tag=<older sha>` and never depends on
+      # a moving tag. A release additionally gets its git tag and `latest`.
+      - name: Build and push
+        uses: docker/bake-action@v5
+        env:
+          # Must match podSecurityContext.runAsUser in the chart — the image bakes
+          # this uid into /etc/passwd.
+          EXTERNAL_USER_ID: 33
+          TAGS: "${{ github.sha }}${{ github.event_name == 'release' && format(',{0},latest', github.ref_name) || '' }}"
+        with:
+          targets: app
+          push: true
+          set: |
+            app.cache-from=type=gha,scope=app-main
+            app.cache-from=type=gha,scope=app-${{ github.ref_name }}
+            app.cache-to=type=gha,scope=app-${{ github.ref_name }},mode=max
+
+  deploy:
+    name: Deploy to production
+    runs-on: ubuntu-latest
+    needs: [build]
+    environment: prod
+
+    env:
+      # Silence the OCI CLI key-label nag (fires on every exec-credential token call).
+      SUPPRESS_LABEL_WARNING: "True"
+      NAMESPACE: benevolio
+      RELEASE: benevolio
+      CHART: .infra/helm/benevolio
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+
+      - name: Install and configure the OCI CLI
+        run: |
+          curl -L -O https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh
+          chmod +x install.sh
+          ./install.sh --accept-all-defaults
+          echo "/home/runner/bin" >> "$GITHUB_PATH"
+
+          mkdir -p ~/.oci
+          cat <<EOF > ~/.oci/config
+          [DEFAULT]
+          user=${{ secrets.OCI_USER_OCID }}
+          fingerprint=${{ secrets.OCI_FINGERPRINT }}
+          tenancy=${{ secrets.OCI_TENANCY_OCID }}
+          region=${{ secrets.OCI_REGION }}
+          key_file=/home/runner/.oci/key.pem
+          EOF
+
+          # OCI_API_KEY is base64encode(file(private_key)) in Terraform — decode it
+          # back to the raw PEM (writing it verbatim would store base64 text).
+          echo "${{ secrets.OCI_API_KEY }}" | base64 -d > ~/.oci/key.pem
+
+          chmod 600 ~/.oci/config ~/.oci/key.pem
+
+          # Fail here, with a clear message, rather than inside a kubectl call.
+          openssl pkey -in ~/.oci/key.pem -noout
+
+      - name: Write the kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.OKE_KUBECONFIG }}" > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Update the chart dependencies
+        run: helm dependency update "$CHART"
+
+      # Owned outside the Helm release on purpose: it survives `helm uninstall`, so
+      # reinstalling against the existing PVC still matches the password Postgres
+      # was initialised with. Changing DATABASE_PASSWORD later does NOT re-key an
+      # existing volume — the pod would simply fail to authenticate.
+      - name: Ensure the database credentials secret
+        run: |
+          kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n "$NAMESPACE" create secret generic "$RELEASE-pg-auth" \
+            --from-literal=password="${{ secrets.DATABASE_PASSWORD }}" \
+            --from-literal=postgres-password="${{ secrets.DATABASE_PASSWORD }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Helm deploy
+        run: |
+          helm upgrade --install "$RELEASE" "$CHART" \
+            --namespace "$NAMESPACE" --create-namespace \
+            --set image.tag="${{ github.sha }}" \
+            --set postgresql.enabled=true \
+            --set postgresql.auth.existingSecret="$RELEASE-pg-auth" \
+            --set secrets.appSecret="${{ secrets.APP_SECRET }}" \
+            --set secrets.mailerDsn="${{ secrets.MAILER_DSN }}" \
+            --wait --rollback-on-failure --timeout 5m
+
+      - name: Purge the Cloudflare cache
+        env:
+          CF_ZONE: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CF_ZONE" ] || [ -z "$CF_TOKEN" ]; then
+            echo "::warning::CLOUDFLARE_ZONE_ID / CLOUDFLARE_API_TOKEN not set — skipping cache purge."
+            exit 0
+          fi
+          curl -fsS -X POST \
+            "https://api.cloudflare.com/client/v4/zones/$CF_ZONE/purge_cache" \
+            -H "Authorization: Bearer $CF_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data '{"purge_everything":true}'

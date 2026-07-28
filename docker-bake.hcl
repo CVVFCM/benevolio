@@ -1,5 +1,7 @@
+# GHCR, not Docker Hub: Docker Hub names are namespace/repo and go no deeper, so
+# the nested "benevolio/app" below would be rejected on push. GHCR allows it.
 variable "IMAGE_PREFIX" {
-    default = "cvvfcm/benevolio/"
+    default = "ghcr.io/cvvfcm/benevolio/"
 }
 
 variable "TAGS" {
