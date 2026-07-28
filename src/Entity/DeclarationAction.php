@@ -153,18 +153,12 @@ class DeclarationAction
         return $this->declaration->getOrganization();
     }
 
+    /**
+     * There is deliberately no setState() — see App\Entity\Declaration.
+     */
     public function getState(): DeclarationActionState
     {
         return $this->state;
-    }
-
-    /**
-     * Set by the finite state machine only. Go through Finite\StateMachine::apply()
-     * so guards and listeners run.
-     */
-    public function setState(DeclarationActionState $state): void
-    {
-        $this->state = $state;
     }
 
     public function getEventType(): EventType

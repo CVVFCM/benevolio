@@ -100,18 +100,14 @@ class Declaration implements TenantAware
         return $this->person;
     }
 
+    /**
+     * There is deliberately no setState(). Finite writes $state through
+     * reflection, so a setter would only exist as a way to bypass the state
+     * machine and its guard — go through Finite\StateMachine::apply().
+     */
     public function getState(): DeclarationState
     {
         return $this->state;
-    }
-
-    /**
-     * Set by the finite state machine only. Do not call it to "fix" a state:
-     * go through Finite\StateMachine::apply() so the guard and the listeners run.
-     */
-    public function setState(DeclarationState $state): void
-    {
-        $this->state = $state;
     }
 
     /**
