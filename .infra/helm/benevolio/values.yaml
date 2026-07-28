@@ -67,7 +67,12 @@ postgresql:
     persistence:
       enabled: true
       storageClass: longhorn
-      size: 8Gi
+      # 4Gi, not the 8Gi inherited from meteoprint. Longhorn keeps two replicas of
+      # every volume and the cluster's two nodes had ~7.8Gi schedulable each once
+      # meteoprint and cvvfcm-preprod had taken their share — so 8Gi could not be
+      # placed at all, and the volume came up `faulted`. A declaration is a handful
+      # of short text rows; 4Gi is still years of them.
+      size: 4Gi
     resources:
       requests:
         cpu: 250m

@@ -50,12 +50,19 @@ spec:
           env:
             {{- include "benevolio.dbEnv" . | nindent 12 }}
           {{- end }}
+          # Generous on purpose. docker-entrypoint waits for the database and then
+          # applies migrations BEFORE FrankenPHP binds :80, so nothing answers here
+          # until that finishes. The previous budget (20 × 3s = 1 min) expired
+          # mid-wait and Kubernetes killed the pod, restarting the whole sequence —
+          # a crash loop that looked like an application fault and was not.
+          # 60 × 5s = 5 min covers a cold database plus a long migration.
+          # Readiness and liveness below stay tight: this only widens the first start.
           startupProbe:
             httpGet:
               path: /
               port: http
-            periodSeconds: 3
-            failureThreshold: 20
+            periodSeconds: 5
+            failureThreshold: 60
           readinessProbe:
             httpGet:
               path: /
