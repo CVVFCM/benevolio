@@ -1,0 +1,117 @@
+# Default values for benevolio.
+
+image:
+  # Fully qualified: OKE's runtime enforces short-name mode and rejects the bare
+  # "cvvfcm/benevolio/app" as ambiguous.
+  repository: docker.io/cvvfcm/benevolio/app
+  tag: latest
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+# FrankenPHP web server (serves the Symfony app).
+# Resources: memory request==limit (Guaranteed memory QoS); cpu request only, no cpu
+# limit (avoids CFS throttling). Starting points — tune from `kubectl top`.
+web:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 192Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  # FrankenPHP sizes threads/workers from the HOST core count by default (it doesn't see
+  # the cgroup CPU limit) — on a big node that spawns far too many PHP workers and OOMs
+  # the memory limit. Pin small explicit counts that fit the resources above.
+  frankenphp:
+    numThreads: 4
+    numWorkers: 2
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# Public hostname served by the app.
+host: benevolat.cvvfcm.fr
+
+# Non-secret application configuration (rendered into a ConfigMap).
+app:
+  env: prod
+  debug: "false"
+  # ":80" → plain HTTP only; Caddy will not attempt auto-HTTPS (TLS is at the Gateway).
+  serverName: ":80"
+  # Base URL for URLs generated in CLI context. Empty → derived as https://<host>.
+  defaultUri: ""
+
+# Bundled PostgreSQL (Bitnami subchart). When enabled, DATABASE_URL is derived
+# automatically from postgresql.auth below and externalDatabase.url is ignored.
+postgresql:
+  enabled: false
+  auth:
+    username: benevolio
+    database: benevolio
+    # Name of a pre-existing Secret holding the DB credentials (keys: "password",
+    # "postgres-password"). Owned outside the helm release so it survives uninstall
+    # and never regenerates — both the subchart and the app read it. Created by CD.
+    # If empty, the subchart auto-generates a password (not stable across uninstalls).
+    existingSecret: ""
+    secretKeys:
+      userPasswordKey: password
+      adminPasswordKey: postgres-password
+    password: ""
+  primary:
+    persistence:
+      enabled: true
+      storageClass: longhorn
+      size: 8Gi
+    resources:
+      requests:
+        cpu: 250m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 2Gi
+  # Bitnami relocated its free images to docker.io/bitnamilegacy in Aug 2025. The
+  # pinned chart (~18.7) still references valid images; if pulls fail, switch to the
+  # legacy repo and allow it:
+  #   image:
+  #     repository: bitnamilegacy/postgresql
+  #   global:
+  #     security:
+  #       allowInsecureImages: true
+
+# External PostgreSQL — used only when postgresql.enabled is false.
+externalDatabase:
+  # Full Doctrine DSN, e.g.
+  #   postgresql://benevolio:secret@db.internal:5432/benevolio?serverVersion=18&charset=utf8
+  url: ""
+  # serverVersion advertised in the DATABASE_URL derived for the bundled DB.
+  serverVersion: "18"
+
+# Secret values. Supply via --set, a values.local.yaml, or a sealed-secret.
+secrets:
+  appSecret: ""
+
+# Database migration job (Helm post-install/post-upgrade hook).
+migrations:
+  enabled: true
+  resources:
+    requests:
+      cpu: 100m
+      memory: 192Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Pod-level security context. The image bakes EXTERNAL_USER_ID (default 1000 =
+# www-data); keep runAsUser aligned with the build arg.
+podSecurityContext:
+  runAsUser: 33
+  runAsGroup: 33
+  fsGroup: 33
+
+securityContext: {}
+
+serviceAccount:
+  create: false
+  name: ""

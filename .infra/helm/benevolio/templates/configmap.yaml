@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "benevolio.fullname" . }}-config
+  labels:
+    {{- include "benevolio.labels" . | nindent 4 }}
+data:
+  APP_ENV: {{ .Values.app.env | quote }}
+  APP_DEBUG: {{ .Values.app.debug | quote }}
+  SERVER_NAME: {{ .Values.app.serverName | quote }}
+  DEFAULT_URI: {{ .Values.app.defaultUri | default (printf "https://%s" .Values.host) | quote }}
+  # Bound FrankenPHP threads/workers (it otherwise sizes from the host core count and
+  # OOMs the pod's memory limit). CLI pods (migrate) ignore these.
+  FRANKENPHP_CONFIG: {{ printf "num_threads %d" (.Values.web.frankenphp.numThreads | int) | quote }}
+  FRANKENPHP_WORKER_CONFIG: {{ printf "num %d" (.Values.web.frankenphp.numWorkers | int) | quote }}

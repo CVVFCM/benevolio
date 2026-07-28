@@ -1,0 +1,17 @@
+# Ignore all by default
+*
+
+# And explicitly include the following files and directories
+!.infra/docker
+!assets
+!bin
+!config
+!migrations
+!public
+!src
+!templates
+!translations
+!.env
+!composer.*
+!importmap.php
+!symfony.lock

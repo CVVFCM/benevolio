@@ -1,0 +1,27 @@
+services:
+  php:
+    environment:
+      APP_ENV: dev
+      APP_DEBUG: true
+      CADDY_SERVER_EXTRA_DIRECTIVES: |
+        mercure {
+        		anonymous
+        		subscriptions
+        	}
+      FRANKENPHP_WORKER_CONFIG: watch
+      FRANKENPHP_SITE_CONFIG: hot_reload
+      # See https://xdebug.org/docs/all_settings#mode
+      XDEBUG_MODE: "${XDEBUG_MODE:-develop}"
+      CADDY_EXTRA_CONFIG: |
+        https:// {
+            tls /app/.infra/docker/tls/cert.pem /app/.infra/docker/tls/cert.key
+        }
+    volumes:
+      - '.:/app:rw'
+      - './.infra/docker/php/conf.d/symfony.dev.ini:/usr/local/etc/php/conf.d/symfony.ini:ro'
+
+  database:
+    ports:
+      - target: 5432
+        published: ${DATABASE_PORT:-5432}
+        protocol: tcp

@@ -1,0 +1,50 @@
+{{- if .Values.migrations.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "benevolio.fullname" . }}-migrate
+  labels:
+    {{- include "benevolio.labels" . | nindent 4 }}
+  annotations:
+    # post-install/post-upgrade: runs after the bundled Postgres (a normal resource)
+    # exists. The entrypoint waits for the DB to be reachable before migrating.
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "-5"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        {{- include "benevolio.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: migrate
+    spec:
+      restartPolicy: Never
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: migrate
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - php
+            - bin/console
+            - doctrine:migrations:migrate
+            - --no-interaction
+            - --all-or-nothing
+          envFrom:
+            - configMapRef:
+                name: {{ include "benevolio.fullname" . }}-config
+            - secretRef:
+                name: {{ include "benevolio.fullname" . }}-secret
+          {{- if .Values.postgresql.enabled }}
+          env:
+            {{- include "benevolio.dbEnv" . | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.migrations.resources | nindent 12 }}
+{{- end }}

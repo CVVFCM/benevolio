@@ -1,0 +1,22 @@
+apiVersion: v2
+name: benevolio
+description: Printable weather reports — Symfony + FrankenPHP app
+type: application
+version: 0.1.0
+# Matches the application image, not the chart.
+appVersion: "latest"
+home: https://github.com/cvvfcm/benevolio
+sources:
+  - https://github.com/cvvfcm/benevolio
+maintainers:
+  - name: Yohan Giarelli
+    email: yohan@giarel.li
+# Requires the Gateway API CRDs (gateway.networking.k8s.io/v1) installed in the
+# cluster. K3s ships Traefik with Gateway API support; enable it if not already on.
+kubeVersion: ">=1.27.0-0"
+
+dependencies:
+  - name: postgresql
+    version: "~18.7"
+    repository: oci://registry-1.docker.io/bitnamicharts
+    condition: postgresql.enabled
