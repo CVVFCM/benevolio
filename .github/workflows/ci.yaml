@@ -1,0 +1,172 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A new push to a branch makes the previous run pointless.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PHP_VERSION: '8.5'
+
+jobs:
+  php:
+    name: Lint, analyse, test
+    runs-on: ubuntu-latest
+
+    services:
+      database:
+        image: postgres:18
+        env:
+          POSTGRES_DB: benevolio
+          POSTGRES_USER: benevolio
+          POSTGRES_PASSWORD: benevolio
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U benevolio -d benevolio"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      APP_ENV: dev
+      APP_DEBUG: '1'
+      APP_SECRET: ci-not-a-secret
+      DATABASE_URL: postgresql://benevolio:benevolio@127.0.0.1:5432/benevolio?serverVersion=18&charset=utf8
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: apcu, ctype, iconv, intl, mbstring, pdo_pgsql, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer/files
+          key: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Lint the service container
+        run: bin/console lint:container
+
+      # --parse-tags is required: Symfony DI YAML uses custom tags such as
+      # !tagged_iterator and !service.
+      - name: Lint YAML
+        run: bin/console lint:yaml --parse-tags config translations
+
+      - name: Lint Twig
+        run: bin/console lint:twig templates
+
+      - name: Lint translations
+        run: bin/console lint:xliff translations
+
+      # phpstan.dist.neon reads the dev container XML for the Symfony extension,
+      # so the dev cache has to exist before the analysis runs.
+      - name: Warm up the dev cache
+        run: bin/console cache:warmup
+
+      - name: Static analysis
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit 1G
+
+      - name: Run migrations
+        run: |
+          bin/console doctrine:database:create --if-not-exists
+          bin/console doctrine:migrations:migrate --no-interaction
+
+      # Guards against entity/migration drift: the mapping must match what the
+      # migrations actually build.
+      - name: Check for schema drift
+        run: bin/console doctrine:schema:validate
+
+      - name: Prepare the test database
+        run: composer reset-test
+
+      - name: Run tests
+        run: vendor/bin/phpunit --testdox --colors=always
+
+  cs:
+    name: Code style
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ctype, iconv, intl, mbstring, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist --no-scripts
+
+      # Same image the Makefile's `cs` target uses, so local and CI agree.
+      - name: PHP CS Fixer
+        run: |
+          docker run --rm -v "$PWD:/app" -w /app \
+            ghcr.io/php-cs-fixer/php-cs-fixer:3-php8.5 check --diff
+
+      - name: Twig CS Fixer
+        run: vendor/bin/twig-cs-fixer lint
+
+  js:
+    name: JavaScript and CSS
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run lint:js
+
+      - run: npm run lint:css
+
+  docker:
+    name: Docker image
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lint the Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Build only, never push. docker-bake.hcl caches to a registry it has no
+      # credentials for here, so cache and output are overridden: the point is to
+      # prove the image still builds.
+      - name: Build the image
+        uses: docker/bake-action@v5
+        with:
+          targets: app
+          push: false
+          set: |
+            app.platform=linux/amd64
+            app.cache-from=type=gha
+            app.cache-to=type=gha,mode=max
+            app.output=type=cacheonly
