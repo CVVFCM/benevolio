@@ -59,19 +59,19 @@ spec:
           # Readiness and liveness below stay tight: this only widens the first start.
           startupProbe:
             httpGet:
-              path: /
+              path: /a/cvvfcm/declaration
               port: http
             periodSeconds: 5
             failureThreshold: 60
           readinessProbe:
             httpGet:
-              path: /
+              path: /a/cvvfcm/declaration
               port: http
             periodSeconds: 10
             timeoutSeconds: 5
           livenessProbe:
             httpGet:
-              path: /
+              path: /a/cvvfcm/declaration
               port: http
             periodSeconds: 30
             timeoutSeconds: 10
