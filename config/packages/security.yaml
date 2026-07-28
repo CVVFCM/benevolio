@@ -41,6 +41,10 @@ security:
     # Note: Only the *first* matching rule is applied
     access_control:
         - { path: ^/login$, roles: PUBLIC_ACCESS }
+        # The volunteer declaration form. Volunteers have no account, so this whole
+        # prefix is anonymous by design; the tenant comes from the {organizationSlug}
+        # in the URL (see App\Tenant\UrlPrefixTenantResolver).
+        - { path: ^/a/, roles: PUBLIC_ACCESS }
         # The platform backoffice manages organizations across every tenant, so it
         # runs with the Doctrine tenant filter disabled (a super-admin resolves to
         # no organization — see App\Tenant\TenantRequestListener). Super-admins only.

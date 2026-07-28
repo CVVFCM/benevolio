@@ -1,0 +1,51 @@
+{% extends 'public/layout.html.twig' %}
+
+{% set current_step = flow.vars.cursor.currentStep %}
+
+{% block title %}Déclarer mon bénévolat — {{ organization.name }}{% endblock %}
+
+{% block main %}
+    <h1>Déclarer mon bénévolat</h1>
+
+    {# The step indicator comes from the view vars FormFlowType exposes, so it
+       cannot drift out of sync with the steps actually configured. #}
+    <nav aria-label="Étapes">
+        <ol class="steps">
+            {% for name, step in flow.vars.visible_steps %}
+                <li
+                    class="steps__item{{ step.is_current_step ? ' steps__item--current' }}"
+                    {{ step.is_current_step ? 'aria-current="step"' : '' }}
+                >
+                    <span class="steps__position">{{ step.position }}</span>
+                    <span class="steps__label">{{ ('declaration.step.' ~ name)|trans }}</span>
+                </li>
+            {% endfor %}
+        </ol>
+    </nav>
+
+    {{ form_start(flow) }}
+        {% if not flow.vars.valid %}
+            <div role="alert" class="errors">
+                <p>Le formulaire comporte des erreurs. Corrigez-les pour continuer.</p>
+                {{ form_errors(flow) }}
+            </div>
+        {% endif %}
+
+        <fieldset>
+            <legend>{{ ('declaration.step.' ~ current_step)|trans }}</legend>
+
+            {% if current_step == 'actions' %}
+                {{ include('public/declaration/_actions.html.twig', {actions: flow.actions.actions}) }}
+            {% else %}
+                {{ form_widget(attribute(flow, current_step)) }}
+            {% endif %}
+        </fieldset>
+
+        <div class="navigator">
+            {# Only the buttons valid for this step still exist — FormFlow removed
+               the others through their include_if option — so form_rest() renders
+               exactly the right set without the template knowing which. #}
+            {{ form_rest(flow) }}
+        </div>
+    {{ form_end(flow) }}
+{% endblock %}

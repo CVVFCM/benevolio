@@ -1,0 +1,21 @@
+{% extends 'base.html.twig' %}
+
+{# Layout for the anonymous volunteer pages. Kept deliberately plain: the design
+   pass happens on top of this semantic skeleton, not instead of it. #}
+
+{% block body %}
+    <div class="public">
+        <header class="public__header">
+            <p class="public__org">{{ organization.name }}</p>
+            <p class="public__app">{{ 'app.name'|trans }}</p>
+        </header>
+
+        <main class="public__main">
+            {% block main %}{% endblock %}
+        </main>
+
+        <footer class="public__footer">
+            <p>{{ 'app.tagline'|trans }}</p>
+        </footer>
+    </div>
+{% endblock %}

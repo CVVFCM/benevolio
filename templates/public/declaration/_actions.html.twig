@@ -1,0 +1,22 @@
+{# The actions collection. Rows are added and removed by the form-collection
+   Stimulus controller; without JavaScript the server-rendered rows still submit. #}
+<div
+    {{ stimulus_controller('form-collection') }}
+    {# The prototype is a FormView, so it has to be rendered through the same row
+       template as the real rows — that way the cloned row carries its legend and
+       its remove button, not just bare widgets. #}
+    data-form-collection-prototype-value="{{ include('public/declaration/_action_row.html.twig', {action: actions.vars.prototype})|e('html_attr') }}"
+    data-form-collection-index-value="{{ actions|length }}"
+>
+    <div data-form-collection-target="container">
+        {% for action in actions %}
+            {{ include('public/declaration/_action_row.html.twig', {action: action}) }}
+        {% endfor %}
+    </div>
+
+    {{ form_errors(actions) }}
+
+    <button type="button" data-action="form-collection#add">
+        Ajouter une action
+    </button>
+</div>

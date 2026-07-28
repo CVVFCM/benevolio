@@ -64,5 +64,26 @@
                 <target>Se déconnecter</target>
             </segment>
         </unit>
+
+        <!-- Step names must match the flow step names in DeclarationFlowType,
+             which are also the validation group names. -->
+        <unit id="declaration.step.person">
+            <segment>
+                <source>declaration.step.person</source>
+                <target>Vos coordonnées</target>
+            </segment>
+        </unit>
+        <unit id="declaration.step.actions">
+            <segment>
+                <source>declaration.step.actions</source>
+                <target>Vos actions bénévoles</target>
+            </segment>
+        </unit>
+        <unit id="declaration.step.legal">
+            <segment>
+                <source>declaration.step.legal</source>
+                <target>Attestation</target>
+            </segment>
+        </unit>
     </file>
 </xliff>

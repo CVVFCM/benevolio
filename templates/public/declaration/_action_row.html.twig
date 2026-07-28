@@ -1,0 +1,27 @@
+{# One action. Also used as the CollectionType prototype, so it must not depend on
+   the row's index for anything but the fields Symfony already names. #}
+<fieldset data-form-collection-row>
+    <legend>Action bénévole</legend>
+
+    {{ form_row(action.eventType) }}
+    {{ form_row(action.title) }}
+    {{ form_row(action.date) }}
+    {{ form_row(action.consecutiveDays) }}
+    {{ form_row(action.workHours) }}
+    {{ form_row(action.description) }}
+
+    <div class="travel">
+        <p class="travel__hint">
+            Déplacements : indiquez la distance d'un aller simple et le nombre de
+            trajets effectués (un aller-retour compte pour 2).
+        </p>
+        {{ form_row(action.distanceKm) }}
+        {{ form_row(action.journeys) }}
+        {{ form_row(action.ownVehicle) }}
+        {{ form_row(action.fiscalPower) }}
+    </div>
+
+    <button type="button" data-action="form-collection#remove">
+        Retirer cette action
+    </button>
+</fieldset>
