@@ -1,5 +1,8 @@
 framework:
-    default_locale: en
+    # The application is French-only: every user-facing string is French, and the
+    # domain vocabulary (Plan Comptable Général, CERFA) has no useful translation.
+    default_locale: fr
+    enabled_locales: ['fr']
     translator:
         default_path: '%kernel.project_dir%/translations'
-        providers:
+        fallbacks: ['fr']

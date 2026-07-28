@@ -2,6 +2,12 @@
 framework:
     secret: '%env(APP_SECRET)%'
 
+    # French-only application (see config/packages/translation.yaml). The
+    # browser's Accept-Language must not be able to switch the locale.
+    default_locale: fr
+    set_locale_from_accept_language: false
+    set_content_language_from_locale: true
+
     # Note that the session will be started ONLY if you read or write from it.
     session: true
 

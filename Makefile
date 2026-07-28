@@ -95,7 +95,7 @@ stan: vendor/ ## Run the static analysis
 .PHONY: lint
 lint: ## Lint the container, YAML, Twig and translation files
 	@$(DOCKER_COMPOSE) exec -T php bin/console lint:container
-	@$(DOCKER_COMPOSE) exec -T php bin/console lint:yaml config translations
+	@$(DOCKER_COMPOSE) exec -T php bin/console lint:yaml --parse-tags config translations
 	@$(DOCKER_COMPOSE) exec -T php bin/console lint:twig templates
 	@$(DOCKER_COMPOSE) exec -T php bin/console lint:xliff translations
 	@$(DOCKER_COMPOSE) exec -T php bin/console doctrine:schema:validate

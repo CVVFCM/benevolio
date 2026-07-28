@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:2.0" version="2.0" srcLang="fr" trgLang="fr">
+    <file id="messages.fr">
+        <!--
+            Application strings. French is the only locale (see
+            config/packages/translation.yaml), so source and target are both fr:
+            the keys stay abstract so a label can change without touching code.
+
+            Validation and security messages are NOT duplicated here — Symfony
+            already ships validators.fr.xlf and security.fr.xlf.
+        -->
+        <unit id="app.name">
+            <segment>
+                <source>app.name</source>
+                <target>Benevolio</target>
+            </segment>
+        </unit>
+        <unit id="app.tagline">
+            <segment>
+                <source>app.tagline</source>
+                <target>Gestion des contributions bénévoles</target>
+            </segment>
+        </unit>
+
+        <unit id="login.title">
+            <segment>
+                <source>login.title</source>
+                <target>Connexion</target>
+            </segment>
+        </unit>
+        <unit id="login.email">
+            <segment>
+                <source>login.email</source>
+                <target>Adresse électronique</target>
+            </segment>
+        </unit>
+        <unit id="login.password">
+            <segment>
+                <source>login.password</source>
+                <target>Mot de passe</target>
+            </segment>
+        </unit>
+        <unit id="login.remember_me">
+            <segment>
+                <source>login.remember_me</source>
+                <target>Rester connecté</target>
+            </segment>
+        </unit>
+        <unit id="login.submit">
+            <segment>
+                <source>login.submit</source>
+                <target>Se connecter</target>
+            </segment>
+        </unit>
+        <unit id="login.logged_in_as">
+            <segment>
+                <source>login.logged_in_as</source>
+                <target>Connecté en tant que {email}</target>
+            </segment>
+        </unit>
+        <unit id="logout.submit">
+            <segment>
+                <source>logout.submit</source>
+                <target>Se déconnecter</target>
+            </segment>
+        </unit>
+    </file>
+</xliff>

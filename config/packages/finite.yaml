@@ -16,11 +16,13 @@
 # Once yohang/finite ships a Symfony 8 compatible bundle, delete this file and
 # register the bundle in config/bundles.php instead.
 services:
+    Finite\Extractor\ReflectionStatePropertyExtractor: ~
+
     # Reflection-based state property extraction, memoized per class.
     Finite\Extractor\StatePropertyExtractor:
         class: Finite\Extractor\MemoizedStatePropertyExtractor
         arguments:
-            $decorated: !service { class: Finite\Extractor\ReflectionStatePropertyExtractor }
+            $decorated: '@Finite\Extractor\ReflectionStatePropertyExtractor'
 
     # Symfony's event_dispatcher is a PSR-14 EventDispatcherInterface, so guards
     # (CanTransitionEvent) and post-transition hooks are plain Symfony listeners.
