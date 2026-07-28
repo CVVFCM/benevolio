@@ -17,17 +17,15 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 /**
  * Back-office of ONE association. Everything reachable from here is scoped to
  * the admin's own organization by the Doctrine tenant filter, which
- * App\Tenant\TenantRequestListener armed from the logged-in account.
- *
- * There are no CRUD sections yet: the domain entities (contributions, missions,
- * rates) are a later lot. Only the menu skeleton exists.
+ * App\Tenant\TenantRequestListener armed from the logged-in account — except
+ * DeclarationAction, which is not TenantAware and scopes itself (see
+ * App\Controller\Admin\DeclarationActionCrudController).
  *
  * CONVENTION EXCEPTION: AGENTS.md forbids extending AbstractController, but
  * EasyAdmin dashboards must extend AbstractDashboardController, which extends
  * it. This is the documented exception; plain application controllers stay
  * invokable and dependency-injected (see App\Controller\LoginController).
- */
-/**
+ *
  * deniedControllers is load-bearing, not decoration: EasyAdmin registers every
  * CRUD controller under every dashboard unless told otherwise, so without it the
  * platform CRUDs would also answer on /admin/organization and /admin/user. The
@@ -71,7 +69,11 @@ final class DashboardController extends AbstractDashboardController
     {
         yield MenuItem::linkToDashboard('menu.dashboard', 'fa fa-home');
 
-        // Domain sections (bénévoles, missions, contributions, reçus fiscaux)
-        // land here in the following lots.
+        yield MenuItem::section('menu.declarations');
+        yield MenuItem::linkTo(DeclarationCrudController::class, 'menu.declaration_list', 'fa fa-file-lines');
+        yield MenuItem::linkTo(DeclarationActionCrudController::class, 'menu.declaration_actions', 'fa fa-list-check');
+        yield MenuItem::linkTo(PersonCrudController::class, 'menu.people', 'fa fa-users');
+
+        // Valuation rates and tax receipts land here in the following lots.
     }
 }

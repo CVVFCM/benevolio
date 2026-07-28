@@ -20,6 +20,30 @@
                 <target>Comptes administrateurs</target>
             </segment>
         </unit>
+        <unit id="menu.declarations">
+            <segment>
+                <source>menu.declarations</source>
+                <target>Déclarations</target>
+            </segment>
+        </unit>
+        <unit id="menu.declaration_list">
+            <segment>
+                <source>menu.declaration_list</source>
+                <target>Déclarations reçues</target>
+            </segment>
+        </unit>
+        <unit id="menu.declaration_actions">
+            <segment>
+                <source>menu.declaration_actions</source>
+                <target>Actions déclarées</target>
+            </segment>
+        </unit>
+        <unit id="menu.people">
+            <segment>
+                <source>menu.people</source>
+                <target>Bénévoles</target>
+            </segment>
+        </unit>
 
         <unit id="dashboard.no_sections_yet">
             <segment>

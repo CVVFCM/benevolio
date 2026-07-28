@@ -51,19 +51,6 @@ when@test:
         dbal:
             # "TEST_TOKEN" is typically set by ParaTest
             dbname_suffix: '_test%env(default::TEST_TOKEN)%'
-        orm:
-            mappings:
-                # A single throwaway TenantAware entity, so the tenant isolation
-                # test can run a real Doctrine query instead of asserting on
-                # generated SQL. Test-env only: it is in no migration, and its
-                # table is created inside the test's transaction by SchemaTool.
-                # Remove once a real TenantAware business entity exists.
-                TestFixtures:
-                    type: attribute
-                    is_bundle: false
-                    dir: '%kernel.project_dir%/tests/Fixtures/Entity'
-                    prefix: 'App\Tests\Fixtures\Entity'
-                    alias: TestFixtures
 
 when@prod:
     doctrine:
