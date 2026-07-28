@@ -50,6 +50,10 @@ return new PhpCsFixer\Config()
         ],
         'phpdoc_to_comment' => false,
 
+        // @Symfony forces camelCase test methods. Long descriptive test names read
+        // much better in snake_case, and PHPUnit's testdox output is identical.
+        'php_unit_method_casing' => ['case' => 'snake_case'],
+
         'native_function_invocation' => ['include' => ['@compiler_optimized'], 'scope' => 'namespaced'],
         'strict_comparison' => true,
         'strict_param' => true,

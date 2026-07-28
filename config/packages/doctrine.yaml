@@ -10,6 +10,10 @@ doctrine:
         #server_version: '18'
 
         profiling_collect_backtrace: '%kernel.debug%'
+        # Entity ids are application-generated UUID v7 (see src/Entity/Organization.php),
+        # which PostgreSQL stores in its native uuid column type.
+        types:
+            uuid: Symfony\Bridge\Doctrine\Types\UuidType
     orm:
         validate_xml_mapping: true
         naming_strategy: doctrine.orm.naming_strategy.underscore
@@ -23,12 +27,33 @@ doctrine:
                 dir: '%kernel.project_dir%/src/Entity'
                 prefix: 'App\Entity'
                 alias: App
+        filters:
+            # Multi-tenant isolation. Declared disabled on purpose: it carries a
+            # per-request parameter, and App\Tenant\TenantRequestListener arms it
+            # with the resolved organization (or disables it when there is none).
+            # Consequence: the filter is OFF in CLI context.
+            organization:
+                class: App\Doctrine\Filter\OrganizationFilter
+                enabled: false
 
 when@test:
     doctrine:
         dbal:
             # "TEST_TOKEN" is typically set by ParaTest
             dbname_suffix: '_test%env(default::TEST_TOKEN)%'
+        orm:
+            mappings:
+                # A single throwaway TenantAware entity, so the tenant isolation
+                # test can run a real Doctrine query instead of asserting on
+                # generated SQL. Test-env only: it is in no migration, and its
+                # table is created inside the test's transaction by SchemaTool.
+                # Remove once a real TenantAware business entity exists.
+                TestFixtures:
+                    type: attribute
+                    is_bundle: false
+                    dir: '%kernel.project_dir%/tests/Fixtures/Entity'
+                    prefix: 'App\Tests\Fixtures\Entity'
+                    alias: TestFixtures
 
 when@prod:
     doctrine:

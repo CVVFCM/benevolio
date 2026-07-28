@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:2.0" version="2.0" srcLang="fr" trgLang="fr">
+    <file id="admin.fr">
+        <!-- EasyAdmin translation domain, used by both dashboards. -->
+        <unit id="menu.dashboard">
+            <segment>
+                <source>menu.dashboard</source>
+                <target>Tableau de bord</target>
+            </segment>
+        </unit>
+        <unit id="menu.organizations">
+            <segment>
+                <source>menu.organizations</source>
+                <target>Associations</target>
+            </segment>
+        </unit>
+        <unit id="menu.users">
+            <segment>
+                <source>menu.users</source>
+                <target>Comptes administrateurs</target>
+            </segment>
+        </unit>
+
+        <unit id="dashboard.no_sections_yet">
+            <segment>
+                <source>dashboard.no_sections_yet</source>
+                <target>Aucune section n'est encore disponible. La gestion des bénévoles et des contributions arrivera dans une prochaine version.</target>
+            </segment>
+        </unit>
+        <unit id="dashboard.platform_title">
+            <segment>
+                <source>dashboard.platform_title</source>
+                <target>Administration de la plateforme</target>
+            </segment>
+        </unit>
+        <unit id="dashboard.platform_intro">
+            <segment>
+                <source>dashboard.platform_intro</source>
+                <target>Gérez ici les associations hébergées sur Benevolio et leurs comptes administrateurs.</target>
+            </segment>
+        </unit>
+
+        <unit id="organization.label">
+            <segment>
+                <source>organization.label</source>
+                <target>Association</target>
+            </segment>
+        </unit>
+        <unit id="organization.label_plural">
+            <segment>
+                <source>organization.label_plural</source>
+                <target>Associations</target>
+            </segment>
+        </unit>
+        <unit id="organization.name">
+            <segment>
+                <source>organization.name</source>
+                <target>Nom</target>
+            </segment>
+        </unit>
+        <unit id="organization.slug">
+            <segment>
+                <source>organization.slug</source>
+                <target>Raccourci</target>
+            </segment>
+        </unit>
+        <unit id="organization.slug.help">
+            <segment>
+                <source>organization.slug.help</source>
+                <target>Utilisé dans les adresses publiques communiquées aux bénévoles (/a/raccourci/…). Le modifier invalide les liens déjà diffusés.</target>
+            </segment>
+        </unit>
+        <unit id="organization.active">
+            <segment>
+                <source>organization.active</source>
+                <target>Active</target>
+            </segment>
+        </unit>
+        <unit id="organization.active.help">
+            <segment>
+                <source>organization.active.help</source>
+                <target>Désactiver une association ferme son administration et ses formulaires publics, sans supprimer ses données.</target>
+            </segment>
+        </unit>
+        <unit id="organization.created_at">
+            <segment>
+                <source>organization.created_at</source>
+                <target>Créée le</target>
+            </segment>
+        </unit>
+
+        <unit id="user.label">
+            <segment>
+                <source>user.label</source>
+                <target>Compte administrateur</target>
+            </segment>
+        </unit>
+        <unit id="user.label_plural">
+            <segment>
+                <source>user.label_plural</source>
+                <target>Comptes administrateurs</target>
+            </segment>
+        </unit>
+        <unit id="user.email">
+            <segment>
+                <source>user.email</source>
+                <target>Adresse électronique</target>
+            </segment>
+        </unit>
+        <unit id="user.roles">
+            <segment>
+                <source>user.roles</source>
+                <target>Rôles</target>
+            </segment>
+        </unit>
+        <unit id="user.organization">
+            <segment>
+                <source>user.organization</source>
+                <target>Association</target>
+            </segment>
+        </unit>
+        <unit id="user.organization.help">
+            <segment>
+                <source>user.organization.help</source>
+                <target>Obligatoire pour un administrateur d'association. Doit rester vide pour un administrateur de la plateforme.</target>
+            </segment>
+        </unit>
+        <unit id="user.password">
+            <segment>
+                <source>user.password</source>
+                <target>Mot de passe</target>
+            </segment>
+        </unit>
+        <unit id="user.password.help">
+            <segment>
+                <source>user.password.help</source>
+                <target>12 caractères minimum. Laisser vide lors d'une modification conserve le mot de passe actuel.</target>
+            </segment>
+        </unit>
+    </file>
+</xliff>

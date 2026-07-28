@@ -19,5 +19,20 @@ services:
     App\:
         resource: '../src/'
 
+    # Controllers do not extend AbstractController (see AGENTS.md), so they get
+    # their collaborators through the constructor. This tag lets Symfony resolve
+    # controller *action* arguments (Request, entities, #[MapQueryParameter], …)
+    # for services used as controllers.
+    App\Controller\:
+        resource: '../src/Controller/'
+        tags: ['controller.service_arguments']
+
+    # TenantContext holds per-request state in a shared service. Under FrankenPHP
+    # worker mode the container survives between requests, so it must be reset or
+    # request N would inherit request N-1's tenant.
+    App\Tenant\TenantContext:
+        tags:
+            - { name: kernel.reset, method: reset }
+
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
