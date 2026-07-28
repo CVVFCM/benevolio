@@ -1,10 +1,12 @@
 includes:
     # Opt into the next major's stricter behaviour now.
     - vendor/phpstan/phpstan/conf/bleedingEdge.neon
-    # Pre-existing errors in framework-generated skeleton files (Kernel, bootstrap).
-    - phpstan-baseline.neon
-    # phpstan-strict-rules, phpstan-symfony and phpstan-doctrine rule sets are
-    # auto-registered by phpstan/extension-installer.
+    # phpstan-strict-rules, phpstan-symfony, phpstan-doctrine and phpstan-phpunit
+    # rule sets are auto-registered by phpstan/extension-installer.
+    #
+    # There is deliberately NO baseline file: the project must analyse clean at
+    # level max. Use a documented inline @phpstan-ignore when a rule is provably
+    # wrong (see src/Kernel.php) rather than hiding errors in a baseline.
 
 parameters:
     level: max

@@ -1,15 +1,15 @@
 {
-  "name": "meteoprint",
+  "name": "benevolio",
   "version": "1.0.0",
-  "description": "",
-  "license": "ISC",
+  "description": "Volunteer contribution manager for French associations loi 1901",
+  "license": "AGPL-3.0-or-later",
   "author": "Yohan Giarelli <yohan@giarel.li>",
   "type": "commonjs",
-  "main": "index.js",
-  "directories": {
-    "test": "tests"
+  "private": true,
+  "scripts": {
+    "lint:js": "eslint assets",
+    "lint:css": "stylelint \"assets/**/*.css\""
   },
-  "scripts": {},
   "dependencies": {
     "@eslint/js": "^10.0.1",
     "eslint": "^10.5.0",

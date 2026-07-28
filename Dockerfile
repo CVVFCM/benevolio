@@ -5,9 +5,9 @@ ARG DEBIAN_VERSION=trixie
 FROM dunglas/frankenphp:${FRANKENPHP_VERSION}-php${PHP_VERSION}-${DEBIAN_VERSION} AS app
 
 LABEL org.opencontainers.image.source=https://github.com/cvvfcm/benevolio
-LABEL org.opencontainers.image.licenses=GPL-3.0-or-later
+LABEL org.opencontainers.image.licenses=AGPL-3.0-or-later
 LABEL org.opencontainers.image.authors="Yohan Giarelli <yohan@giarel.li>"
-LABEL org.opencontainers.image.description="An application for managing volonteer work and donations for non-profit organizations."
+LABEL org.opencontainers.image.description="An application for managing volunteer work and donations for non-profit organizations."
 
 SHELL ["/bin/bash", "-euxo", "pipefail", "-c"]
 
