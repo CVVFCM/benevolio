@@ -1,0 +1,77 @@
+{#
+    The transparent layer that gets stamped onto CERFA 2041-RD.
+
+    This renders ONLY the values — no form wording, no borders, no background. Gotenberg
+    turns it into a two-page A4 PDF and `qpdf --overlay` presses it onto the official
+    document, which supplies everything else and stays vector.
+
+    Two pages because the form has two: the organisation block is on page 1, the donor,
+    the amount and the signature on page 2. qpdf maps overlay page n onto form page n, so
+    a one-page layer would silently drop half the receipt.
+
+    Every position comes from App\Receipt\CerfaLayout. Nothing is positioned here.
+#}
+<!doctype html>
+<html lang="fr">
+    <head>
+        <meta charset="utf-8">
+        <style>
+            @page {
+                size: A4;
+                margin: 0;
+            }
+
+            html,
+            body {
+                margin: 0;
+                padding: 0;
+                /* No background at all: anything painted here would hide the form. */
+                background: transparent;
+            }
+
+            .page {
+                position: relative;
+                inline-size: 210mm;
+                block-size: 297mm;
+                /* Each page is exactly A4, so nothing reflows onto a third. */
+                overflow: hidden;
+            }
+
+            .v {
+                position: absolute;
+                margin: 0;
+                font-family: "DejaVu Sans", sans-serif;
+                font-size: {{ layout_font_size }};
+                line-height: 1;
+                color: #000;
+                white-space: nowrap;
+            }
+
+            /* The ticks in the checkboxes read better a little heavier. */
+            .tick {
+                font-weight: 700;
+            }
+        </style>
+    </head>
+    <body>
+        {% for page in [1, 2] %}
+            <div class="page">
+                {% for field, position in fields[page] %}
+                    {% if values[field] is defined and values[field] is not empty %}
+                        <span
+                            class="v{{ field in ticks ? ' tick' : '' }}"
+                            style="
+                                left: {{ position[0] }}mm;
+                                top: {{ position[1] }}mm;
+                                {%- if position[2] is defined %}
+                                    inline-size: {{ position[2] }}mm;
+                                    text-align: {{ position[3] }};
+                                {%- endif %}
+                            "
+                        >{{ values[field] }}</span>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        {% endfor %}
+    </body>
+</html>

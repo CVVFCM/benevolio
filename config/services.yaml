@@ -31,6 +31,18 @@ services:
         resource: '../src/Controller/'
         tags: ['controller.service_arguments']
 
+    # The Gotenberg endpoint and the shipped CERFA are deployment facts, not something
+    # the classes should discover for themselves.
+    App\Receipt\GotenbergClient:
+        arguments:
+            $baseUri: '%env(GOTENBERG_DSN)%'
+
+    App\Receipt\ReceiptGenerator:
+        arguments:
+            # The official form, shipped in the repository. See resources/cerfa/README.md
+            # for its provenance and what to re-measure if it is ever replaced.
+            $formPath: '%kernel.project_dir%/resources/cerfa/2041-rd_11580-05.pdf'
+
     # TenantContext holds per-request state in a shared service. Under FrankenPHP
     # worker mode the container survives between requests, so it must be reset or
     # request N would inherit request N-1's tenant.
