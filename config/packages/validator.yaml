@@ -5,7 +5,7 @@ framework:
         #auto_mapping:
         #    App\Entity\: []
 
-when@test:
-    framework:
-        validation:
-            not_compromised_password: false
+# There is no `not_compromised_password: false` here, and it is not an omission:
+# Assert\NotCompromisedPassword was removed from App\Entity\User, so there is
+# nothing left to switch off. Re-add both together if the check comes back — the
+# constraint calls haveibeenpwned, which a test suite must not depend on.

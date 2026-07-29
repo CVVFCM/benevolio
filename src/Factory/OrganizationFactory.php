@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Factory;
 
 use App\Entity\Organization;
-use App\Organization\DefaultEventTypes;
+use App\Organization\DefaultTasks;
 use Zenstruck\Foundry\Persistence\PersistentObjectFactory;
 
 /**
@@ -14,7 +14,7 @@ use Zenstruck\Foundry\Persistence\PersistentObjectFactory;
 final class OrganizationFactory extends PersistentObjectFactory
 {
     public function __construct(
-        private readonly DefaultEventTypes $defaultEventTypes,
+        private readonly DefaultTasks $defaultTasks,
     ) {
         parent::__construct();
     }
@@ -30,18 +30,18 @@ final class OrganizationFactory extends PersistentObjectFactory
     }
 
     /**
-     * Every organization gets its starter event types, exactly as one created
+     * Every organization gets its starter tasks, exactly as one created
      * through /platform does — so fixtures and tests exercise a shape that can
      * actually be used, and the public form always has choices to offer.
      *
-     * This is one of the two explicit call sites of DefaultEventTypes; see that
+     * This is one of the two explicit call sites of DefaultTasks; see that
      * class for why it is not a Doctrine listener.
      */
     protected function initialize(): static
     {
         return $this->afterPersist(
             function (Organization $organization): void {
-                $this->defaultEventTypes->createFor($organization);
+                $this->defaultTasks->createFor($organization);
             },
         );
     }

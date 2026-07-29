@@ -4,44 +4,61 @@
 
 {% block body %}
     <main class="login">
-        <h1>{{ 'app.name'|trans }}</h1>
-        <p>{{ 'app.tagline'|trans }}</p>
+        <div class="login__card">
+            <header class="login__brand">
+                <h1>{{ 'app.name'|trans }}</h1>
+                <p>{{ 'app.tagline'|trans }}</p>
+            </header>
 
-        <form method="post" action="{{ path('login') }}">
-            <h2>{{ 'login.title'|trans }}</h2>
+            {# novalidate for the same reason as the public form: the browser's own
+               bubbles pre-empt the server's message, and here the message that
+               matters — wrong credentials — can only come from the server. #}
+            <form class="login__form" method="post" action="{{ path('login') }}" novalidate>
+                <h2>{{ 'login.title'|trans }}</h2>
 
-            {% if error %}
-                <p role="alert">{{ error.messageKey|trans(error.messageData, 'security') }}</p>
-            {% endif %}
+                {% if error %}
+                    <p class="login__error" role="alert">
+                        {{ error.messageKey|trans(error.messageData, 'security') }}
+                    </p>
+                {% endif %}
 
-            <label for="email">{{ 'login.email'|trans }}</label>
-            <input
-                id="email"
-                type="email"
-                name="_username"
-                value="{{ last_username }}"
-                autocomplete="username"
-                required
-                autofocus
-            >
+                <div class="login__field">
+                    <label for="email">{{ 'login.email'|trans }}</label>
+                    <input
+                        id="email"
+                        class="input"
+                        type="email"
+                        name="_username"
+                        value="{{ last_username }}"
+                        autocomplete="username"
+                        required
+                        autofocus
+                    >
+                </div>
 
-            <label for="password">{{ 'login.password'|trans }}</label>
-            <input
-                id="password"
-                type="password"
-                name="_password"
-                autocomplete="current-password"
-                required
-            >
+                <div class="login__field">
+                    <label for="password">{{ 'login.password'|trans }}</label>
+                    <input
+                        id="password"
+                        class="input"
+                        type="password"
+                        name="_password"
+                        autocomplete="current-password"
+                        required
+                    >
+                </div>
 
-            <label for="remember_me">
-                <input id="remember_me" type="checkbox" name="_remember_me" value="on">
-                {{ 'login.remember_me'|trans }}
-            </label>
+                <label class="login__remember" for="remember_me">
+                    <input id="remember_me" type="checkbox" name="_remember_me" value="on">
+                    {{ 'login.remember_me'|trans }}
+                </label>
 
-            <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
 
-            <button type="submit">{{ 'login.submit'|trans }}</button>
-        </form>
+                <button class="button login__submit" type="submit">{{ 'login.submit'|trans }}</button>
+            </form>
+        </div>
+
+        {{ include('_theme_switcher.html.twig') }}
     </main>
 {% endblock %}

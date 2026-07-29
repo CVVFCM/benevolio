@@ -56,31 +56,100 @@
     --font-sans:
         system-ui, -apple-system, "Segoe UI", roboto, "Helvetica Neue", arial,
         "Noto Sans", sans-serif;
+
+    /*
+     * The dark palette, declared once and switched in by the two blocks below,
+     * which hold only the mapping — so tuning a colour stays a one-line change in
+     * one place. Custom properties are inert until referenced, so naming these
+     * here costs the light page nothing.
+     */
+    --dark-surface: #14191f;
+    --dark-surface-raised: #1c2329;
+    --dark-surface-sunken: #0f1418;
+    --dark-ink: #e9e4da;
+    --dark-ink-muted: #aab2bb;
+    --dark-ink-faint: #929aa4;
+    --dark-rule: #2e363e;
+    --dark-rule-strong: #4c565f;
+    --dark-accent: #7cbedb;
+    --dark-accent-hover: #9ad0e8;
+    --dark-accent-contrast: #0e1418;
+    --dark-accent-tint: #1b2a33;
+    --dark-marker: #d9ac5e;
+    --dark-marker-tint: #2a2417;
+    --dark-danger: #f2a49b;
+    --dark-danger-tint: #2c1a1a;
+    --dark-success: #93cfa6;
+    --dark-success-tint: #17251b;
+    --dark-focus: #9ad0e8;
+    --dark-shadow-raised: 0 1px 2px rgb(0 0 0 / 30%), 0 4px 12px -4px rgb(0 0 0 / 40%);
+
+    color-scheme: light;
 }
 
+/*
+ * Dark because the operating system says so, and the visitor has not overridden it.
+ *
+ * The :not() is what makes an explicit *light* choice work on a dark OS — without
+ * it this block would keep winning and the switcher would only appear to work in
+ * one direction. color-scheme comes along so native widgets and scrollbars follow.
+ */
 @media (prefers-color-scheme: dark) {
-    :root {
-        --surface: #14191f;
-        --surface-raised: #1c2329;
-        --surface-sunken: #0f1418;
-        --ink: #e9e4da;
-        --ink-muted: #aab2bb;
-        --ink-faint: #929aa4;
-        --rule: #2e363e;
-        --rule-strong: #4c565f;
-        --accent: #7cbedb;
-        --accent-hover: #9ad0e8;
-        --accent-contrast: #0e1418;
-        --accent-tint: #1b2a33;
-        --marker: #d9ac5e;
-        --marker-tint: #2a2417;
-        --danger: #f2a49b;
-        --danger-tint: #2c1a1a;
-        --success: #93cfa6;
-        --success-tint: #17251b;
-        --focus: #9ad0e8;
-        --shadow-raised: 0 1px 2px rgb(0 0 0 / 30%), 0 4px 12px -4px rgb(0 0 0 / 40%);
+    :root:not([data-theme="light"]) {
+        color-scheme: dark;
+
+        --surface: var(--dark-surface);
+        --surface-raised: var(--dark-surface-raised);
+        --surface-sunken: var(--dark-surface-sunken);
+        --ink: var(--dark-ink);
+        --ink-muted: var(--dark-ink-muted);
+        --ink-faint: var(--dark-ink-faint);
+        --rule: var(--dark-rule);
+        --rule-strong: var(--dark-rule-strong);
+        --accent: var(--dark-accent);
+        --accent-hover: var(--dark-accent-hover);
+        --accent-contrast: var(--dark-accent-contrast);
+        --accent-tint: var(--dark-accent-tint);
+        --marker: var(--dark-marker);
+        --marker-tint: var(--dark-marker-tint);
+        --danger: var(--dark-danger);
+        --danger-tint: var(--dark-danger-tint);
+        --success: var(--dark-success);
+        --success-tint: var(--dark-success-tint);
+        --focus: var(--dark-focus);
+        --shadow-raised: var(--dark-shadow-raised);
     }
+}
+
+/* Dark because the visitor asked for it, whatever the operating system prefers. */
+:root[data-theme="dark"] {
+    color-scheme: dark;
+
+        --surface: var(--dark-surface);
+        --surface-raised: var(--dark-surface-raised);
+        --surface-sunken: var(--dark-surface-sunken);
+        --ink: var(--dark-ink);
+        --ink-muted: var(--dark-ink-muted);
+        --ink-faint: var(--dark-ink-faint);
+        --rule: var(--dark-rule);
+        --rule-strong: var(--dark-rule-strong);
+        --accent: var(--dark-accent);
+        --accent-hover: var(--dark-accent-hover);
+        --accent-contrast: var(--dark-accent-contrast);
+        --accent-tint: var(--dark-accent-tint);
+        --marker: var(--dark-marker);
+        --marker-tint: var(--dark-marker-tint);
+        --danger: var(--dark-danger);
+        --danger-tint: var(--dark-danger-tint);
+        --success: var(--dark-success);
+        --success-tint: var(--dark-success-tint);
+        --focus: var(--dark-focus);
+        --shadow-raised: var(--dark-shadow-raised);
+}
+
+/* And light on demand, which is the case the media query above cannot cover. */
+:root[data-theme="light"] {
+    color-scheme: light;
 }
 
 *,
@@ -654,4 +723,161 @@ body {
         transform: none;
         opacity: 1;
     }
+}
+
+/* ----------------------------------------------------------------- login -- */
+
+/*
+ * The one page staff see before EasyAdmin takes over. It had no styles at all, so
+ * it rendered as browser defaults next to a public surface that was designed —
+ * which made the product look like two products. Everything here is the existing
+ * vocabulary: same paper, same ink, same .input and .button as the volunteer form.
+ */
+.login {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    align-items: center;
+    justify-content: center;
+    min-height: 100dvh;
+    padding: var(--space-5);
+}
+
+.login__card {
+    width: min(100%, 26rem);
+    padding: var(--space-6);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-lg);
+    background-color: var(--surface-raised);
+    box-shadow: var(--shadow-raised);
+}
+
+.login__brand {
+    margin-bottom: var(--space-6);
+    padding-bottom: var(--space-5);
+    border-bottom: 1px solid var(--rule);
+    text-align: center;
+}
+
+.login__brand h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+}
+
+.login__brand p {
+    margin: var(--space-1) 0 0;
+    color: var(--ink-faint);
+    font-size: 0.8125rem;
+}
+
+.login__form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.login__form h2 {
+    margin: 0;
+    font-size: 1.0625rem;
+    font-weight: 600;
+}
+
+.login__field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.login__field label {
+    color: var(--ink-muted);
+    font-size: 0.875rem;
+    font-weight: 550;
+}
+
+/*
+ * Tinted rather than shouted: a wrong password is an ordinary event, not a fault.
+ * The tint and the border carry it, in the same register as .field__errors on the
+ * public form, which says an error with colour alone.
+ */
+.login__error {
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--danger);
+    border-radius: var(--radius);
+    background-color: var(--danger-tint);
+    color: var(--ink);
+    font-size: 0.875rem;
+}
+
+.login__remember {
+    display: flex;
+    gap: var(--space-3);
+    align-items: center;
+    color: var(--ink-muted);
+    font-size: 0.875rem;
+}
+
+.login__submit {
+    margin-top: var(--space-2);
+}
+
+/* ----------------------------------------------------------------- theme -- */
+
+/*
+ * The light/dark/auto group. Ships `hidden` and is revealed by its Stimulus
+ * controller, so it never appears where it would not work.
+ */
+.theme {
+    display: flex;
+    gap: var(--space-3);
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.theme__legend {
+    padding: 0;
+    color: var(--ink-faint);
+    font-size: 0.75rem;
+
+    /* A legend is block-level by default, which would break the row. */
+    float: left;
+}
+
+.theme__options {
+    display: flex;
+    overflow: hidden;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+}
+
+.theme__option {
+    padding: 0.25rem 0.625rem;
+    border: 0;
+    background-color: transparent;
+    color: var(--ink-faint);
+    font: inherit;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: background-color 120ms ease-out, color 120ms ease-out;
+}
+
+.theme__option + .theme__option {
+    border-inline-start: 1px solid var(--rule);
+}
+
+.theme__option:hover {
+    background-color: var(--surface-sunken);
+    color: var(--ink);
+}
+
+/* The active choice, announced as well as coloured. */
+.theme__option[aria-pressed="true"] {
+    background-color: var(--accent-tint);
+    color: var(--accent);
+    font-weight: 600;
 }

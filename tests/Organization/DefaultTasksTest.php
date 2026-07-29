@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Organization;
 
-use App\Entity\EventType;
 use App\Entity\Organization;
+use App\Entity\Task;
 use App\Factory\OrganizationFactory;
-use App\Organization\DefaultEventTypes;
+use App\Organization\DefaultTasks;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -17,11 +17,11 @@ use Zenstruck\Foundry\Test\ResetDatabase;
 use function count;
 
 /**
- * DefaultEventTypes has two explicit call sites rather than being a Doctrine
+ * DefaultTasks has two explicit call sites rather than being a Doctrine
  * listener, which means a third way of creating an Organization would silently
  * skip it. This test is what makes that omission visible.
  */
-final class DefaultEventTypesTest extends KernelTestCase
+final class DefaultTasksTest extends KernelTestCase
 {
     use Factories;
     use ResetDatabase;
@@ -64,8 +64,8 @@ final class DefaultEventTypesTest extends KernelTestCase
             $filters->disable('organization');
         }
         self::assertCount(
-            2 * count(DefaultEventTypes::NAMES),
-            $this->entityManager->getRepository(EventType::class)->findAll(),
+            2 * count(DefaultTasks::NAMES),
+            $this->entityManager->getRepository(Task::class)->findAll(),
         );
     }
 
@@ -75,8 +75,8 @@ final class DefaultEventTypesTest extends KernelTestCase
         OrganizationFactory::createOne();
 
         self::assertCount(
-            count(DefaultEventTypes::NAMES),
-            $this->entityManager->getRepository(EventType::class)->findActive(),
+            count(DefaultTasks::NAMES),
+            $this->entityManager->getRepository(Task::class)->findActive(),
         );
     }
 
@@ -84,18 +84,18 @@ final class DefaultEventTypesTest extends KernelTestCase
     public function a_retired_type_is_not_offered_to_volunteers(): void
     {
         $organization = OrganizationFactory::createOne();
-        $types = $this->entityManager->getRepository(EventType::class)->findBy(['organization' => $organization]);
+        $types = $this->entityManager->getRepository(Task::class)->findBy(['organization' => $organization]);
         $retired = reset($types);
         self::assertNotFalse($retired);
         $retired->setActive(false);
         $this->entityManager->flush();
 
-        $offered = $this->entityManager->getRepository(EventType::class)->findActive();
+        $offered = $this->entityManager->getRepository(Task::class)->findActive();
 
-        self::assertCount(count(DefaultEventTypes::NAMES) - 1, $offered);
+        self::assertCount(count(DefaultTasks::NAMES) - 1, $offered);
         self::assertNotContains(
             $retired->getName(),
-            array_map(static fn (EventType $type): string => $type->getName(), $offered),
+            array_map(static fn (Task $type): string => $type->getName(), $offered),
         );
     }
 
@@ -104,7 +104,7 @@ final class DefaultEventTypesTest extends KernelTestCase
      */
     private function sortedDefaults(): array
     {
-        $expected = DefaultEventTypes::NAMES;
+        $expected = DefaultTasks::NAMES;
         sort($expected);
 
         return $expected;
@@ -112,7 +112,7 @@ final class DefaultEventTypesTest extends KernelTestCase
 
     /**
      * Sorted, so the assertion is about which types exist rather than about the
-     * order DefaultEventTypes happens to declare them in.
+     * order DefaultTasks happens to declare them in.
      *
      * @return list<string>
      */
@@ -121,8 +121,8 @@ final class DefaultEventTypesTest extends KernelTestCase
         $this->entityManager->clear();
 
         $names = array_map(
-            static fn (EventType $type): string => $type->getName(),
-            $this->entityManager->getRepository(EventType::class)->findBy(['organization' => $organization]),
+            static fn (Task $type): string => $type->getName(),
+            $this->entityManager->getRepository(Task::class)->findBy(['organization' => $organization]),
         );
         sort($names);
 

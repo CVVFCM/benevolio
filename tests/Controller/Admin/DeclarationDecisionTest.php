@@ -165,7 +165,7 @@ final class DeclarationDecisionTest extends WebTestCase
     private function declarationWithLines(Organization $organization, int $count): Declaration
     {
         $declaration = DeclarationFactory::new()->for($organization)->confirmed()->create();
-        DeclarationActionFactory::new()->forDeclaration($declaration)->many($count)->create();
+        DeclarationActionFactory::new()->forDeclaration($declaration)->confirmed()->many($count)->create();
 
         $reloaded = $this->reload($declaration);
         self::assertCount($count, $reloaded->getActions());

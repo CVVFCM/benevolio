@@ -207,7 +207,14 @@ class Declaration implements TenantAware
         return $this->accuracyAttested;
     }
 
-    public function areExpensesWaived(): bool
+    /**
+     * Named isExpensesWaived(), not the grammatical areExpensesWaived(), because
+     * Symfony's PropertyAccess only recognises get/is/has. Under the old name
+     * EasyAdmin could not read the property at all and rendered the field as
+     * "AUCUN(E)" whatever its value — on the waiver, which is the thing that makes
+     * a tax receipt legally possible. Grammar is not worth that.
+     */
+    public function isExpensesWaived(): bool
     {
         return $this->expensesWaived;
     }

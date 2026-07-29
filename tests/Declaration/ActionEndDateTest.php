@@ -70,7 +70,7 @@ final class ActionEndDateTest extends KernelTestCase
         $draft = $this->draft(new DateTimeImmutable('-2 days'), 3);
 
         // Asserts on this rule alone. The bare draft trips other constraints (it
-        // has no event type), and counting all violations would make the test pass
+        // has no task), and counting all violations would make the test pass
         // or fail for reasons that have nothing to do with the end date.
         self::assertSame([], $this->consecutiveDaysMessages(
             $this->validator->validate($draft, groups: [ActionDraft::GROUP]),
@@ -124,7 +124,7 @@ final class ActionEndDateTest extends KernelTestCase
     private function draft(DateTimeImmutable $date, int $consecutiveDays): ActionDraft
     {
         $draft = new ActionDraft();
-        $draft->eventType = null;
+        $draft->task = null;
         $draft->title = 'Régate du printemps';
         $draft->date = $date;
         $draft->consecutiveDays = $consecutiveDays;

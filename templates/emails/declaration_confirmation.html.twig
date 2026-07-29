@@ -51,7 +51,7 @@
                         {% for action in declaration.actions %}
                             <tr>
                                 <td style="padding-top:8px;font-size:14px;">
-                                    {{ action.date|format_date('short') }} — {{ action.eventType.name }} :
+                                    {{ action.date|format_date('short') }} — {{ action.task.name }} :
                                     {{ action.title }}<br>
                                     <span style="color:#4c5563;">
                                         {{ action.workHours }} h

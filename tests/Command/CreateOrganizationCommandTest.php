@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Command;
 
-use App\Entity\EventType;
 use App\Entity\Organization;
+use App\Entity\Task;
 use App\Factory\OrganizationFactory;
-use App\Organization\DefaultEventTypes;
+use App\Organization\DefaultTasks;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
@@ -21,8 +21,8 @@ use function count;
 
 /**
  * This command is the third way an Organization can be created, so it is also the
- * third place the default event types can be forgotten — which is what
- * App\Organization\DefaultEventTypes documents as the cost of not using a Doctrine
+ * third place the default tasks can be forgotten — which is what
+ * App\Organization\DefaultTasks documents as the cost of not using a Doctrine
  * listener. The first test below is the one that would catch that.
  */
 final class CreateOrganizationCommandTest extends KernelTestCase
@@ -55,9 +55,9 @@ final class CreateOrganizationCommandTest extends KernelTestCase
         self::assertNotNull($organization);
         self::assertSame('Les Jardins Partagés', $organization->getName());
 
-        $types = $this->entityManager()->getRepository(EventType::class)
+        $types = $this->entityManager()->getRepository(Task::class)
             ->findBy(['organization' => $organization]);
-        self::assertCount(count(DefaultEventTypes::NAMES), $types);
+        self::assertCount(count(DefaultTasks::NAMES), $types);
     }
 
     #[Test]

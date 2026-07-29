@@ -92,6 +92,20 @@ final class DeclarationCrudController extends AbstractCrudController
     public function configureFields(string $pageName): iterable
     {
         yield AssociationField::new('person', 'Bénévole');
+
+        // The volunteer's contact details, on detail only. A treasurer ruling on a
+        // declaration should not have to open the Bénévole page to see who it is —
+        // and the address is what a CERFA receipt is eventually addressed to.
+        // Dot notation into the association, as with actions.count below.
+        yield TextField::new('person.email', 'Adresse électronique')
+            ->onlyOnDetail();
+
+        yield TextField::new('person.address', 'Adresse postale')
+            // Address is an embeddable, so it needs telling how to read: reuse its
+            // own readable line rather than reassembling the parts here.
+            ->formatValue(static fn (mixed $value, Declaration $declaration): string => (string) $declaration->getPerson()->getAddress())
+            ->onlyOnDetail();
+
         yield DateTimeField::new('submittedAt', 'Déposée le');
 
         yield ChoiceField::new('state', 'État')
@@ -115,7 +129,11 @@ final class DeclarationCrudController extends AbstractCrudController
         yield IntegerField::new('totalDistanceKm', 'Kilomètres déclarés')
             ->setHelp('Distance d\'un trajet × nombre de trajets, pour chaque action.');
 
+        // A to-many association renders as a list of stringified links, which for
+        // the page a treasurer rules from says almost nothing. The template lays the
+        // lines out as a table so the figures being ruled on are actually visible.
         yield AssociationField::new('actions', 'Actions déclarées')
+            ->setTemplatePath('admin/field/declaration_actions.html.twig')
             ->onlyOnDetail();
 
         yield BooleanField::new('accuracyAttested', 'Exactitude attestée')

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Entity\Organization;
-use App\Organization\DefaultEventTypes;
+use App\Organization\DefaultTasks;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -30,20 +30,20 @@ use function sprintf;
  * `kubectl exec`, and every later one can be too.
  *
  * THIS IS THE THIRD CREATION PATH for an Organization, after the platform CRUD
- * and OrganizationFactory — exactly the situation App\Organization\DefaultEventTypes
+ * and OrganizationFactory — exactly the situation App\Organization\DefaultTasks
  * warns about. Hence the explicit createFor() call below: an association without
- * event types has a public form that offers no choices at all.
+ * tasks has a public form that offers no choices at all.
  */
 #[AsCommand(
     name: 'app:organization:create',
-    description: 'Crée une association et sa liste de types d\'événement par défaut',
+    description: 'Crée une association et sa liste de tâches par défaut',
 )]
 final class CreateOrganizationCommand extends Command
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly ValidatorInterface $validator,
-        private readonly DefaultEventTypes $defaultEventTypes,
+        private readonly DefaultTasks $defaultTasks,
     ) {
         parent::__construct();
     }
@@ -82,13 +82,13 @@ final class CreateOrganizationCommand extends Command
         }
 
         $this->entityManager->persist($organization);
-        $eventTypes = $this->defaultEventTypes->createFor($organization);
+        $tasks = $this->defaultTasks->createFor($organization);
         $this->entityManager->flush();
 
         $io->success(sprintf(
-            'Association « %s » créée avec %d types d\'événement.',
+            'Association « %s » créée avec %d tâches.',
             $organization->getName(),
-            count($eventTypes),
+            count($tasks),
         ));
         $io->writeln(sprintf('Formulaire public : /a/%s/declaration', $organization->getSlug()));
 

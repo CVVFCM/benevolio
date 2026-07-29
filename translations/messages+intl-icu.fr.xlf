@@ -22,6 +22,31 @@
             </segment>
         </unit>
 
+        <unit id="theme.label">
+            <segment>
+                <source>theme.label</source>
+                <target>Apparence</target>
+            </segment>
+        </unit>
+        <unit id="theme.light">
+            <segment>
+                <source>theme.light</source>
+                <target>Clair</target>
+            </segment>
+        </unit>
+        <unit id="theme.dark">
+            <segment>
+                <source>theme.dark</source>
+                <target>Sombre</target>
+            </segment>
+        </unit>
+        <unit id="theme.auto">
+            <segment>
+                <source>theme.auto</source>
+                <target>Auto</target>
+            </segment>
+        </unit>
+
         <unit id="login.title">
             <segment>
                 <source>login.title</source>

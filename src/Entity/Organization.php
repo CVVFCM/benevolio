@@ -31,6 +31,16 @@ class Organization
     public const int NAME_MAX_LENGTH = 150;
     public const int SLUG_MAX_LENGTH = 100;
 
+    /**
+     * 12,00 € — roughly the SMIC horaire brut, which is the basis French
+     * associations most commonly use to value volunteer time. A starting point, not
+     * a recommendation: every association should set its own.
+     */
+    public const int DEFAULT_HOURLY_RATE_CENTS = 1200;
+
+    /** 1 000,00 €/h. Not a real rate; a guard against a slipped decimal point. */
+    public const int MAX_HOURLY_RATE_CENTS = 100_000;
+
     #[ORM\Id]
     #[ORM\Column(type: UuidType::NAME, unique: true)]
     private Uuid $id;
@@ -59,6 +69,30 @@ class Organization
      */
     #[ORM\Column]
     private bool $active = true;
+
+    /**
+     * What one hour of donated time is worth to this association, IN CENTS.
+     *
+     * Cents, not a decimal, and not a float: a rate is multiplied by hours that are
+     * themselves summed in integer hundredths (see DeclarationAction), and integers
+     * are the only way that arithmetic stays exact without ext-bcmath, which is not
+     * installed. 1200 means 12,00 €.
+     *
+     * Required, so a task always resolves to some rate and nothing downstream has to
+     * handle "no rate at all". An association that does not value hours in euros can
+     * simply ignore the figure — it is not applied to anything yet.
+     *
+     * This is the association's OWN valuation of volunteer time, for PCG 864/870.
+     * It is NOT the mileage barème, which is republished yearly by the state and
+     * deliberately absent from this codebase.
+     */
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => self::DEFAULT_HOURLY_RATE_CENTS])]
+    #[Assert\Positive(message: 'Le taux horaire doit être supérieur à zéro.')]
+    #[Assert\LessThanOrEqual(
+        value: self::MAX_HOURLY_RATE_CENTS,
+        message: 'Le taux horaire ne peut pas dépasser {{ compared_value }} centimes.',
+    )]
+    private int $defaultHourlyRateCents = self::DEFAULT_HOURLY_RATE_CENTS;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private DateTimeImmutable $createdAt;
@@ -116,6 +150,18 @@ class Organization
     public function setActive(bool $active): self
     {
         $this->active = $active;
+
+        return $this;
+    }
+
+    public function getDefaultHourlyRateCents(): int
+    {
+        return $this->defaultHourlyRateCents;
+    }
+
+    public function setDefaultHourlyRateCents(int $defaultHourlyRateCents): self
+    {
+        $this->defaultHourlyRateCents = $defaultHourlyRateCents;
 
         return $this;
     }

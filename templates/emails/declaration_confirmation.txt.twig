@@ -8,7 +8,7 @@ pas transmise :
 
 Ce que vous avez déclaré
 {% for action in declaration.actions %}
-- {{ action.date|format_date('short') }} — {{ action.eventType.name }} : {{ action.title }}
+- {{ action.date|format_date('short') }} — {{ action.task.name }} : {{ action.title }}
   {{ action.workHours }} h{% if action.totalDistanceKm > 0 %}, {{ action.totalDistanceKm }} km{% endif %}
 {% endfor %}
 Total : {{ declaration.totalWorkHours }} h{% if declaration.totalDistanceKm > 0 %} et {{ declaration.totalDistanceKm }} km{% endif %}

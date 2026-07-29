@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace App\Declaration;
 
-use App\Declaration\Exception\EventTypeNoLongerAvailableException;
+use App\Declaration\Exception\TaskNoLongerAvailableException;
 use App\Entity\Declaration;
 use App\Entity\DeclarationAction;
-use App\Entity\EventType;
 use App\Entity\Organization;
 use App\Entity\Person;
+use App\Entity\Task;
 use App\Form\Declaration\ActionDraft;
 use App\Form\Declaration\DeclarationDraft;
-use App\Repository\EventTypeRepository;
 use App\Repository\PersonRepository;
+use App\Repository\TaskRepository;
 use App\ValueObject\Address;
 use App\ValueObject\Email;
 use Doctrine\ORM\EntityManagerInterface;
@@ -40,7 +40,7 @@ final readonly class DeclarationSubmitter
 
     public function __construct(
         private PersonRepository $people,
-        private EventTypeRepository $eventTypes,
+        private TaskRepository $tasks,
         private EntityManagerInterface $entityManager,
         private DeclarationConfirmationMailer $mailer,
         private ClockInterface $clock,
@@ -138,7 +138,7 @@ final readonly class DeclarationSubmitter
     }
 
     /**
-     * Re-reads the event type from the database.
+     * Re-reads the task from the database.
      *
      * NOT redundant. The flow keeps its draft in the session between steps, and
      * SessionDataStorage deep-clones it — which detaches any Doctrine entity it
@@ -150,12 +150,12 @@ final readonly class DeclarationSubmitter
      * repository, so a type belonging to another association — or one deleted while
      * the volunteer was filling the form — cannot slip through.
      */
-    private function resolveEventType(?EventType $detached): EventType
+    private function resolveTask(?Task $detached): Task
     {
         assert(null !== $detached);
 
-        return $this->eventTypes->find($detached->getId())
-            ?? throw EventTypeNoLongerAvailableException::forId($detached->getId());
+        return $this->tasks->find($detached->getId())
+            ?? throw TaskNoLongerAvailableException::forId($detached->getId());
     }
 
     private function createAction(Declaration $declaration, ActionDraft $draft): DeclarationAction
@@ -164,7 +164,7 @@ final readonly class DeclarationSubmitter
 
         return new DeclarationAction(
             $declaration,
-            $this->resolveEventType($draft->eventType),
+            $this->resolveTask($draft->task),
             (string) $draft->title,
             '' === $draft->description ? null : $draft->description,
             $draft->date,

@@ -53,20 +53,51 @@ differently, so never sum them together:
 | `journeys` | Number of **one-way** journeys — a return trip is two. Total distance is `distanceKm × journeys`. |
 | `fiscalPower` | An enum of the *barème* brackets (≤3 CV, 4, 5, 6, ≥7 CV), because the scale distinguishes only those. Required exactly when `ownVehicle` is true. **No euro rates anywhere**: the scale is republished yearly and belongs with valuation, keyed by financial year. |
 | `consecutiveDays` | The action may span several days from `date`. The action must be **over**: `DeclarationAction::endDateFor()` is the shared arithmetic, applied on the DTO *and* the entity, and it normalises to midnight — an end date of "today at 17:30" would otherwise read as later than "today". |
-| `eventType` | A per-association **entity**, not an enum. See below. |
+| `task` | The *tâche effectuée* — a per-association **entity**, not an enum, carrying an optional hourly rate. See below. |
 
-**Event types are rows, not code.** `EventType` is `TenantAware`; each association
-manages its own list in `/admin`. `App\Organization\DefaultEventTypes` seeds five
+**Tasks are rows, not code.** `Task` is `TenantAware`; each association
+manages its own list in `/admin`. `App\Organization\DefaultTasks` seeds five
 starters (*Travaux, Régate, Encadrement, Arbitrage, Autre*) and is called from the
 **two** places an organization is born — the platform CRUD and
 `OrganizationFactory`. A `postPersist` listener would be one place instead of two,
 but persisting from inside `postPersist` needs a second flush and is fragile; the
 cost is that a third creation path would silently skip seeding, which
-`DefaultEventTypesTest` exists to catch.
+`DefaultTasksTest` exists to catch.
 
-Deleting a type an action references is refused by the FK: a filed declaration
-must not lose the label it was filed under. Retire one with `active` instead — it
+It was called `EventType` until it carried a rate, at which point "type of event"
+became the wrong noun: a rate belongs to a kind of *work*, not a kind of gathering.
+The occasion keeps its own free-text title on the line (`DeclarationAction::$title`),
+which is why *"Intitulé de l'événement"* is still the right label there.
+
+Deleting a task an action references is refused by the FK: a filed declaration must
+not lose the label it was filed under. Retire one with `active` instead — it
 vanishes from new forms and still renders on old actions.
+
+### Money — cents, always
+
+**Every monetary amount in this codebase is an integer number of cents**, named
+`…RateCents` so a caller cannot mistake the unit. Never a float, and not a DECIMAL
+either: a rate multiplies hours that are already summed in integer hundredths, and
+`ext-bcmath` is not installed, so integers are the only way that arithmetic stays
+exact. EasyAdmin's `MoneyField` stores cents natively, so nothing converts — and
+nothing can convert twice.
+
+- `Organization::$defaultHourlyRateCents` — **required**, defaulting to
+  `DEFAULT_HOURLY_RATE_CENTS` (12,00 €, roughly the SMIC horaire brut: a starting
+  point, not a recommendation).
+- `Task::$hourlyRateCents` — **optional** override. `Task::resolveHourlyRateCents()`
+  is the ONE place the fallback lives; reaching for `getHourlyRateCents()` directly
+  gets the raw, possibly-null override and will get the valuation wrong.
+- `DeclarationAction::$hourlyRateCents` — **a snapshot**, copied at construction and
+  never updated, with no setter. Reading the task's current rate instead would mean
+  that editing a rate silently rewrote the valuation of declarations already
+  validated, possibly already in the books. Same argument as the label above, applied
+  to the figure. `tests/Entity/HourlyRateTest` is what holds this.
+
+This is the association's **own** valuation of donated time, for PCG 864/870. It is
+**not** the mileage *barème*, which the state republishes yearly and which is still
+deliberately absent — see `fiscalPower` above. Nothing applies these rates yet:
+valuation itself is still on the deferred list.
 
 **TRAP — that FK is `ON DELETE NO ACTION`, and the word matters.** `RESTRICT`
 refuses the delete just as firmly, but makes PostgreSQL raise SQLSTATE **23001**
@@ -77,7 +108,7 @@ EasyAdmin's own, in `AbstractCrudController::delete()` — will ever see, and th
 admin gets a 500. `NO ACTION` yields 23503 and the catch works. Any other FK meant
 to refuse a delete must use `NO ACTION` for the same reason.
 
-`EventTypeCrudController::deleteEntity()` still overrides EasyAdmin's handling:
+`TaskCrudController::deleteEntity()` still overrides EasyAdmin's handling:
 left alone, EasyAdmin turns the caught exception into its own 409 page, whose
 message tells a *developer* to disable the delete action or add `cascade`, in
 English. A treasurer gets a French sentence naming the type instead.
@@ -108,6 +139,49 @@ to.
 - `DeclarationState::isDecided()` means validated-or-refused. Awaiting confirmation
   is *undecided but not actionable*, so anything asking "can a verdict be applied"
   must check `isAwaitingConfirmation()` too — `DeclarationDecider` does.
+
+### Both state machines start unconfirmed
+
+`DeclarationAction` starts in `awaiting_confirmation` too, not `submitted` — it used
+to claim to be *soumise* before the volunteer had clicked anything.
+`App\State\Listener\DeclarationConfirmationCascade` listens for the declaration's
+`confirm` and moves every line with it.
+
+**TRAP when adding a state to either enum:** `isDecided()` must stay
+*validated-or-refused*, spelled out. It was `SUBMITTED !== $this` on the action, which
+the moment a state existed *before* SUBMITTED started calling an unconfirmed line
+decided. Same reason `DeclarationActionCrudController` builds its badge map from
+`::cases()` rather than by hand — the hardcoded version would have left the new state
+with no badge and nothing to say so.
+
+**TRAP in fixtures and tests:** the cascade only moves the lines that exist when the
+declaration is confirmed, so a line attached to an **already-confirmed** declaration
+stays unconfirmed forever, and `DeclarationTransitionGuard` then makes the whole
+declaration quietly undecidable. Production cannot hit this — `DeclarationSubmitter`
+writes every line first — but the convenient test order does. Either create the lines
+before confirming, or use `DeclarationActionFactory::confirmed()`.
+
+## Theme, and the one inline script
+
+`app.css` themes through `data-theme` on `<html>`, with `@media
+(prefers-color-scheme: dark)` as the `auto` case. The media-query block is
+`:root:not([data-theme="light"])` — **the `:not()` is load-bearing**: without it an
+explicit *light* choice on a dark OS would lose, and the switcher would only appear
+to work one way.
+
+Dark values live once, as `--dark-*` on `:root`; the two blocks below hold only the
+mapping, so tuning a colour stays a one-line change.
+
+`base.html.twig` carries **the only inline script in the project**, and it has to be
+inline and blocking: the choice lives in `localStorage`, so only JavaScript knows it,
+and anything deferred runs after first paint — which is a white flash on every page
+for anyone who chose dark. `assets/controllers/theme_controller.js` handles the
+clicks; `auto` **removes** the key rather than storing the word, so the OS keeps
+answering. The storage key `benevolio-theme` appears in both and must match.
+
+The switcher ships `hidden` and its controller reveals it, so it never shows where it
+would not work. It covers **the public pages and login only** — EasyAdmin has its own
+switcher inside `/admin` and `/platform`.
 
 ### Deferred — do not assume these exist
 
@@ -211,14 +285,14 @@ added to `/admin` must be tenant-scoped.
 - `src/ValueObject/` — self-validating value objects (`Address`, `Email`). Also a
   Doctrine mapping, because `Address` is an `#[ORM\Embeddable]`.
 - `src/Enum/` — closed business sets (`FiscalPower`)
-- `src/State/` — finite state enums, and `Listener/` for their guards
+- `src/State/` — finite state enums, and `Listener/` for their guards and cascades
 - `src/Repository/` — Doctrine repositories
 - `src/Controller/` — invokable controllers; `Admin/` and `Platform/` hold the two
   EasyAdmin dashboards, `Public/` the anonymous volunteer pages
 - `src/Form/` — form types and the DTOs they bind to
 - `src/Declaration/` — the declaration use cases (`DeclarationSubmitter`,
   `DeclarationConfirmer`, `DeclarationDecider`) and their exceptions
-- `src/Organization/` — organization-level services (`DefaultEventTypes`)
+- `src/Organization/` — organization-level services (`DefaultTasks`)
 - `src/Tenant/` — tenant contract, resolvers, context, request listener
 - `src/Doctrine/Filter/` — the tenant SQL filter; `src/Doctrine/Type/` — DBAL types
 - `src/Security/` — roles, voters
@@ -302,10 +376,20 @@ Run `bin/console` and `composer` **inside the php container** (`make cli`, or
 `docker compose exec php …`). The entrypoint waits for the DB and applies pending
 migrations on container start.
 
-App served at `https://localhost`. Fixture accounts:
-`super-admin@benevolio.test` and `admin@cvvfcm.test`, password in
+App served at `https://localhost`. `composer reset` (so `make reset`) leaves three
+logins: **`admin@example.com` / `!ChangeMe!`** — a platform super-admin created by
+the reset script itself — plus the fixture accounts
+`super-admin@benevolio.test` and `admin@cvvfcm.test`, whose password is in
 `App\Factory\UserFactory::DEFAULT_PASSWORD`. The association's public form is at
 `/a/cvvfcm/declaration`.
+
+**Password rules are deliberately weak**, and this applies in production too:
+minimum `User::PASSWORD_MIN_LENGTH` (8) characters, and nothing else.
+`Assert\NotCompromisedPassword` was removed — it called haveibeenpwned on every
+write, which meant the account commands needed network egress and a well-known
+development password could not be used. Re-adding it means re-adding
+`not_compromised_password: false` for the test environment at the same time; see
+`config/packages/validator.yaml`.
 
 **Mail sent in development is caught by Mailpit at `http://localhost:8025`** —
 nothing leaves the machine. It is declared in `compose.override.yaml`, which is
@@ -391,11 +475,11 @@ kubectl -n benevolio exec -it deploy/benevolio-web -- \
 ```
 
 `app:organization:create` is the **third** creation path for an `Organization`, so
-it calls `DefaultEventTypes::createFor()` explicitly — see the warning under *Event
-types are rows, not code*. `app:user:create` reads the password from a hidden
-prompt and has no `--password` option by design: that would put a live credential
-in shell history and in `ps`. It validates through the entity, so
-`Assert\NotCompromisedPassword` calls haveibeenpwned — the command needs egress.
+it calls `DefaultTasks::createFor()` explicitly — see the warning under *Tasks are
+rows, not code*. `app:user:create` reads the password from a hidden prompt, or from
+`--password` for scripts that cannot answer one — `composer reset` uses it to seed
+the development account. **`--password` puts a live credential in shell history
+and in `ps`**, so it is for throwaway accounts; use the prompt for anything real.
 
 ## Conventions
 

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Controller\Admin;
 
-use App\Entity\EventType;
+use App\Entity\Task;
 use App\Factory\DeclarationActionFactory;
-use App\Factory\EventTypeFactory;
 use App\Factory\OrganizationFactory;
+use App\Factory\TaskFactory;
 use App\Factory\UserFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
@@ -23,7 +23,7 @@ use Zenstruck\Foundry\Test\ResetDatabase;
  * deleted (the database refuses, and the admin must see a sentence rather than a
  * 500), and one association never sees another's list.
  */
-final class EventTypeAdminTest extends WebTestCase
+final class TaskAdminTest extends WebTestCase
 {
     use Factories;
     use ResetDatabase;
@@ -36,15 +36,15 @@ final class EventTypeAdminTest extends WebTestCase
     }
 
     #[Test]
-    public function the_list_shows_only_this_associations_types(): void
+    public function the_list_shows_only_this_associations_tasks(): void
     {
         $mine = OrganizationFactory::createOne(['slug' => 'les-jardins']);
         $theirs = OrganizationFactory::createOne(['slug' => 'les-voiles']);
-        EventTypeFactory::new()->for($mine)->create(['name' => 'Chantier naval']);
-        EventTypeFactory::new()->for($theirs)->create(['name' => 'Secret des voiles']);
+        TaskFactory::new()->for($mine)->create(['name' => 'Chantier naval']);
+        TaskFactory::new()->for($theirs)->create(['name' => 'Secret des voiles']);
         $this->client->loginUser(UserFactory::new()->admin($mine)->create());
 
-        $this->client->request('GET', '/admin/event-type');
+        $this->client->request('GET', '/admin/task');
 
         self::assertResponseIsSuccessful();
         $text = $this->client->getCrawler()->filter('body')->text();
@@ -57,14 +57,14 @@ final class EventTypeAdminTest extends WebTestCase
      * EasyAdmin's developer-facing 409 page.
      */
     #[Test]
-    public function deleting_a_type_in_use_is_refused_with_a_readable_message(): void
+    public function deleting_a_task_in_use_is_refused_with_a_readable_message(): void
     {
         $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
         $action = DeclarationActionFactory::new()->for($organization)->create();
-        $typeInUse = $action->getEventType();
+        $typeInUse = $action->getTask();
         $this->client->loginUser(UserFactory::new()->admin($organization)->create());
 
-        $this->deleteEventType($typeInUse);
+        $this->deleteTask($typeInUse);
 
         $text = $this->client->getCrawler()->filter('body')->text();
         self::assertStringContainsString('ne peut pas être supprimé', $text);
@@ -72,31 +72,31 @@ final class EventTypeAdminTest extends WebTestCase
 
         // And it is still there.
         $this->entityManager()->clear();
-        self::assertNotNull($this->entityManager()->getRepository(EventType::class)->find($typeInUse->getId()));
+        self::assertNotNull($this->entityManager()->getRepository(Task::class)->find($typeInUse->getId()));
     }
 
     #[Test]
-    public function an_unused_type_can_be_deleted(): void
+    public function an_unused_task_can_be_deleted(): void
     {
         $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
-        $unused = EventTypeFactory::new()->for($organization)->create(['name' => 'Jamais utilisé']);
+        $unused = TaskFactory::new()->for($organization)->create(['name' => 'Jamais utilisé']);
         $this->client->loginUser(UserFactory::new()->admin($organization)->create());
 
-        $this->deleteEventType($unused);
+        $this->deleteTask($unused);
 
         $this->entityManager()->clear();
-        self::assertNull($this->entityManager()->getRepository(EventType::class)->find($unused->getId()));
+        self::assertNull($this->entityManager()->getRepository(Task::class)->find($unused->getId()));
     }
 
     /**
      * Goes through the real delete form, CSRF token and all — the point is to
      * exercise the controller, not to call deleteEntity() directly.
      */
-    private function deleteEventType(EventType $eventType): void
+    private function deleteTask(Task $task): void
     {
         $crawler = $this->client->request(
             'GET',
-            '/admin/event-type/'.$eventType->getId()->toRfc4122(),
+            '/admin/task/'.$task->getId()->toRfc4122(),
         );
         self::assertResponseIsSuccessful();
 
@@ -110,7 +110,7 @@ final class EventTypeAdminTest extends WebTestCase
 
         $this->client->request(
             'POST',
-            '/admin/event-type/'.$eventType->getId()->toRfc4122().'/delete',
+            '/admin/task/'.$task->getId()->toRfc4122().'/delete',
             ['token' => $token],
         );
 

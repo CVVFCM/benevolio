@@ -55,13 +55,17 @@ class DeclarationAction
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private Declaration $declaration;
 
+    /**
+     * Starts unconfirmed, in step with the declaration this line belongs to. A line
+     * only becomes SUBMITTED once the volunteer opens the emailed link, cascaded by
+     * App\State\Listener\DeclarationConfirmationCascade.
+     */
     #[ORM\Column(enumType: DeclarationActionState::class)]
-    private DeclarationActionState $state = DeclarationActionState::SUBMITTED;
+    private DeclarationActionState $state = DeclarationActionState::AWAITING_CONFIRMATION;
 
     /**
-     * NO ACTION, not CASCADE: deleting a type must never delete the declarations
-     * filed under it. An association retires a type with EventType::$active
-     * instead.
+     * NO ACTION, not CASCADE: deleting a task must never delete the declarations
+     * filed under it. An association retires a task with Task::$active instead.
      *
      * NO ACTION rather than RESTRICT, which refuses the delete just as firmly but
      * makes PostgreSQL raise SQLSTATE 23001 (restrict_violation). DBAL only maps
@@ -69,9 +73,9 @@ class DeclarationAction
      * escapes every catch — including EasyAdmin's own — and the admin gets a 500
      * instead of a sentence.
      */
-    #[ORM\ManyToOne(targetEntity: EventType::class)]
+    #[ORM\ManyToOne(targetEntity: Task::class)]
     #[ORM\JoinColumn(nullable: false, onDelete: 'NO ACTION')]
-    private EventType $eventType;
+    private Task $task;
 
     #[ORM\Column(length: self::TITLE_MAX_LENGTH)]
     private string $title;
@@ -113,9 +117,24 @@ class DeclarationAction
     #[ORM\Column(type: Types::DECIMAL, precision: 5, scale: 2)]
     private string $workHours;
 
+    /**
+     * The hourly rate in force WHEN THIS LINE WAS FILED, in cents. A snapshot, not a
+     * lookup, and never updated afterwards.
+     *
+     * Copied from Task::resolveHourlyRateCents() at construction. Reading the task's
+     * current rate instead would mean that editing a rate silently rewrote the
+     * valuation of declarations already validated — possibly already in the books.
+     * A filed declaration is a supporting document: the same reason a task cannot be
+     * deleted once used, applied to the figure rather than the label.
+     *
+     * There is deliberately no setter.
+     */
+    #[ORM\Column(type: Types::INTEGER)]
+    private int $hourlyRateCents;
+
     public function __construct(
         Declaration $declaration,
-        EventType $eventType,
+        Task $task,
         string $title,
         ?string $description,
         DateTimeImmutable $date,
@@ -128,7 +147,7 @@ class DeclarationAction
     ) {
         $this->id = Uuid::v7();
         $this->declaration = $declaration;
-        $this->eventType = $eventType;
+        $this->task = $task;
         $this->title = $title;
         $this->description = $description;
         // Only the day matters; a stray time component would break date grouping.
@@ -139,6 +158,8 @@ class DeclarationAction
         $this->ownVehicle = $ownVehicle;
         $this->fiscalPower = $ownVehicle ? $fiscalPower : null;
         $this->workHours = $workHours;
+        // Snapshot, taken once. See the property docblock.
+        $this->hourlyRateCents = $task->resolveHourlyRateCents();
 
         $declaration->addAction($this);
     }
@@ -194,9 +215,18 @@ class DeclarationAction
         return $this->state;
     }
 
-    public function getEventType(): EventType
+    public function getTask(): Task
     {
-        return $this->eventType;
+        return $this->task;
+    }
+
+    /**
+     * The rate this line was filed under — NOT the task's current rate. See the
+     * property docblock for why the difference matters.
+     */
+    public function getHourlyRateCents(): int
+    {
+        return $this->hourlyRateCents;
     }
 
     public function getTitle(): string

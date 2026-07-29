@@ -245,7 +245,7 @@ final class DeclarationDeciderTest extends KernelTestCase
         // Confirmed: a declaration awaiting the volunteer's click is not something
         // the treasurer can rule on, which the decider refuses outright.
         $declaration = DeclarationFactory::new()->confirmed()->create();
-        DeclarationActionFactory::new()->forDeclaration($declaration)->many($count)->create();
+        DeclarationActionFactory::new()->forDeclaration($declaration)->confirmed()->many($count)->create();
 
         $id = $declaration->getId();
         $this->entityManager->clear();

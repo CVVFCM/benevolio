@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Form\Declaration;
 
 use App\Entity\DeclarationAction;
-use App\Entity\EventType;
+use App\Entity\Task;
 use App\Enum\FiscalPower;
 use DateTimeImmutable;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -34,8 +34,8 @@ final class ActionDraft
      * choices are already restricted to the current tenant by OrganizationFilter,
      * so a draft cannot carry another association's type.
      */
-    #[Assert\NotNull(message: 'Choisissez un type d\'événement.', groups: [self::GROUP])]
-    public ?EventType $eventType = null;
+    #[Assert\NotNull(message: 'Choisissez la tâche effectuée.', groups: [self::GROUP])]
+    public ?Task $task = null;
 
     #[Assert\NotBlank(message: 'Indiquez l\'intitulé de l\'événement.', groups: [self::GROUP])]
     #[Assert\Length(max: DeclarationAction::TITLE_MAX_LENGTH, groups: [self::GROUP])]

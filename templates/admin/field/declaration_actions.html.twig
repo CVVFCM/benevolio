@@ -1,0 +1,84 @@
+{#
+    The declared lines, on the declaration detail page.
+
+    EasyAdmin renders a to-many association as a list of stringified links, which
+    tells a treasurer nothing about what they are being asked to rule on. This lays
+    the lines out so the figures are readable without a click each.
+
+    `field.value` is the collection. Rendered as a table because that is what this
+    is — one row per line, columns that line up so totals can be eyeballed.
+#}
+{% set actions = field.value %}
+
+{% if actions is empty %}
+    {# A declaration with no lines cannot reach a verdict either — the guard in
+       App\State\Listener\DeclarationTransitionGuard refuses it — so say so plainly
+       rather than showing an empty table. #}
+    <span class="declaration-actions__empty">Aucune action déclarée.</span>
+{% else %}
+    {# Not EasyAdmin's `datagrid` class: that carries a responsive layout which
+       repositions every cell with padding-inline-start: 35% and injects
+       data-label pseudo-elements, none of which applies to a read-only summary.
+       Claiming it only fought the styling below. #}
+    <table class="declaration-actions">
+        <thead>
+            <tr>
+                <th>Tâche</th>
+                <th>Intitulé</th>
+                <th>Date</th>
+                <th class="is-numeric">Jours</th>
+                <th class="is-numeric">Heures</th>
+                <th class="is-numeric">Trajets</th>
+                <th class="is-numeric">Km</th>
+                <th>Véhicule</th>
+                <th>État</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for action in actions %}
+                <tr>
+                    <td>{{ action.task.name }}</td>
+                    <td>
+                        {{ action.title }}
+                        {% if action.description %}
+                            <br><small class="declaration-actions__note">{{ action.description }}</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {{ action.date|format_date('medium') }}
+                        {% if action.consecutiveDays > 1 %}
+                            <br><small class="declaration-actions__note">
+                                au {{ action.endDate|format_date('medium') }}
+                            </small>
+                        {% endif %}
+                    </td>
+                    <td class="is-numeric">{{ action.consecutiveDays }}</td>
+                    <td class="is-numeric">{{ action.workHours }} h</td>
+                    <td class="is-numeric">{{ action.journeys }}</td>
+                    <td class="is-numeric">
+                        {{ action.totalDistanceKm }}
+                        {# One-way distance times journeys: show the working, because
+                           the total is the number that matters and the multiplication
+                           is where a reader would otherwise doubt it. #}
+                        <br><small class="declaration-actions__note">{{ action.distanceKm }} × {{ action.journeys }}</small>
+                    </td>
+                    <td>
+                        {% if action.usesOwnVehicle %}
+                            Personnel
+                            {% if action.fiscalPower %}
+                                <br><small class="declaration-actions__note">{{ action.fiscalPower.label }}</small>
+                            {% endif %}
+                        {% else %}
+                            <span class="declaration-actions__note">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge badge-{{ action.state.badgeStyle }}">
+                            {{ action.state.label }}
+                        </span>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endif %}
