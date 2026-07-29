@@ -56,6 +56,12 @@
                 <target>Tâches effectuées</target>
             </segment>
         </unit>
+        <unit id="menu.fiscal_years">
+            <segment>
+                <source>menu.fiscal_years</source>
+                <target>Exercices comptables</target>
+            </segment>
+        </unit>
 
         <unit id="dashboard.no_sections_yet">
             <segment>

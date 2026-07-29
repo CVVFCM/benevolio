@@ -87,7 +87,8 @@ final class DashboardController extends AbstractDashboardController
 
         yield MenuItem::section('menu.configuration');
         yield MenuItem::linkTo(TaskCrudController::class, 'menu.tasks', 'fa fa-tags');
+        yield MenuItem::linkTo(FiscalYearCrudController::class, 'menu.fiscal_years', 'fa fa-calendar-days');
 
-        // Valuation rates and tax receipts land here in the following lots.
+        // Tax receipts (CERFA 2041-RD) land here in a following lot.
     }
 }
