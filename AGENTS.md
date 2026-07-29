@@ -507,9 +507,10 @@ to the s3mock container (`compose.override.yaml`), production to the Scaleway re
 that is *set* is not an absent one: Symfony resolves `%env(S3_KEY)%` to `''` and the signing
 code then refuses to build a request, so the YAML default would be silently dead.
 
-**Production sets none of them yet**, nor `GOTENBERG_DSN` — the Helm chart has no S3 or
-Gotenberg wiring, so a deployed instance cannot store or render a receipt. Known, and separate
-from the naming above.
+**In production the chart supplies all five**, and refuses to render without the credentials —
+see *Deploying*. That is not belt-and-braces: because the defaults above are the development
+ones, an unset key does not fail loudly, it signs a request to AWS with the literal key
+`s3mock`.
 
 ### Testing it
 
@@ -586,10 +587,26 @@ moving tag.
 
 **Secrets come from two places, and the split matters.** Infrastructure ones are
 **organization** secrets shared with the other repos — `OCI_*`, `OKE_KUBECONFIG`,
-`CLOUDFLARE_API_TOKEN`. Application ones belong to this repo's **`prod`
-environment** — `APP_SECRET`, `DATABASE_URL`, `MAILER_DSN`. Never move an
-application secret up to the organization: it would hand every other repo the keys
-to this database.
+`CLOUDFLARE_API_TOKEN`, and `SCW_ACCESS_KEY` / `SCW_SECRET_KEY` for Object Storage,
+which cvvfcm-v4 already uses under those names. Application ones belong to this
+repo's **`prod` environment** — `APP_SECRET`, `DATABASE_URL`, `MAILER_DSN`. Never
+move an application secret up to the organization: it would hand every other repo
+the keys to this database.
+
+**Object storage and Gotenberg are chart-configured, and both refuse to render when
+they are not.** `app.s3Endpoint` / `s3Region` / `s3Bucket` land in the ConfigMap,
+`secrets.s3Key` / `s3Secret` in the Secret, and CD fills the last two from the
+Scaleway organization secrets. They are `required` for the same reason
+`secrets.mailerDsn` is, and worse: the defaults in
+`config/packages/flysystem.yaml` are the *development* ones, so an unset key does
+not fail — it signs a request to **AWS** with the literal key `s3mock` and the
+receipt is lost. The bucket must already exist; nothing in the chart creates it.
+
+The chart ships **its own Gotenberg** (`gotenberg.enabled`, ClusterIP only —
+it renders whatever HTML it is handed, so it must never be exposed).
+`GOTENBERG_DSN` is derived from that Service unless `app.gotenbergDsn` points
+somewhere else; with neither, rendering fails at template time rather than on the
+first validated declaration.
 
 **The database is external, and the chart cannot run its own.** It used to bundle
 the Bitnami PostgreSQL subchart; that is gone, along with `helm dependency update`

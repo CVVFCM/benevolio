@@ -53,3 +53,11 @@ Web component selector labels.
 {{ include "benevolio.selectorLabels" . }}
 app.kubernetes.io/component: web
 {{- end }}
+
+{{/*
+Gotenberg component selector labels.
+*/}}
+{{- define "benevolio.gotenberg.selectorLabels" -}}
+{{ include "benevolio.selectorLabels" . }}
+app.kubernetes.io/component: gotenberg
+{{- end }}

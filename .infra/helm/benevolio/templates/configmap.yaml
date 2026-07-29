@@ -14,6 +14,23 @@ data:
   {{- fail (printf "app.mailFrom must be a bare email address, got %q. A display name belongs nowhere here — the mailer already uses the association's name for that." $mailFrom) }}
   {{- end }}
   MAIL_FROM: {{ $mailFrom | quote }}
+  # Object storage for the CERFA receipts. Endpoint and region are the Scaleway ones; the
+  # bucket must exist already, since nothing here creates it. The key and secret are in the
+  # Secret beside this. Defaults for all five live in config/packages/flysystem.yaml, but
+  # they are the DEVELOPMENT ones — left unset here the application would sign requests to
+  # AWS with the literal key "s3mock", so the three below are always sent.
+  S3_ENDPOINT: {{ required "app.s3Endpoint is required (e.g. https://s3.fr-par.scw.cloud) — unset, receipts would be written to AWS with development credentials" .Values.app.s3Endpoint | quote }}
+  S3_REGION: {{ .Values.app.s3Region | quote }}
+  S3_BUCKET: {{ required "app.s3Bucket is required (the bucket must already exist)" .Values.app.s3Bucket | quote }}
+  # Where the receipt overlay is rendered. Empty → the chart's own Gotenberg Service, which
+  # is the point of shipping one; set it to reuse an instance elsewhere.
+  {{- if .Values.app.gotenbergDsn }}
+  GOTENBERG_DSN: {{ .Values.app.gotenbergDsn | quote }}
+  {{- else if .Values.gotenberg.enabled }}
+  GOTENBERG_DSN: {{ printf "http://%s-gotenberg:3000" (include "benevolio.fullname" .) | quote }}
+  {{- else }}
+  {{- fail "Either gotenberg.enabled must be true or app.gotenbergDsn must point at an instance: without one, validating a declaration cannot produce a receipt." }}
+  {{- end }}
   # Bound FrankenPHP threads/workers (it otherwise sizes from the host core count and
   # OOMs the pod's memory limit). CLI pods (migrate) ignore these.
   FRANKENPHP_CONFIG: {{ printf "num_threads %d" (.Values.web.frankenphp.numThreads | int) | quote }}
