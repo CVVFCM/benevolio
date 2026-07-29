@@ -47,55 +47,14 @@ app:
   # address, or the mail is accepted here and dropped there.
   mailFrom: ""
 
-# Bundled PostgreSQL (Bitnami subchart). When enabled, DATABASE_URL is derived
-# automatically from postgresql.auth below and externalDatabase.url is ignored.
-postgresql:
-  enabled: false
-  auth:
-    username: benevolio
-    database: benevolio
-    # Name of a pre-existing Secret holding the DB credentials (keys: "password",
-    # "postgres-password"). Owned outside the helm release so it survives uninstall
-    # and never regenerates — both the subchart and the app read it. Created by CD.
-    # If empty, the subchart auto-generates a password (not stable across uninstalls).
-    existingSecret: ""
-    secretKeys:
-      userPasswordKey: password
-      adminPasswordKey: postgres-password
-    password: ""
-  primary:
-    persistence:
-      enabled: true
-      storageClass: longhorn
-      # 4Gi, not the 8Gi inherited from meteoprint. Longhorn keeps two replicas of
-      # every volume and the cluster's two nodes had ~7.8Gi schedulable each once
-      # meteoprint and cvvfcm-preprod had taken their share — so 8Gi could not be
-      # placed at all, and the volume came up `faulted`. A declaration is a handful
-      # of short text rows; 4Gi is still years of them.
-      size: 4Gi
-    resources:
-      requests:
-        cpu: 250m
-        memory: 256Mi
-      limits:
-        cpu: 500m
-        memory: 2Gi
-  # Bitnami relocated its free images to docker.io/bitnamilegacy in Aug 2025. The
-  # pinned chart (~18.7) still references valid images; if pulls fail, switch to the
-  # legacy repo and allow it:
-  #   image:
-  #     repository: bitnamilegacy/postgresql
-  #   global:
-  #     security:
-  #       allowInsecureImages: true
-
-# External PostgreSQL — used only when postgresql.enabled is false.
-externalDatabase:
-  # Full Doctrine DSN, e.g.
+# PostgreSQL, always external. The chart used to be able to run its own via the
+# Bitnami subchart; that is gone, so there is exactly one way to point this at a
+# database and no second path to keep working.
+database:
+  # Full Doctrine DSN, supplied by CD from the DATABASE_URL secret, e.g.
   #   postgresql://benevolio:secret@db.internal:5432/benevolio?serverVersion=18&charset=utf8
+  # Required — the chart refuses to render without it.
   url: ""
-  # serverVersion advertised in the DATABASE_URL derived for the bundled DB.
-  serverVersion: "18"
 
 # Secret values. Supply via --set, a values.local.yaml, or a sealed-secret.
 secrets:

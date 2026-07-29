@@ -329,14 +329,24 @@ moving tag.
 **Secrets come from two places, and the split matters.** Infrastructure ones are
 **organization** secrets shared with the other repos — `OCI_*`, `OKE_KUBECONFIG`,
 `CLOUDFLARE_API_TOKEN`. Application ones belong to this repo's **`prod`
-environment** — `APP_SECRET`, `DATABASE_PASSWORD`, `MAILER_DSN`. Never move an
+environment** — `APP_SECRET`, `DATABASE_URL`, `MAILER_DSN`. Never move an
 application secret up to the organization: it would hand every other repo the keys
 to this database.
 
-`DATABASE_PASSWORD` is **write-once in practice**. It seeds the `benevolio-pg-auth`
-Secret, which is created by CD *outside* the Helm release so it survives
-`helm uninstall`. Changing it does not re-key the existing volume — Postgres was
-initialised with the old one and would simply refuse the new.
+**The database is external, and the chart cannot run its own.** It used to bundle
+the Bitnami PostgreSQL subchart; that is gone, along with `helm dependency update`
+and the `benevolio-pg-auth` Secret CD used to create. The entire connection is one
+`DATABASE_URL` DSN from the `prod` environment. There is deliberately no second
+code path to keep working.
+
+**Both DSNs are shape-checked at render time, not merely required.** Being
+non-empty was not enough: `MAILER_DSN` was once set to the whole environment line,
+`MAILER_DSN=brevo+api://…`, which passed `required`, deployed green, satisfied
+every probe, and then threw *"The mailer DSN must contain a scheme"* on the
+volunteer's first page load — a 500 on the only page the public uses, while
+`/admin` and `/health` stayed fine. `templates/secret.yaml` now refuses a
+`mailerDsn` without a scheme and a `database.url` that is not `postgresql://`, and
+names the offending prefix. Keep that guard on any DSN added later.
 
 **`secrets.mailerDsn` is `required` in the chart, on purpose.** Since a declaration
 is only final once the volunteer opens an emailed link, an instance that cannot

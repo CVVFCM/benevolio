@@ -41,10 +41,6 @@ spec:
                 name: {{ include "benevolio.fullname" . }}-config
             - secretRef:
                 name: {{ include "benevolio.fullname" . }}-secret
-          {{- if .Values.postgresql.enabled }}
-          env:
-            {{- include "benevolio.dbEnv" . | nindent 12 }}
-          {{- end }}
           resources:
             {{- toYaml .Values.migrations.resources | nindent 12 }}
 {{- end }}

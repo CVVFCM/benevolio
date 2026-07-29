@@ -46,10 +46,6 @@ spec:
                 name: {{ include "benevolio.fullname" . }}-config
             - secretRef:
                 name: {{ include "benevolio.fullname" . }}-secret
-          {{- if .Values.postgresql.enabled }}
-          env:
-            {{- include "benevolio.dbEnv" . | nindent 12 }}
-          {{- end }}
           # /health, not /: this application routes nothing at the root, so the
           # original probe 404'd forever and the pod never turned ready. Not a
           # tenant URL either — see App\Controller\HealthController for why.

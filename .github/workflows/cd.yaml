@@ -112,31 +112,38 @@ jobs:
           echo "${{ secrets.OKE_KUBECONFIG }}" > ~/.kube/config
           chmod 600 ~/.kube/config
 
-      - name: Update the chart dependencies
-        run: helm dependency update "$CHART"
-
-      # Owned outside the Helm release on purpose: it survives `helm uninstall`, so
-      # reinstalling against the existing PVC still matches the password Postgres
-      # was initialised with. Changing DATABASE_PASSWORD later does NOT re-key an
-      # existing volume — the pod would simply fail to authenticate.
-      - name: Ensure the database credentials secret
-        run: |
-          kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
-          kubectl -n "$NAMESPACE" create secret generic "$RELEASE-pg-auth" \
-            --from-literal=password="${{ secrets.DATABASE_PASSWORD }}" \
-            --from-literal=postgres-password="${{ secrets.DATABASE_PASSWORD }}" \
-            --dry-run=client -o yaml | kubectl apply -f -
-
+      # The database is external and the chart has no subchart left, so there is no
+      # `helm dependency update` step and no credentials Secret to create: the whole
+      # connection arrives as one DSN.
       - name: Helm deploy
+        env:
+          APP_SECRET: ${{ secrets.APP_SECRET }}
+          MAILER_DSN: ${{ secrets.MAILER_DSN }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
+          # Through a file rather than --set. A DSN may legitimately contain a comma,
+          # which --set reads as a value separator, and it would then be silently
+          # truncated. json.dumps quotes and escapes whatever the secret actually
+          # holds, and JSON is valid YAML.
+          umask 077
+          python3 - > /tmp/secrets.yaml <<'PY'
+          import json, os
+          print(json.dumps({
+              'secrets': {
+                  'appSecret': os.environ['APP_SECRET'],
+                  'mailerDsn': os.environ['MAILER_DSN'],
+              },
+              'database': {'url': os.environ['DATABASE_URL']},
+          }))
+          PY
+
           helm upgrade --install "$RELEASE" "$CHART" \
             --namespace "$NAMESPACE" --create-namespace \
             --set image.tag="${{ github.sha }}" \
-            --set postgresql.enabled=true \
-            --set postgresql.auth.existingSecret="$RELEASE-pg-auth" \
-            --set secrets.appSecret="${{ secrets.APP_SECRET }}" \
-            --set secrets.mailerDsn="${{ secrets.MAILER_DSN }}" \
+            --values /tmp/secrets.yaml \
             --wait --rollback-on-failure --timeout 5m
+
+          rm -f /tmp/secrets.yaml
 
       - name: Purge the Cloudflare cache
         env:
