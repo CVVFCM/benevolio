@@ -30,14 +30,11 @@ use function sprintf;
  * backoffice, which already requires an account to reach. After that it stays
  * useful: adding a colleague without handing them the platform CRUD.
  *
- * The password is only ever read from a hidden prompt — deliberately no --password
- * option, which would put a live credential in shell history, in `ps` output and
- * in the CI logs of anyone who scripted it.
- *
- * NOTE: validation includes Assert\NotCompromisedPassword, which calls the
- * haveibeenpwned API. It is disabled in the test environment (see
- * config/packages/validator.yaml) but active in production, so this command needs
- * egress when run against a real cluster.
+ * The password comes from a hidden prompt by default. --password exists for scripts
+ * that cannot answer one — `composer reset` seeds a development account with it —
+ * and carries a real cost: a password passed that way lands in shell history, in
+ * `ps` output, and in the logs of anything that automates it. Use it for throwaway
+ * credentials, and the prompt for anything that matters.
  */
 #[AsCommand(
     name: 'app:user:create',
@@ -73,6 +70,13 @@ final class CreateUserCommand extends Command
                 null,
                 InputOption::VALUE_REQUIRED,
                 'Raccourci de l\'association — obligatoire pour un administrateur d\'association',
+            )
+            ->addOption(
+                'password',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Mot de passe, pour les scripts. Visible dans l\'historique du shell et dans « ps » : '
+                .'à réserver aux comptes jetables. Sans cette option, il est demandé sans écho.',
             );
     }
 
@@ -125,7 +129,15 @@ final class CreateUserCommand extends Command
             }
         }
 
-        $password = $io->askHidden('Mot de passe');
+        $password = $input->getOption('password');
+        assert(null === $password || is_string($password));
+
+        // Only prompt when nothing was supplied: an empty --password is a mistake
+        // worth reporting, not a reason to fall back to asking.
+        if (null === $password) {
+            $password = $io->askHidden('Mot de passe');
+        }
+
         if (!is_string($password) || '' === $password) {
             $io->error('Mot de passe vide.');
 

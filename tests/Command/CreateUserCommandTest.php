@@ -20,9 +20,10 @@ use Zenstruck\Foundry\Test\ResetDatabase;
 /**
  * The command that makes a fresh deployment reachable at all.
  *
- * Assert\NotCompromisedPassword would call haveibeenpwned on every run; it is off
- * in the test environment (config/packages/validator.yaml), which is why the
- * passwords below can be obviously fake.
+ * The only password rule left is a minimum length of User::PASSWORD_MIN_LENGTH.
+ * Assert\NotCompromisedPassword used to call haveibeenpwned on every run and is
+ * gone, so an obviously fake password is fine here — and would be fine in
+ * production too, which is the trade that was made.
  */
 final class CreateUserCommandTest extends KernelTestCase
 {
@@ -147,12 +148,64 @@ final class CreateUserCommandTest extends KernelTestCase
         self::assertStringContainsString('sorcier', $this->display());
     }
 
+    /**
+     * One character under the limit, derived from the constant rather than written
+     * out: the point is the boundary, not the number, and the number has already
+     * moved once.
+     */
     #[Test]
     public function a_password_below_the_minimum_length_is_refused(): void
     {
-        $this->command->setInputs(['court']);
+        $this->command->setInputs([str_repeat('a', User::PASSWORD_MIN_LENGTH - 1)]);
 
         $exitCode = $this->command->execute(['email' => 'patron@plateforme.test', '--role' => 'super-admin']);
+
+        self::assertSame(Command::FAILURE, $exitCode);
+        self::assertCount(0, $this->entityManager()->getRepository(User::class)->findAll());
+    }
+
+    #[Test]
+    public function a_password_at_exactly_the_minimum_length_is_accepted(): void
+    {
+        $this->command->setInputs([str_repeat('a', User::PASSWORD_MIN_LENGTH)]);
+
+        $this->command->execute(['email' => 'patron@plateforme.test', '--role' => 'super-admin']);
+
+        $this->command->assertCommandIsSuccessful();
+    }
+
+    /**
+     * What composer reset relies on. No setInputs(): supplying --password must mean
+     * the command never asks, or a non-interactive script would hang on the prompt.
+     */
+    #[Test]
+    public function the_password_can_be_passed_as_an_option_for_scripts(): void
+    {
+        $this->command->execute([
+            'email' => 'script@plateforme.test',
+            '--role' => 'super-admin',
+            '--password' => self::PASSWORD,
+        ]);
+
+        $this->command->assertCommandIsSuccessful();
+        self::assertTrue(
+            self::getContainer()->get(UserPasswordHasherInterface::class)
+                ->isPasswordValid($this->user('script@plateforme.test'), self::PASSWORD),
+        );
+    }
+
+    /**
+     * An empty --password is a mistake in the caller, so it is reported rather than
+     * quietly turning into a prompt that a script cannot answer.
+     */
+    #[Test]
+    public function an_empty_password_option_is_refused_rather_than_prompted(): void
+    {
+        $exitCode = $this->command->execute([
+            'email' => 'script@plateforme.test',
+            '--role' => 'super-admin',
+            '--password' => '',
+        ]);
 
         self::assertSame(Command::FAILURE, $exitCode);
         self::assertCount(0, $this->entityManager()->getRepository(User::class)->findAll());

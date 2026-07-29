@@ -36,7 +36,7 @@ use function in_array;
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     public const int EMAIL_MAX_LENGTH = 180;
-    public const int PASSWORD_MIN_LENGTH = 12;
+    public const int PASSWORD_MIN_LENGTH = 8;
 
     #[ORM\Id]
     #[ORM\Column(type: UuidType::NAME, unique: true)]
@@ -58,7 +58,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      * duration of one request.
      */
     #[Assert\Length(min: self::PASSWORD_MIN_LENGTH)]
-    #[Assert\NotCompromisedPassword]
     private ?string $plainPassword = null;
 
     /**

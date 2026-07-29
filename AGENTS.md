@@ -376,10 +376,20 @@ Run `bin/console` and `composer` **inside the php container** (`make cli`, or
 `docker compose exec php …`). The entrypoint waits for the DB and applies pending
 migrations on container start.
 
-App served at `https://localhost`. Fixture accounts:
-`super-admin@benevolio.test` and `admin@cvvfcm.test`, password in
+App served at `https://localhost`. `composer reset` (so `make reset`) leaves three
+logins: **`admin@example.com` / `!ChangeMe!`** — a platform super-admin created by
+the reset script itself — plus the fixture accounts
+`super-admin@benevolio.test` and `admin@cvvfcm.test`, whose password is in
 `App\Factory\UserFactory::DEFAULT_PASSWORD`. The association's public form is at
 `/a/cvvfcm/declaration`.
+
+**Password rules are deliberately weak**, and this applies in production too:
+minimum `User::PASSWORD_MIN_LENGTH` (8) characters, and nothing else.
+`Assert\NotCompromisedPassword` was removed — it called haveibeenpwned on every
+write, which meant the account commands needed network egress and a well-known
+development password could not be used. Re-adding it means re-adding
+`not_compromised_password: false` for the test environment at the same time; see
+`config/packages/validator.yaml`.
 
 **Mail sent in development is caught by Mailpit at `http://localhost:8025`** —
 nothing leaves the machine. It is declared in `compose.override.yaml`, which is
@@ -466,10 +476,10 @@ kubectl -n benevolio exec -it deploy/benevolio-web -- \
 
 `app:organization:create` is the **third** creation path for an `Organization`, so
 it calls `DefaultTasks::createFor()` explicitly — see the warning under *Tasks are
-rows, not code*. `app:user:create` reads the password from a hidden
-prompt and has no `--password` option by design: that would put a live credential
-in shell history and in `ps`. It validates through the entity, so
-`Assert\NotCompromisedPassword` calls haveibeenpwned — the command needs egress.
+rows, not code*. `app:user:create` reads the password from a hidden prompt, or from
+`--password` for scripts that cannot answer one — `composer reset` uses it to seed
+the development account. **`--password` puts a live credential in shell history
+and in `ps`**, so it is for throwaway accounts; use the prompt for anything real.
 
 ## Conventions
 
