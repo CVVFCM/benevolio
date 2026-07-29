@@ -19,10 +19,11 @@ use Symfony\Component\Validator\Constraints as Assert;
  * A *tâche effectuée* — what a volunteer actually did: *travaux*, *régate*,
  * *arbitrage*, and whatever else the association runs.
  *
- * Named for the work, not the occasion. It was `EventType` until it carried an
- * hourly rate, at which point "type of event" became the wrong noun: a rate
- * belongs to a kind of work, not to a kind of gathering. The occasion keeps its own
- * free-text title on the line (`DeclarationAction::$title`).
+ * Named for the work, not the occasion: a valuation rate attaches to a kind of
+ * work, not to a kind of gathering, which is why `EventType` was the wrong noun.
+ * The rate itself lives on App\Entity\FiscalYear — it holds for a financial year,
+ * not forever. The occasion keeps its own free-text title on the line
+ * (`DeclarationAction::$title`).
  *
  * This used to be a backed enum. It became an entity so each association manages
  * its own list: a sailing club and a neighbourhood association have nothing in
@@ -64,21 +65,6 @@ class Task implements TenantAware
      */
     #[ORM\Column]
     private bool $active = true;
-
-    /**
-     * What one hour of THIS task is worth, IN CENTS, or null to use the
-     * association's default. Arbitrage may be worth more than sweeping the yard;
-     * most associations will leave this empty and set one rate for everything.
-     *
-     * See Organization::$defaultHourlyRateCents for why cents.
-     */
-    #[ORM\Column(type: Types::INTEGER, nullable: true)]
-    #[Assert\Positive(message: 'Le taux horaire doit être supérieur à zéro.')]
-    #[Assert\LessThanOrEqual(
-        value: Organization::MAX_HOURLY_RATE_CENTS,
-        message: 'Le taux horaire ne peut pas dépasser {{ compared_value }} centimes.',
-    )]
-    private ?int $hourlyRateCents = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private DateTimeImmutable $createdAt;
@@ -128,32 +114,6 @@ class Task implements TenantAware
         $this->active = $active;
 
         return $this;
-    }
-
-    public function getHourlyRateCents(): ?int
-    {
-        return $this->hourlyRateCents;
-    }
-
-    public function setHourlyRateCents(?int $hourlyRateCents): self
-    {
-        $this->hourlyRateCents = $hourlyRateCents;
-
-        return $this;
-    }
-
-    /**
-     * The rate actually in force for this task: its own, or the association's
-     * default when it has none.
-     *
-     * Always returns a figure, because Organization::$defaultHourlyRateCents is
-     * required. This is the ONE place the fallback is expressed — a caller reaching
-     * for getHourlyRateCents() directly gets the raw, possibly-null override and
-     * will get the valuation wrong.
-     */
-    public function resolveHourlyRateCents(): int
-    {
-        return $this->hourlyRateCents ?? $this->organization->getDefaultHourlyRateCents();
     }
 
     public function getCreatedAt(): DateTimeImmutable

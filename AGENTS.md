@@ -18,9 +18,16 @@ similar and are accounted for completely differently:
 
 | Business term | Accounting treatment | Tax receipt? |
 |---|---|---|
-| **bénévolat valorisé** — donated hours, valued at a rate | Off-balance-sheet, PCG class 8: debit **864** *Personnel bénévole* / credit **870** *Bénévolat* (ANC règlement 2018-06) | **No.** Donated time is never receiptable. |
-| **abandon de frais** — expenses the volunteer paid and waives reimbursement of (mileage, tolls, supplies) | A real donation: **754x** | **Yes** — this is what generates a CERFA. |
-| **dons en nature** — goods or services given | Off-balance-sheet **871**/**875**, or **754** when it is a real donation with a receipt | Depends on which of the two it is. |
+| **bénévolat valorisé** — donated hours, valued at a rate | Off-balance-sheet, PCG class 8: debit **864** *Personnel bénévole* / credit **875** *Bénévolat* (ANC règlement 2018-06) | **No.** Donated time is never receiptable. |
+| **abandon de frais** — expenses the volunteer paid and waives reimbursement of (mileage, tolls, supplies) | A real flow: debit the charge by nature (**6251** *Voyages et déplacements*) / credit **4681** *Frais des bénévoles*, then debit **4681** / credit **75412** *Abandons de frais par les bénévoles* (art. 141-4) | **Yes** — this is what generates a CERFA. |
+| **dons en nature** — goods or services given | Off-balance-sheet **870** *Dons en nature* / **871** *Prestations en nature*, or **754x** when there is a real flow | Depends on which of the two it is. |
+
+**CORRECTED — this project had two of these wrong.** Règlement ANC 2018-06 **swapped**
+two numbers from the old 99-01, where 870 was *Bénévolat* and 875 *Dons en nature*. It
+is now the other way round: **bénévolat credits 875**, and 870 is *dons en nature*.
+Anything citing 864/870 for volunteer hours — including earlier versions of this
+file — is quoting the superseded text. The codes live in
+`App\Accounting\PcgAccount`, so no account number is written as a bare string.
 
 The receipt is **CERFA n°11580\*05**, form **2041-RD**. Numbering must be
 continuous per financial year and never reused.
@@ -29,8 +36,20 @@ Two consequences that are easy to get wrong:
 
 - Valuing volunteer hours and issuing a tax receipt are **not** the same
   pipeline. Do not let a valued hour reach a receipt.
-- The volunteer mileage scale (*barème kilométrique bénévole*) is its own, lower
-  scale — not the general one used for salaried employees.
+- **There is no separate volunteer mileage scale any more.** Art. 21 of loi
+  n° 2022-1157 amended CGI art. 200, 1 ter so that from revenus 2022 a volunteer uses
+  the **general salaried barème** (CGI ann. IV art. 6 B, *arrêté du 27 mars 2023*)
+  — by puissance fiscale **and** distance band. The old flat 0,324 €/km bénévole
+  rate is abolished, and earlier versions of this file were wrong to call it a lower
+  scale of its own.
+  **BOFiP BOI-IR-RICI-250-20 is stale**: still the 12/09/2012 version, still printing
+  the old flat rate. Cite it for the conditions (§170), the justificatifs (§210) and
+  the renonciation wording (§240) — never for figures.
+- The barème is **piecewise**, and only its first band is modelled: bands above
+  5 000 km use a different formula with an additive constant, keyed to the volunteer's
+  *cumulative* kilometres for the year. `App\Accounting\ContributionValuation`
+  carries a `beyondFirstBand` flag and the ledger page says the figure is understated
+  rather than presenting one it cannot stand behind.
 
 **Volunteers have no account.** They are not `User`s. They identify themselves by
 filling the first step of the public form under `/a/{organizationSlug}/declaration`.
@@ -48,7 +67,7 @@ differently, so never sum them together:
 
 | Field | Meaning |
 |---|---|
-| `workHours` | `DECIMAL(5,2)`, in hours. Donated time → 864/870, never receiptable. Totals are summed in exact integer hundredths (`getWorkHoursInHundredths()`), not as floats; ext-bcmath is not installed. |
+| `workHours` | `DECIMAL(5,2)`, in hours. Donated time → 864/875, never receiptable. Totals are summed in exact integer hundredths (`getWorkHoursInHundredths()`), not as floats; ext-bcmath is not installed. |
 | `distanceKm` | Kilometres of **one journey, one way**. |
 | `journeys` | Number of **one-way** journeys — a return trip is two. Total distance is `distanceKm × journeys`. |
 | `fiscalPower` | An enum of the *barème* brackets (≤3 CV, 4, 5, 6, ≥7 CV), because the scale distinguishes only those. Required exactly when `ownVehicle` is true. **No euro rates anywhere**: the scale is republished yearly and belongs with valuation, keyed by financial year. |
@@ -73,50 +92,51 @@ Deleting a task an action references is refused by the FK: a filed declaration m
 not lose the label it was filed under. Retire one with `active` instead — it
 vanishes from new forms and still renders on old actions.
 
-### Money — cents, always
+### Money — cents for amounts, millièmes for a mileage rate
 
-**Every monetary amount in this codebase is an integer number of cents**, named
-`…RateCents` so a caller cannot mistake the unit. Never a float, and not a DECIMAL
-either: a rate multiplies hours that are already summed in integer hundredths, and
-`ext-bcmath` is not installed, so integers are the only way that arithmetic stays
-exact. EasyAdmin's `MoneyField` stores cents natively, so nothing converts — and
-nothing can convert twice.
+**Every monetary *amount* is an integer number of cents**, named `…Cents`. Never a
+float, and not a DECIMAL: an amount is multiplied by hours already summed in integer
+hundredths, and `ext-bcmath` is not installed, so integers are the only way the
+arithmetic stays exact. EasyAdmin's `MoneyField` stores cents natively.
 
-- `Organization::$defaultHourlyRateCents` — **required**, defaulting to
-  `DEFAULT_HOURLY_RATE_CENTS` (12,00 €, roughly the SMIC horaire brut: a starting
-  point, not a recommendation).
-- `Task::$hourlyRateCents` — **optional** override. `Task::resolveHourlyRateCents()`
-  is the ONE place the fallback lives; reaching for `getHourlyRateCents()` directly
-  gets the raw, possibly-null override and will get the valuation wrong.
-- `DeclarationAction::$hourlyRateCents` — **a snapshot**, copied at construction and
-  never updated, with no setter. Reading the task's current rate instead would mean
-  that editing a rate silently rewrote the valuation of declarations already
-  validated, possibly already in the books. Same argument as the label above, applied
-  to the figure. `tests/Entity/HourlyRateTest` is what holds this.
+**A mileage *rate* is in millièmes d'euro per kilometre**, named `milliEurosPerKm`.
+The published figures have three decimals — 0,529 €/km for 3 CV et moins — so cents
+would round the law. This is the one exception to "always cents", and it exists because
+a rate is not an amount.
 
-This is the association's **own** valuation of donated time, for PCG 864/870. It is
-**not** the mileage *barème*, which the state republishes yearly and which is still
-deliberately absent — see `fiscalPower` above. Nothing applies these rates yet:
-valuation itself is still on the deferred list.
+`App\Accounting\ContributionValuator` does the arithmetic, and **only the final
+division rounds**, half away from zero — the *arrondi au centime* an accountant expects.
+`intdiv()` alone truncates, which would shave a centime off roughly half of all
+valuations and always in the association's favour, which is the direction an auditor
+notices.
 
-**TRAP — that FK is `ON DELETE NO ACTION`, and the word matters.** `RESTRICT`
-refuses the delete just as firmly, but makes PostgreSQL raise SQLSTATE **23001**
-(`restrict_violation`), and DBAL's PostgreSQL `ExceptionConverter` only maps
-**23503** to `ForeignKeyConstraintViolationException`. Under `RESTRICT` the error
-is therefore a generic driver exception that no `catch` in this codebase — nor
-EasyAdmin's own, in `AbstractCrudController::delete()` — will ever see, and the
-admin gets a 500. `NO ACTION` yields 23503 and the catch works. Any other FK meant
-to refuse a delete must use `NO ACTION` for the same reason.
+### Rates live on the exercice, never on the Task or the Organization
 
-`TaskCrudController::deleteEntity()` still overrides EasyAdmin's handling:
-left alone, EasyAdmin turns the caught exception into its own 409 page, whose
-message tells a *developer* to disable the delete action or add `cascade`, in
-English. A treasurer gets a French sentence naming the type instead.
+`App\Entity\FiscalYear` owns them, because they change: the barème is republished by
+the state and an association revisits what an hour is worth. A rate on the `Task` would
+silently rewrite years already closed — lot 5 did exactly that and lot 6 undid it.
 
-A `Person` is matched by **(organization, email)**, and `Email` lowercases itself
-so that holds when the volunteer types a different case next year. Their address
-is the *current* one, overwritten by each declaration; if a re-issued receipt ever
-needs the address as it was at the time, that snapshot belongs on `Declaration`.
+Each rate is a **default plus optional per-type overrides**, held as rows
+(`FiscalYearTaskRate`, `FiscalYearMileageRate`) rather than columns, so the override set
+stays sparse and adding a `FiscalPower` bracket needs no migration.
+`FiscalYear::hourlyRateCentsFor()` and `::milliEurosPerKmFor()` are **the only places
+the fallback lives** — reaching for the raw override gets the default when one exists,
+which is a wrong figure rather than a missing one.
+
+**Two exercices of one association must not overlap**, or a contribution would fall in
+both and be counted twice. That needs a repository lookup, so it is
+`App\Validator\FiscalYearDoesNotOverlapValidator` and not an `Assert\Callback` — an
+entity must not reach for a repository. Adjacent years are fine.
+
+A contribution belongs to an exercice by its **own start date**
+(`FiscalYear::contains()`), so a line spanning a year boundary belongs wholly to the
+year it began in. A line no
+exercice covers is stored and listed but **unvalued**: without a barème for the period
+there is no figure to state.
+
+The ledger (`/admin/fiscal-year/{id}/ledger`) lists **validated lines only** — an
+unruled line is not bookable — grouped by volunteer, which is the unit a CERFA is
+issued for and the unit the barème's distance bands are keyed to.
 
 ### Double opt-in — a declaration is not final when it is submitted
 

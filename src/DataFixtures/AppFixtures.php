@@ -4,12 +4,18 @@ declare(strict_types=1);
 
 namespace App\DataFixtures;
 
+use App\Entity\Organization;
+use App\Enum\FiscalPower;
 use App\Factory\DeclarationActionFactory;
 use App\Factory\DeclarationFactory;
+use App\Factory\FiscalYearFactory;
 use App\Factory\OrganizationFactory;
 use App\Factory\UserFactory;
+use DateTimeImmutable;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
+
+use function sprintf;
 
 /**
  * Development dataset for the association the application is being built for.
@@ -69,5 +75,68 @@ final class AppFixtures extends Fixture
         // "en attente de confirmation" too, in step with their declaration.
         $awaitingConfirmation = DeclarationFactory::new()->for($organization)->create();
         DeclarationActionFactory::new()->forDeclaration($awaitingConfirmation)->many(2)->create();
+
+        $this->loadFiscalYears($organization);
+    }
+
+    /**
+     * Two exercices with the real barème, and validated contributions inside them.
+     *
+     * Both are needed for the ledger page to show anything at all: it lists **validated**
+     * lines whose date falls inside the exercice, and nothing above is either. The dates
+     * here are explicit, unlike DeclarationActionFactory's defaults, which scatter them
+     * relative to *now* — a fixed exercice would otherwise catch a run-dependent subset.
+     */
+    private function loadFiscalYears(Organization $organization): void
+    {
+        // 2025 — figures actually in force. CGI annexe IV art. 6 B, arrêté du
+        // 27 mars 2023.
+        $closed = FiscalYearFactory::new()
+            ->for($organization)
+            ->calendarYear(2025)
+            ->withPublishedBareme()
+            ->create();
+
+        // 2026 — PROVISIONAL. No arrêté has been published for revenus 2026, and
+        // art. 6 B has not been revalorised since March 2023, so these are the 2025
+        // figures held over. Check them against the arrêté when one appears.
+        $current = FiscalYearFactory::new()
+            ->for($organization)
+            ->calendarYear(2026)
+            ->withPublishedBareme()
+            ->create();
+
+        foreach ([$closed, $current] as $fiscalYear) {
+            $year = (int) $fiscalYear->getName();
+
+            // Hours only: bénévolat valorisé, débit 864 / crédit 875, never receiptable.
+            $hoursOnly = DeclarationFactory::new()->for($organization)->confirmed()->create();
+            DeclarationActionFactory::new()
+                ->forDeclaration($hoursOnly)
+                ->validated()
+                ->create([
+                    'date' => new DateTimeImmutable(sprintf('%d-03-15', $year)),
+                    'workHours' => '7.25',
+                    'journeys' => 0,
+                    'distanceKm' => 0,
+                    'ownVehicle' => false,
+                    'fiscalPower' => null,
+                ]);
+
+            // Hours and travel in the volunteer's own vehicle: the line that produces
+            // both families of entry, and the only one that can lead to a CERFA.
+            $withTravel = DeclarationFactory::new()->for($organization)->confirmed()->create();
+            DeclarationActionFactory::new()
+                ->forDeclaration($withTravel)
+                ->validated()
+                ->create([
+                    'date' => new DateTimeImmutable(sprintf('%d-06-21', $year)),
+                    'workHours' => '5.50',
+                    'journeys' => 2,
+                    'distanceKm' => 34,
+                    'ownVehicle' => true,
+                    'fiscalPower' => FiscalPower::FIVE_CV,
+                ]);
+        }
     }
 }

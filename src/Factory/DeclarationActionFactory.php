@@ -77,6 +77,27 @@ final class DeclarationActionFactory extends PersistentObjectFactory
     }
 
     /**
+     * A line a treasurer has already ruled on, which is the only kind that reaches the
+     * ledger — App\Accounting\LedgerBuilder lists validated lines and nothing else.
+     *
+     * Confirms first, because `validate` names SUBMITTED as its only source. Through the
+     * state machine both times, so the transition rules are exercised exactly as in
+     * production rather than by writing the column.
+     */
+    public function validated(): self
+    {
+        return $this->afterPersist(
+            function (DeclarationAction $action): void {
+                if ($this->stateMachine->can($action, DeclarationActionState::TRANSITION_CONFIRM)) {
+                    $this->stateMachine->apply($action, DeclarationActionState::TRANSITION_CONFIRM);
+                }
+
+                $this->stateMachine->apply($action, DeclarationActionState::TRANSITION_VALIDATE);
+            },
+        );
+    }
+
+    /**
      * A declaration and an action for one organization, in one call.
      */
     public function for(Organization $organization): self

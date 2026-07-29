@@ -56,6 +56,12 @@
                 <target>Tâches effectuées</target>
             </segment>
         </unit>
+        <unit id="menu.fiscal_years">
+            <segment>
+                <source>menu.fiscal_years</source>
+                <target>Exercices comptables</target>
+            </segment>
+        </unit>
 
         <unit id="dashboard.no_sections_yet">
             <segment>
@@ -116,18 +122,6 @@
             <segment>
                 <source>organization.active.help</source>
                 <target>Désactiver une association ferme son administration et ses formulaires publics, sans supprimer ses données.</target>
-            </segment>
-        </unit>
-        <unit id="organization.default_hourly_rate">
-            <segment>
-                <source>organization.default_hourly_rate</source>
-                <target>Taux horaire par défaut</target>
-            </segment>
-        </unit>
-        <unit id="organization.default_hourly_rate.help">
-            <segment>
-                <source>organization.default_hourly_rate.help</source>
-                <target>Valorisation d'une heure de bénévolat, utilisée pour les tâches qui n'ont pas leur propre taux. Ce n'est pas le barème kilométrique.</target>
             </segment>
         </unit>
         <unit id="organization.created_at">

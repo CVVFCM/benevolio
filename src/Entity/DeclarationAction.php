@@ -117,21 +117,6 @@ class DeclarationAction
     #[ORM\Column(type: Types::DECIMAL, precision: 5, scale: 2)]
     private string $workHours;
 
-    /**
-     * The hourly rate in force WHEN THIS LINE WAS FILED, in cents. A snapshot, not a
-     * lookup, and never updated afterwards.
-     *
-     * Copied from Task::resolveHourlyRateCents() at construction. Reading the task's
-     * current rate instead would mean that editing a rate silently rewrote the
-     * valuation of declarations already validated — possibly already in the books.
-     * A filed declaration is a supporting document: the same reason a task cannot be
-     * deleted once used, applied to the figure rather than the label.
-     *
-     * There is deliberately no setter.
-     */
-    #[ORM\Column(type: Types::INTEGER)]
-    private int $hourlyRateCents;
-
     public function __construct(
         Declaration $declaration,
         Task $task,
@@ -158,8 +143,6 @@ class DeclarationAction
         $this->ownVehicle = $ownVehicle;
         $this->fiscalPower = $ownVehicle ? $fiscalPower : null;
         $this->workHours = $workHours;
-        // Snapshot, taken once. See the property docblock.
-        $this->hourlyRateCents = $task->resolveHourlyRateCents();
 
         $declaration->addAction($this);
     }
@@ -218,15 +201,6 @@ class DeclarationAction
     public function getTask(): Task
     {
         return $this->task;
-    }
-
-    /**
-     * The rate this line was filed under — NOT the task's current rate. See the
-     * property docblock for why the difference matters.
-     */
-    public function getHourlyRateCents(): int
-    {
-        return $this->hourlyRateCents;
     }
 
     public function getTitle(): string
