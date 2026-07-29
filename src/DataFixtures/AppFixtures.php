@@ -34,10 +34,15 @@ final class AppFixtures extends Fixture
     {
         // The organization factory seeds the five default tasks with it, so
         // the public form has something to offer straight away.
-        $organization = OrganizationFactory::createOne([
-            'name' => self::ORGANIZATION_NAME,
-            'slug' => self::ORGANIZATION_SLUG,
-        ]);
+        // withCerfaIdentity(), or every validated declaration would be refused a receipt
+        // for want of a SIREN — the correct behaviour, but not what you want to see first
+        // on a fresh database.
+        $organization = OrganizationFactory::new()
+            ->withCerfaIdentity()
+            ->create([
+                'name' => self::ORGANIZATION_NAME,
+                'slug' => self::ORGANIZATION_SLUG,
+            ]);
 
         UserFactory::new()
             ->admin($organization)

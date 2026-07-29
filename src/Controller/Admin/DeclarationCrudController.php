@@ -26,6 +26,8 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
+use function abs;
+use function intdiv;
 use function sprintf;
 
 /**
@@ -134,6 +136,26 @@ final class DeclarationCrudController extends AbstractCrudController
         // lines out as a table so the figures being ruled on are actually visible.
         yield AssociationField::new('actions', 'Actions déclarées')
             ->setTemplatePath('admin/field/declaration_actions.html.twig')
+            ->onlyOnDetail();
+
+        // The receipt, or why there is not one. Both matter to a treasurer: "no receipt"
+        // on its own reads as a fault rather than as paperwork to finish.
+        yield TextField::new('receipt', 'Reçu fiscal')
+            ->formatValue(static function (mixed $value, Declaration $declaration): string {
+                $receipt = $declaration->getReceipt();
+
+                if (null !== $receipt) {
+                    return sprintf(
+                        'N° %s — %d,%02d € — émis le %s',
+                        $receipt->getNumber(),
+                        intdiv($receipt->getAmountCents(), 100),
+                        abs($receipt->getAmountCents() % 100),
+                        $receipt->getIssuedAt()->format('d/m/Y'),
+                    );
+                }
+
+                return $declaration->getReceiptWithheldReason() ?? 'Aucun reçu émis.';
+            })
             ->onlyOnDetail();
 
         yield BooleanField::new('accuracyAttested', 'Exactitude attestée')

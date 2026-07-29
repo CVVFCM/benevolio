@@ -30,6 +30,28 @@ final class OrganizationFactory extends PersistentObjectFactory
     }
 
     /**
+     * A complete CERFA identity, so a fixture association can actually issue receipts.
+     *
+     * Without SIREN/RNA and an address, App\Receipt\ReceiptEligibility refuses every
+     * receipt — correctly, but it would mean a fresh `composer reset` showed only the
+     * refusal path.
+     */
+    public function withCerfaIdentity(): self
+    {
+        return $this->with([
+            // An RNA number: W + 9 digits, the form for a déclarée association. Invented,
+            // like every other fixture value.
+            'sirenOrRna' => 'W083001234',
+            'addressNumber' => '12',
+            'addressStreet' => 'chemin du Lac des Vieilles-Forges',
+            'addressPostcode' => '08000',
+            'addressCity' => 'Charleville-Mézières',
+            'addressCountry' => 'FR',
+            'objet' => 'Pratique et enseignement de la voile et des sports nautiques',
+        ]);
+    }
+
+    /**
      * Every organization gets its starter tasks, exactly as one created
      * through /platform does — so fixtures and tests exercise a shape that can
      * actually be used, and the public form always has choices to offer.
