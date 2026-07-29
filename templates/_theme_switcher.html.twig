@@ -1,0 +1,39 @@
+{#
+    Light / dark / auto, for the surfaces EasyAdmin does not own — the public
+    volunteer pages and login. The back-office has its own switcher.
+
+    A fieldset with a legend rather than a bare row of buttons: three controls that
+    only make sense together, which is what a group is for. `aria-pressed` is
+    maintained by the controller, and declared here so the buttons are never
+    momentarily unlabelled if the module is slow.
+
+    With JavaScript off the buttons do nothing, so the group is hidden: an inert
+    control is worse than no control. The page still follows the operating system.
+#}
+<fieldset class="theme" {{ stimulus_controller('theme') }} hidden>
+    <legend class="theme__legend">{{ 'theme.label'|trans }}</legend>
+
+    <div class="theme__options">
+        <button
+            type="button"
+            class="theme__option"
+            data-action="theme#choose"
+            data-theme-value-param="light"
+            aria-pressed="false"
+        >{{ 'theme.light'|trans }}</button>
+        <button
+            type="button"
+            class="theme__option"
+            data-action="theme#choose"
+            data-theme-value-param="dark"
+            aria-pressed="false"
+        >{{ 'theme.dark'|trans }}</button>
+        <button
+            type="button"
+            class="theme__option"
+            data-action="theme#choose"
+            data-theme-value-param="auto"
+            aria-pressed="false"
+        >{{ 'theme.auto'|trans }}</button>
+    </div>
+</fieldset>

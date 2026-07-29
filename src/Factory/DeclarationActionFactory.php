@@ -10,7 +10,9 @@ use App\Entity\EventType;
 use App\Entity\Organization;
 use App\Enum\FiscalPower;
 use App\Repository\EventTypeRepository;
+use App\State\DeclarationActionState;
 use DateTimeImmutable;
+use Finite\StateMachine;
 use Zenstruck\Foundry\Persistence\PersistentObjectFactory;
 
 use function assert;
@@ -23,6 +25,7 @@ final class DeclarationActionFactory extends PersistentObjectFactory
 {
     public function __construct(
         private readonly EventTypeRepository $eventTypes,
+        private readonly StateMachine $stateMachine,
     ) {
         parent::__construct();
     }
@@ -47,6 +50,30 @@ final class DeclarationActionFactory extends PersistentObjectFactory
             'declaration' => $declaration,
             'eventType' => $this->existingTypeFor($declaration->getOrganization()),
         ]);
+    }
+
+    /**
+     * A line the volunteer has already confirmed, for attaching to a declaration
+     * that is itself already confirmed.
+     *
+     * Needed because a line now starts in AWAITING_CONFIRMATION, and
+     * App\State\Listener\DeclarationConfirmationCascade only moves the lines that
+     * exist at the moment the declaration is confirmed. Attaching a line to an
+     * already-confirmed declaration therefore leaves it unconfirmed forever — which
+     * cannot happen in production, where DeclarationSubmitter writes every line
+     * before the confirmation link is ever opened, but happens constantly in a
+     * fixture or a test built in the convenient order.
+     *
+     * Goes through the state machine rather than writing the column, like
+     * DeclarationFactory::confirmed().
+     */
+    public function confirmed(): self
+    {
+        return $this->afterPersist(
+            function (DeclarationAction $action): void {
+                $this->stateMachine->apply($action, DeclarationActionState::TRANSITION_CONFIRM);
+            },
+        );
     }
 
     /**

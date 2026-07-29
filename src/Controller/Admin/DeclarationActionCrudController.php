@@ -134,11 +134,13 @@ final class DeclarationActionCrudController extends AbstractCrudController
 
         yield ChoiceField::new('state', 'État')
             ->formatValue(static fn (mixed $value, DeclarationAction $action): string => $action->getState()->label())
-            ->renderAsBadges([
-                'submitted' => 'warning',
-                'validated' => 'success',
-                'refused' => 'danger',
-            ]);
+            // Built from the enum, as in DeclarationCrudController: this map used to
+            // be written out by hand, so adding a state left the new one with no
+            // badge and nothing to say so.
+            ->renderAsBadges(array_combine(
+                array_map(static fn (DeclarationActionState $state): string => $state->value, DeclarationActionState::cases()),
+                array_map(static fn (DeclarationActionState $state): string => $state->badgeStyle(), DeclarationActionState::cases()),
+            ));
 
         yield TextField::new('workHours', 'Heures')
             ->formatValue(static fn (mixed $value, DeclarationAction $action): string => sprintf('%s h', $action->getWorkHours()));

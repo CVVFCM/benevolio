@@ -109,6 +109,49 @@ to.
   is *undecided but not actionable*, so anything asking "can a verdict be applied"
   must check `isAwaitingConfirmation()` too — `DeclarationDecider` does.
 
+### Both state machines start unconfirmed
+
+`DeclarationAction` starts in `awaiting_confirmation` too, not `submitted` — it used
+to claim to be *soumise* before the volunteer had clicked anything.
+`App\State\Listener\DeclarationConfirmationCascade` listens for the declaration's
+`confirm` and moves every line with it.
+
+**TRAP when adding a state to either enum:** `isDecided()` must stay
+*validated-or-refused*, spelled out. It was `SUBMITTED !== $this` on the action, which
+the moment a state existed *before* SUBMITTED started calling an unconfirmed line
+decided. Same reason `DeclarationActionCrudController` builds its badge map from
+`::cases()` rather than by hand — the hardcoded version would have left the new state
+with no badge and nothing to say so.
+
+**TRAP in fixtures and tests:** the cascade only moves the lines that exist when the
+declaration is confirmed, so a line attached to an **already-confirmed** declaration
+stays unconfirmed forever, and `DeclarationTransitionGuard` then makes the whole
+declaration quietly undecidable. Production cannot hit this — `DeclarationSubmitter`
+writes every line first — but the convenient test order does. Either create the lines
+before confirming, or use `DeclarationActionFactory::confirmed()`.
+
+## Theme, and the one inline script
+
+`app.css` themes through `data-theme` on `<html>`, with `@media
+(prefers-color-scheme: dark)` as the `auto` case. The media-query block is
+`:root:not([data-theme="light"])` — **the `:not()` is load-bearing**: without it an
+explicit *light* choice on a dark OS would lose, and the switcher would only appear
+to work one way.
+
+Dark values live once, as `--dark-*` on `:root`; the two blocks below hold only the
+mapping, so tuning a colour stays a one-line change.
+
+`base.html.twig` carries **the only inline script in the project**, and it has to be
+inline and blocking: the choice lives in `localStorage`, so only JavaScript knows it,
+and anything deferred runs after first paint — which is a white flash on every page
+for anyone who chose dark. `assets/controllers/theme_controller.js` handles the
+clicks; `auto` **removes** the key rather than storing the word, so the OS keeps
+answering. The storage key `benevolio-theme` appears in both and must match.
+
+The switcher ships `hidden` and its controller reveals it, so it never shows where it
+would not work. It covers **the public pages and login only** — EasyAdmin has its own
+switcher inside `/admin` and `/platform`.
+
 ### Deferred — do not assume these exist
 
 Not built yet, by explicit decision: accounting entries and their export, tax
@@ -211,7 +254,7 @@ added to `/admin` must be tenant-scoped.
 - `src/ValueObject/` — self-validating value objects (`Address`, `Email`). Also a
   Doctrine mapping, because `Address` is an `#[ORM\Embeddable]`.
 - `src/Enum/` — closed business sets (`FiscalPower`)
-- `src/State/` — finite state enums, and `Listener/` for their guards
+- `src/State/` — finite state enums, and `Listener/` for their guards and cascades
 - `src/Repository/` — Doctrine repositories
 - `src/Controller/` — invokable controllers; `Admin/` and `Platform/` hold the two
   EasyAdmin dashboards, `Public/` the anonymous volunteer pages

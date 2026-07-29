@@ -152,12 +152,15 @@ final class DeclarationFlowTest extends WebTestCase
         self::assertSame(DeclarationState::AWAITING_CONFIRMATION, $declaration->getState());
         self::assertFalse($declaration->isConfirmed());
         self::assertTrue($declaration->isAccuracyAttested());
-        self::assertTrue($declaration->areExpensesWaived());
+        self::assertTrue($declaration->isExpensesWaived());
         self::assertCount(1, $declaration->getActions());
 
         $action = $declaration->getActions()->first();
         self::assertNotFalse($action);
-        self::assertSame(DeclarationActionState::SUBMITTED, $action->getState());
+        // In step with the declaration above, which is the point: the line used to
+        // read SUBMITTED while the declaration it belonged to was still awaiting
+        // the volunteer's click.
+        self::assertSame(DeclarationActionState::AWAITING_CONFIRMATION, $action->getState());
         self::assertSame('Régate du printemps', $action->getTitle());
         // "6.5" typed, stored with the two decimals the column holds.
         self::assertSame('6.50', $action->getWorkHours());

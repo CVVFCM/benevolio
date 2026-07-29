@@ -55,8 +55,13 @@ class DeclarationAction
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private Declaration $declaration;
 
+    /**
+     * Starts unconfirmed, in step with the declaration this line belongs to. A line
+     * only becomes SUBMITTED once the volunteer opens the emailed link, cascaded by
+     * App\State\Listener\DeclarationConfirmationCascade.
+     */
     #[ORM\Column(enumType: DeclarationActionState::class)]
-    private DeclarationActionState $state = DeclarationActionState::SUBMITTED;
+    private DeclarationActionState $state = DeclarationActionState::AWAITING_CONFIRMATION;
 
     /**
      * NO ACTION, not CASCADE: deleting a type must never delete the declarations

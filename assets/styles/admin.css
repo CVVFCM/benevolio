@@ -1,0 +1,66 @@
+/*
+ * Benevolio — the little back-office CSS this project owns.
+ *
+ * EasyAdmin brings its own design, and app.css (the public volunteer surface) is
+ * deliberately NOT loaded here: its :root token overrides and body rules would
+ * fight EasyAdmin's. So this file exists only for markup we contribute ourselves,
+ * and stays as small as that implies.
+ *
+ * Registered in App\Controller\Admin\DashboardController::configureAssets().
+ */
+
+/*
+ * The declared lines on the declaration detail page
+ * (templates/admin/field/declaration_actions.html.twig).
+ *
+ * Styled from scratch rather than borrowing EasyAdmin's `datagrid`, whose
+ * responsive rules reposition every cell (padding-inline-start: 35%) and inject
+ * data-label pseudo-elements — behaviour a read-only summary neither needs nor
+ * survives. Colours come from EasyAdmin's own custom properties so the table
+ * follows its light and dark themes without a second palette here.
+ */
+.declaration-actions {
+    inline-size: 100%;
+    border-collapse: collapse;
+}
+
+.declaration-actions th,
+.declaration-actions td {
+    padding: 0.5rem 0.75rem;
+    vertical-align: top;
+    text-align: start;
+}
+
+.declaration-actions thead th {
+    border-block-end: 2px solid var(--border-color, #d9dade);
+    color: var(--text-muted-color, #6c6f7d);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.declaration-actions tbody tr + tr th,
+.declaration-actions tbody tr + tr td {
+    border-block-start: 1px solid var(--border-color, #d9dade);
+}
+
+/* Figures right-aligned so they can be compared down the column. */
+.declaration-actions .is-numeric {
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+}
+
+/* The first column carries the row's label, so it lines up with the field name. */
+.declaration-actions th:first-child,
+.declaration-actions td:first-child {
+    padding-inline-start: 0;
+}
+
+.declaration-actions__note,
+.declaration-actions__empty {
+    color: var(--text-muted-color, #6c6f7d);
+}
+
+.declaration-actions__note {
+    font-size: 0.8125rem;
+}

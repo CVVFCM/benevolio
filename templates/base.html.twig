@@ -8,6 +8,29 @@
         {% block stylesheets %}
         {% endblock %}
 
+        {#
+            The one inline script in this project, and it has to be inline and here.
+            The chosen theme lives in localStorage, so only JavaScript can know it —
+            and anything deferred or module-loaded runs after first paint, which
+            means a visitor who chose dark gets a white flash on every single page.
+            Reading one key and setting one attribute is cheap enough to do before
+            the browser draws anything.
+
+            Absent or "auto" leaves no attribute, so the media query in app.css
+            decides — which is also what a visitor with JavaScript off gets.
+        #}
+        <script>
+            try {
+                var theme = localStorage.getItem('benevolio-theme');
+                if (theme === 'dark' || theme === 'light') {
+                    document.documentElement.dataset.theme = theme;
+                }
+            } catch (e) {
+                // Storage can throw outright when cookies are blocked. The page
+                // still works; it just follows the operating system.
+            }
+        </script>
+
         {% block javascripts %}
             {% block importmap %}{{ importmap('app') }}{% endblock %}
         {% endblock %}

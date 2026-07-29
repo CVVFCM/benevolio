@@ -42,9 +42,15 @@ final class AppFixtures extends Fixture
             ->create(['email' => self::SUPER_ADMIN_EMAIL]);
 
         // Confirmed declarations: what a treasurer actually works through.
+        //
+        // The lines need ->confirmed() of their own. The cascade that normally moves
+        // them runs when the declaration is confirmed, and here the declaration is
+        // already confirmed by the time they exist — so without this they would sit
+        // in "en attente de confirmation" under a confirmed declaration, and the
+        // guard would make every one of these undecidable.
         foreach ([1, 2, 3] as $lineCount) {
             $declaration = DeclarationFactory::new()->for($organization)->confirmed()->create();
-            DeclarationActionFactory::new()->forDeclaration($declaration)->many($lineCount)->create();
+            DeclarationActionFactory::new()->forDeclaration($declaration)->confirmed()->many($lineCount)->create();
         }
 
         // One with travel in the volunteer's own vehicle, so the fiscal-power path
@@ -52,12 +58,15 @@ final class AppFixtures extends Fixture
         $withOwnVehicle = DeclarationFactory::new()->for($organization)->confirmed()->create();
         DeclarationActionFactory::new()
             ->forDeclaration($withOwnVehicle)
+            ->confirmed()
             ->withOwnVehicle()
             ->create();
 
         // And one still waiting on its volunteer, so the back-office shows the
         // "en attente de confirmation" state — and its absent verdict buttons —
         // without anyone having to half-complete the public form first.
+        // No ->confirmed() on the lines here, deliberately: they should read
+        // "en attente de confirmation" too, in step with their declaration.
         $awaitingConfirmation = DeclarationFactory::new()->for($organization)->create();
         DeclarationActionFactory::new()->forDeclaration($awaitingConfirmation)->many(2)->create();
     }

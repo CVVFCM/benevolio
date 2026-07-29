@@ -8,6 +8,7 @@ use App\Controller\Platform\OrganizationCrudController;
 use App\Controller\Platform\UserCrudController;
 use App\Tenant\TenantContext;
 use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminDashboard;
+use EasyCorp\Bundle\EasyAdminBundle\Config\Assets;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Dashboard;
 use EasyCorp\Bundle\EasyAdminBundle\Config\MenuItem;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractDashboardController;
@@ -63,6 +64,16 @@ final class DashboardController extends AbstractDashboardController
             ->setTitle($this->tenantContext->getOrganization()->getName())
             ->setTranslationDomain('admin')
             ->setLocales(['fr']);
+    }
+
+    /**
+     * app.css is deliberately absent: it is the public volunteer stylesheet, and its
+     * :root token overrides and body rules would fight EasyAdmin's own design.
+     * admin.css carries only the markup this project contributes itself.
+     */
+    public function configureAssets(): Assets
+    {
+        return Assets::new()->addCssFile('styles/admin.css');
     }
 
     public function configureMenuItems(): iterable
