@@ -216,6 +216,15 @@ final class DeclarationCrudController extends AbstractCrudController
                 $declaration->getPerson()->getFullName(),
                 $declaration->getState()->label(),
             ));
+
+            // Say what happened to the receipt, at the moment of the decision.
+            //
+            // Issuance runs synchronously inside validateAll() (the message is routed to
+            // the `sync` transport), so by now the declaration carries either a receipt
+            // or the reason it has none. Leaving that on the detail page only meant a
+            // treasurer validated a declaration, saw nothing arrive, and had no way to
+            // tell whether the application had refused on purpose or simply broken.
+            $this->flashReceiptOutcome($declaration);
         } catch (DeclarationNotDecidableException $e) {
             // A legitimate runtime state — typically a mixed basket — so it is
             // reported to the treasurer rather than left to the error handler. The
@@ -228,5 +237,35 @@ final class DeclarationCrudController extends AbstractCrudController
                 ->setEntityId($declaration->getId()->toRfc4122())
                 ->generateUrl(),
         );
+    }
+
+    /**
+     * The receipt outcome as its own flash, so a refusal is never silent.
+     *
+     * A refusal is `info`, not `warning`: most of them are ordinary — donated hours are
+     * simply not receiptable — and colouring them as problems would train a treasurer to
+     * ignore the one that is.
+     */
+    private function flashReceiptOutcome(Declaration $declaration): void
+    {
+        $receipt = $declaration->getReceipt();
+
+        if (null !== $receipt) {
+            $this->addFlash('success', sprintf(
+                'Reçu fiscal n° %s (%d,%02d €) envoyé à %s.',
+                $receipt->getNumber(),
+                intdiv($receipt->getAmountCents(), 100),
+                abs($receipt->getAmountCents() % 100),
+                $declaration->getPerson()->getEmail()->value,
+            ));
+
+            return;
+        }
+
+        $reason = $declaration->getReceiptWithheldReason();
+
+        if (null !== $reason) {
+            $this->addFlash('info', sprintf('Aucun reçu fiscal. %s', $reason));
+        }
     }
 }
