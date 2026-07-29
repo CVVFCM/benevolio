@@ -11,7 +11,7 @@ use Symfony\Component\Uid\Uuid;
 use function sprintf;
 
 /**
- * Thrown when the event type a volunteer picked cannot be found at submit time.
+ * Thrown when the task a volunteer picked cannot be found at submit time.
  *
  * Two ways to get here, both rare: the association deleted an as-yet-unused type
  * while someone was filling the form (a used one is protected by the FK), or the
@@ -24,12 +24,12 @@ use function sprintf;
  * and the case is rare enough not to design a recovery flow for until it actually
  * happens to somebody.
  */
-final class EventTypeNoLongerAvailableException extends RuntimeException implements ExceptionInterface
+final class TaskNoLongerAvailableException extends RuntimeException implements ExceptionInterface
 {
     public static function forId(Uuid $id): self
     {
         return new self(sprintf(
-            'Event type "%s" is not available for the current organization; it was deleted, '
+            'Task "%s" is not available for the current organization; it was deleted, '
             .'or the draft carries a type from another association.',
             $id->toRfc4122(),
         ));

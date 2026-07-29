@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Controller\Platform;
 
 use App\Entity\Organization;
-use App\Organization\DefaultEventTypes;
+use App\Organization\DefaultTasks;
 use Doctrine\ORM\EntityManagerInterface;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
 use EasyCorp\Bundle\EasyAdminBundle\Field\BooleanField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\DateTimeField;
+use EasyCorp\Bundle\EasyAdminBundle\Field\MoneyField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\SlugField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -26,7 +27,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 final class OrganizationCrudController extends AbstractCrudController
 {
     public function __construct(
-        private readonly DefaultEventTypes $defaultEventTypes,
+        private readonly DefaultTasks $defaultTasks,
     ) {
     }
 
@@ -59,21 +60,29 @@ final class OrganizationCrudController extends AbstractCrudController
         yield BooleanField::new('active', 'organization.active')
             ->setHelp('organization.active.help');
 
+        // The association's own valuation of an hour of volunteer time, used when a
+        // task carries no rate of its own. Not the mileage barème — see
+        // Organization::$defaultHourlyRateCents.
+        yield MoneyField::new('defaultHourlyRateCents', 'organization.default_hourly_rate')
+            ->setCurrency('EUR')
+            ->setNumDecimals(2)
+            ->setHelp('organization.default_hourly_rate.help');
+
         yield DateTimeField::new('createdAt', 'organization.created_at')
             ->onlyOnIndex();
     }
 
     /**
-     * A brand-new association needs event types or its public declaration form
+     * A brand-new association needs tasks or its public declaration form
      * has nothing to offer. One of the two explicit call sites of
-     * DefaultEventTypes — see that class for why it is not a Doctrine listener.
+     * DefaultTasks — see that class for why it is not a Doctrine listener.
      */
     public function persistEntity(EntityManagerInterface $entityManager, object $entityInstance): void
     {
         parent::persistEntity($entityManager, $entityInstance);
 
         // $entityInstance is narrowed to Organization by the @extends generic.
-        $this->defaultEventTypes->createFor($entityInstance);
+        $this->defaultTasks->createFor($entityInstance);
         $entityManager->flush();
     }
 }

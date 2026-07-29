@@ -128,7 +128,7 @@ final class DeclarationActionCrudController extends AbstractCrudController
         yield DateField::new('date', 'Date');
         yield TextField::new('title', 'Intitulé');
 
-        yield AssociationField::new('eventType', 'Type');
+        yield AssociationField::new('task', 'Tâche');
 
         yield AssociationField::new('declaration', 'Déclaration');
 

@@ -237,12 +237,12 @@ final class DeclarationConfirmationTest extends WebTestCase
         $this->client->submitForm('Suivant', $this->personStep());
 
         $option = $this->client->getCrawler()
-            ->filter('select[name="'.self::FORM.'[actions][actions][0][eventType]"] option[value!=""]')
+            ->filter('select[name="'.self::FORM.'[actions][actions][0][task]"] option[value!=""]')
             ->first();
         self::assertGreaterThan(0, $option->count());
 
         $this->client->submitForm('Suivant', [
-            self::FORM.'[actions][actions][0][eventType]' => (string) $option->attr('value'),
+            self::FORM.'[actions][actions][0][task]' => (string) $option->attr('value'),
             self::FORM.'[actions][actions][0][title]' => 'Régate du printemps',
             self::FORM.'[actions][actions][0][date]' => new DateTimeImmutable('-30 days')->format('Y-m-d'),
             self::FORM.'[actions][actions][0][consecutiveDays]' => '2',

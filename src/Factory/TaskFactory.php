@@ -4,18 +4,18 @@ declare(strict_types=1);
 
 namespace App\Factory;
 
-use App\Entity\EventType;
 use App\Entity\Organization;
+use App\Entity\Task;
 use Zenstruck\Foundry\Persistence\PersistentObjectFactory;
 
 /**
- * @extends PersistentObjectFactory<EventType>
+ * @extends PersistentObjectFactory<Task>
  */
-final class EventTypeFactory extends PersistentObjectFactory
+final class TaskFactory extends PersistentObjectFactory
 {
     public static function class(): string
     {
-        return EventType::class;
+        return Task::class;
     }
 
     public function for(Organization $organization): self
@@ -35,7 +35,7 @@ final class EventTypeFactory extends PersistentObjectFactory
     {
         return [
             'organization' => OrganizationFactory::new(),
-            // Unique: EventType has a unique index on (organization, name), and a
+            // Unique: Task has a unique index on (organization, name), and a
             // repeated word would collide as soon as a test makes two.
             'name' => ucfirst(self::faker()->unique()->word()),
             'active' => true,

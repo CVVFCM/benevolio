@@ -26,7 +26,7 @@ final class AppFixtures extends Fixture
 
     public function load(ObjectManager $manager): void
     {
-        // The organization factory seeds the five default event types with it, so
+        // The organization factory seeds the five default tasks with it, so
         // the public form has something to offer straight away.
         $organization = OrganizationFactory::createOne([
             'name' => self::ORGANIZATION_NAME,

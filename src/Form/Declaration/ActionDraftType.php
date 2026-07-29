@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Form\Declaration;
 
-use App\Entity\EventType;
+use App\Entity\Task;
 use App\Enum\FiscalPower;
-use App\Repository\EventTypeRepository;
+use App\Repository\TaskRepository;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
@@ -29,14 +29,14 @@ final class ActionDraftType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
-            ->add('eventType', EntityType::class, [
-                'class' => EventType::class,
-                'label' => 'Type d\'événement',
+            ->add('task', EntityType::class, [
+                'class' => Task::class,
+                'label' => 'Tâche effectuée',
                 'placeholder' => 'Choisissez…',
-                'choice_label' => static fn (EventType $type): string => $type->getName(),
+                'choice_label' => static fn (Task $type): string => $type->getName(),
                 // Retired types stay readable on old actions but must not be
                 // offered on new ones. The tenant scope is the filter's job.
-                'query_builder' => static fn (EventTypeRepository $repository) => $repository->activeQueryBuilder(),
+                'query_builder' => static fn (TaskRepository $repository) => $repository->activeQueryBuilder(),
             ])
             ->add('title', TextType::class, [
                 'label' => 'Intitulé de l\'événement',

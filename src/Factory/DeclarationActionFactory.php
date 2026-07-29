@@ -6,10 +6,10 @@ namespace App\Factory;
 
 use App\Entity\Declaration;
 use App\Entity\DeclarationAction;
-use App\Entity\EventType;
 use App\Entity\Organization;
+use App\Entity\Task;
 use App\Enum\FiscalPower;
-use App\Repository\EventTypeRepository;
+use App\Repository\TaskRepository;
 use App\State\DeclarationActionState;
 use DateTimeImmutable;
 use Finite\StateMachine;
@@ -24,7 +24,7 @@ use function sprintf;
 final class DeclarationActionFactory extends PersistentObjectFactory
 {
     public function __construct(
-        private readonly EventTypeRepository $eventTypes,
+        private readonly TaskRepository $tasks,
         private readonly StateMachine $stateMachine,
     ) {
         parent::__construct();
@@ -39,7 +39,7 @@ final class DeclarationActionFactory extends PersistentObjectFactory
      * Attaches the action to a declaration, with a type from the SAME association.
      *
      * One of this or for() must be called: defaults() deliberately supplies neither
-     * `declaration` nor `eventType`, because an action and its type have to share a
+     * `declaration` nor `task`, because an action and its type have to share a
      * tenant and nothing in the mapping enforces it. An earlier version guessed in
      * defaults() and produced an orphan organization per action, because Foundry
      * evaluates the defaults whether or not the caller overrides them.
@@ -48,7 +48,7 @@ final class DeclarationActionFactory extends PersistentObjectFactory
     {
         return $this->with([
             'declaration' => $declaration,
-            'eventType' => $this->existingTypeFor($declaration->getOrganization()),
+            'task' => $this->existingTypeFor($declaration->getOrganization()),
         ]);
     }
 
@@ -83,7 +83,7 @@ final class DeclarationActionFactory extends PersistentObjectFactory
     {
         return $this->with([
             'declaration' => DeclarationFactory::new()->for($organization),
-            'eventType' => $this->existingTypeFor($organization),
+            'task' => $this->existingTypeFor($organization),
         ]);
     }
 
@@ -141,20 +141,20 @@ final class DeclarationActionFactory extends PersistentObjectFactory
      * findActive(): the tenant filter is OFF in CLI and test context, so a filtered
      * helper would happily hand back another association's row.
      */
-    private function existingTypeFor(Organization $organization): EventType
+    private function existingTypeFor(Organization $organization): Task
     {
-        /** @var list<EventType> $existing */
-        $existing = $this->eventTypes->findBy(['organization' => $organization, 'active' => true]);
+        /** @var list<Task> $existing */
+        $existing = $this->tasks->findBy(['organization' => $organization, 'active' => true]);
 
         if ([] === $existing) {
-            return EventTypeFactory::new()->for($organization)->create();
+            return TaskFactory::new()->for($organization)->create();
         }
 
         // Spread across the list instead of always taking the first row, so a
         // fixture set does not end up with every action filed under one category.
         // Still reproducible: Foundry seeds faker per run and prints the seed.
         $picked = self::faker()->randomElement($existing);
-        assert($picked instanceof EventType);
+        assert($picked instanceof Task);
 
         return $picked;
     }

@@ -53,20 +53,51 @@ differently, so never sum them together:
 | `journeys` | Number of **one-way** journeys — a return trip is two. Total distance is `distanceKm × journeys`. |
 | `fiscalPower` | An enum of the *barème* brackets (≤3 CV, 4, 5, 6, ≥7 CV), because the scale distinguishes only those. Required exactly when `ownVehicle` is true. **No euro rates anywhere**: the scale is republished yearly and belongs with valuation, keyed by financial year. |
 | `consecutiveDays` | The action may span several days from `date`. The action must be **over**: `DeclarationAction::endDateFor()` is the shared arithmetic, applied on the DTO *and* the entity, and it normalises to midnight — an end date of "today at 17:30" would otherwise read as later than "today". |
-| `eventType` | A per-association **entity**, not an enum. See below. |
+| `task` | The *tâche effectuée* — a per-association **entity**, not an enum, carrying an optional hourly rate. See below. |
 
-**Event types are rows, not code.** `EventType` is `TenantAware`; each association
-manages its own list in `/admin`. `App\Organization\DefaultEventTypes` seeds five
+**Tasks are rows, not code.** `Task` is `TenantAware`; each association
+manages its own list in `/admin`. `App\Organization\DefaultTasks` seeds five
 starters (*Travaux, Régate, Encadrement, Arbitrage, Autre*) and is called from the
 **two** places an organization is born — the platform CRUD and
 `OrganizationFactory`. A `postPersist` listener would be one place instead of two,
 but persisting from inside `postPersist` needs a second flush and is fragile; the
 cost is that a third creation path would silently skip seeding, which
-`DefaultEventTypesTest` exists to catch.
+`DefaultTasksTest` exists to catch.
 
-Deleting a type an action references is refused by the FK: a filed declaration
-must not lose the label it was filed under. Retire one with `active` instead — it
+It was called `EventType` until it carried a rate, at which point "type of event"
+became the wrong noun: a rate belongs to a kind of *work*, not a kind of gathering.
+The occasion keeps its own free-text title on the line (`DeclarationAction::$title`),
+which is why *"Intitulé de l'événement"* is still the right label there.
+
+Deleting a task an action references is refused by the FK: a filed declaration must
+not lose the label it was filed under. Retire one with `active` instead — it
 vanishes from new forms and still renders on old actions.
+
+### Money — cents, always
+
+**Every monetary amount in this codebase is an integer number of cents**, named
+`…RateCents` so a caller cannot mistake the unit. Never a float, and not a DECIMAL
+either: a rate multiplies hours that are already summed in integer hundredths, and
+`ext-bcmath` is not installed, so integers are the only way that arithmetic stays
+exact. EasyAdmin's `MoneyField` stores cents natively, so nothing converts — and
+nothing can convert twice.
+
+- `Organization::$defaultHourlyRateCents` — **required**, defaulting to
+  `DEFAULT_HOURLY_RATE_CENTS` (12,00 €, roughly the SMIC horaire brut: a starting
+  point, not a recommendation).
+- `Task::$hourlyRateCents` — **optional** override. `Task::resolveHourlyRateCents()`
+  is the ONE place the fallback lives; reaching for `getHourlyRateCents()` directly
+  gets the raw, possibly-null override and will get the valuation wrong.
+- `DeclarationAction::$hourlyRateCents` — **a snapshot**, copied at construction and
+  never updated, with no setter. Reading the task's current rate instead would mean
+  that editing a rate silently rewrote the valuation of declarations already
+  validated, possibly already in the books. Same argument as the label above, applied
+  to the figure. `tests/Entity/HourlyRateTest` is what holds this.
+
+This is the association's **own** valuation of donated time, for PCG 864/870. It is
+**not** the mileage *barème*, which the state republishes yearly and which is still
+deliberately absent — see `fiscalPower` above. Nothing applies these rates yet:
+valuation itself is still on the deferred list.
 
 **TRAP — that FK is `ON DELETE NO ACTION`, and the word matters.** `RESTRICT`
 refuses the delete just as firmly, but makes PostgreSQL raise SQLSTATE **23001**
@@ -77,7 +108,7 @@ EasyAdmin's own, in `AbstractCrudController::delete()` — will ever see, and th
 admin gets a 500. `NO ACTION` yields 23503 and the catch works. Any other FK meant
 to refuse a delete must use `NO ACTION` for the same reason.
 
-`EventTypeCrudController::deleteEntity()` still overrides EasyAdmin's handling:
+`TaskCrudController::deleteEntity()` still overrides EasyAdmin's handling:
 left alone, EasyAdmin turns the caught exception into its own 409 page, whose
 message tells a *developer* to disable the delete action or add `cascade`, in
 English. A treasurer gets a French sentence naming the type instead.
@@ -261,7 +292,7 @@ added to `/admin` must be tenant-scoped.
 - `src/Form/` — form types and the DTOs they bind to
 - `src/Declaration/` — the declaration use cases (`DeclarationSubmitter`,
   `DeclarationConfirmer`, `DeclarationDecider`) and their exceptions
-- `src/Organization/` — organization-level services (`DefaultEventTypes`)
+- `src/Organization/` — organization-level services (`DefaultTasks`)
 - `src/Tenant/` — tenant contract, resolvers, context, request listener
 - `src/Doctrine/Filter/` — the tenant SQL filter; `src/Doctrine/Type/` — DBAL types
 - `src/Security/` — roles, voters
@@ -434,8 +465,8 @@ kubectl -n benevolio exec -it deploy/benevolio-web -- \
 ```
 
 `app:organization:create` is the **third** creation path for an `Organization`, so
-it calls `DefaultEventTypes::createFor()` explicitly — see the warning under *Event
-types are rows, not code*. `app:user:create` reads the password from a hidden
+it calls `DefaultTasks::createFor()` explicitly — see the warning under *Tasks are
+rows, not code*. `app:user:create` reads the password from a hidden
 prompt and has no `--password` option by design: that would put a live credential
 in shell history and in `ps`. It validates through the entity, so
 `Assert\NotCompromisedPassword` calls haveibeenpwned — the command needs egress.

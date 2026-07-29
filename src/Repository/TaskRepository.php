@@ -4,42 +4,42 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
-use App\Entity\EventType;
+use App\Entity\Task;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
- * @extends ServiceEntityRepository<EventType>
+ * @extends ServiceEntityRepository<Task>
  */
-final class EventTypeRepository extends ServiceEntityRepository
+final class TaskRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
     {
-        parent::__construct($registry, EventType::class);
+        parent::__construct($registry, Task::class);
     }
 
     /**
      * The choices offered by the public declaration form.
      *
-     * No organization argument: EventType is TenantAware, so OrganizationFilter
+     * No organization argument: Task is TenantAware, so OrganizationFilter
      * has already restricted this to the current tenant. Calling it from a CLI
      * context — where the filter is off by design — would return every
      * association's types.
      */
     public function activeQueryBuilder(): QueryBuilder
     {
-        return $this->createQueryBuilder('event_type')
-            ->andWhere('event_type.active = true')
-            ->orderBy('event_type.name', 'ASC');
+        return $this->createQueryBuilder('task')
+            ->andWhere('task.active = true')
+            ->orderBy('task.name', 'ASC');
     }
 
     /**
-     * @return list<EventType>
+     * @return list<Task>
      */
     public function findActive(): array
     {
-        /** @var list<EventType> $types */
+        /** @var list<Task> $types */
         $types = $this->activeQueryBuilder()->getQuery()->getResult();
 
         return $types;

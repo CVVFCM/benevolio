@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Organization;
 
-use App\Entity\EventType;
 use App\Entity\Organization;
+use App\Entity\Task;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
- * Gives a newly created association a usable list of event types.
+ * Gives a newly created association a usable list of tasks.
  *
  * Without this a fresh organization has an empty list, and its public declaration
  * form offers no choice at all — broken on arrival. The association can rename,
@@ -22,9 +22,9 @@ use Doctrine\ORM\EntityManagerInterface;
  * place instead of two, but persisting entities from inside postPersist needs a
  * second flush and is fragile. The cost of the choice is that a third way of
  * creating an Organization would silently skip seeding — hence the test in
- * tests/Organization/DefaultEventTypesTest.
+ * tests/Organization/DefaultTasksTest.
  */
-final readonly class DefaultEventTypes
+final readonly class DefaultTasks
 {
     /**
      * The five categories the application shipped with when this was an enum.
@@ -48,18 +48,18 @@ final readonly class DefaultEventTypes
      * Persists the starter list. Does not flush — the caller owns the transaction,
      * which for the platform CRUD is EasyAdmin's own.
      *
-     * @return list<EventType>
+     * @return list<Task>
      */
     public function createFor(Organization $organization): array
     {
         $created = [];
 
         foreach (self::NAMES as $name) {
-            $eventType = new EventType($organization);
-            $eventType->setName($name);
+            $task = new Task($organization);
+            $task->setName($name);
 
-            $this->entityManager->persist($eventType);
-            $created[] = $eventType;
+            $this->entityManager->persist($task);
+            $created[] = $task;
         }
 
         return $created;

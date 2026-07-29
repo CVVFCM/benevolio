@@ -6,9 +6,9 @@ namespace App\Tests\Controller\Public;
 
 use App\Entity\Declaration;
 use App\Entity\DeclarationAction;
-use App\Entity\EventType;
 use App\Entity\Organization;
 use App\Entity\Person;
+use App\Entity\Task;
 use App\Factory\OrganizationFactory;
 use App\State\DeclarationActionState;
 use App\State\DeclarationState;
@@ -169,17 +169,17 @@ final class DeclarationFlowTest extends WebTestCase
     }
 
     /**
-     * The event type is a Doctrine entity carried inside the session-stored draft,
+     * The task is a Doctrine entity carried inside the session-stored draft,
      * which SessionDataStorage deep-clones — detaching it. DeclarationSubmitter
      * re-fetches it for that reason; without that the submission dies with
      * "A new entity was found through the relationship". This asserts the action
      * ends up pointing at the *existing* row rather than a duplicate.
      */
     #[Test]
-    public function the_chosen_event_type_survives_the_session_round_trip(): void
+    public function the_chosen_task_survives_the_session_round_trip(): void
     {
         $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
-        $typesBefore = $this->entityManager()->getRepository(EventType::class)->count(['organization' => $organization]);
+        $typesBefore = $this->entityManager()->getRepository(Task::class)->count(['organization' => $organization]);
 
         $this->completeFlow();
         $this->client->followRedirect();
@@ -188,16 +188,16 @@ final class DeclarationFlowTest extends WebTestCase
         // No stray copy of the type was created by the round trip.
         self::assertSame(
             $typesBefore,
-            $entityManager->getRepository(EventType::class)->count(['organization' => $organization]),
+            $entityManager->getRepository(Task::class)->count(['organization' => $organization]),
         );
 
         $actions = $entityManager->getRepository(DeclarationAction::class)->findAll();
         self::assertCount(1, $actions);
-        $eventType = reset($actions)->getEventType();
+        $task = reset($actions)->getTask();
         // And it belongs to this association, not to a detached orphan.
         self::assertSame(
             $organization->getId()->toRfc4122(),
-            $eventType->getOrganization()->getId()->toRfc4122(),
+            $task->getOrganization()->getId()->toRfc4122(),
         );
     }
 
@@ -306,11 +306,11 @@ final class DeclarationFlowTest extends WebTestCase
         // via isCurrentStepSubmitted()). Only the final submit redirects.
         $this->client->submitForm('Suivant', $this->personStep($personOverrides));
 
-        // The event type is a database row now, not an enum value, so the submitted
+        // The task is a database row now, not an enum value, so the submitted
         // value is its id — taken from the rendered select rather than hardcoded, so
         // the test breaks if the option ever stops being offered.
         $this->client->submitForm('Suivant', [
-            self::FORM.'[actions][actions][0][eventType]' => $this->firstEventTypeId(),
+            self::FORM.'[actions][actions][0][task]' => $this->firstTaskId(),
             self::FORM.'[actions][actions][0][title]' => 'Régate du printemps',
             self::FORM.'[actions][actions][0][date]' => '2026-05-10',
             self::FORM.'[actions][actions][0][consecutiveDays]' => '2',
@@ -349,15 +349,15 @@ final class DeclarationFlowTest extends WebTestCase
     }
 
     /**
-     * The id of the first event type the form actually offers.
+     * The id of the first task the form actually offers.
      */
-    private function firstEventTypeId(): string
+    private function firstTaskId(): string
     {
         $option = $this->client->getCrawler()
-            ->filter('select[name="'.self::FORM.'[actions][actions][0][eventType]"] option[value!=""]')
+            ->filter('select[name="'.self::FORM.'[actions][actions][0][task]"] option[value!=""]')
             ->first();
 
-        self::assertGreaterThan(0, $option->count(), 'The actions step offers no event type.');
+        self::assertGreaterThan(0, $option->count(), 'The actions step offers no task.');
 
         return (string) $option->attr('value');
     }

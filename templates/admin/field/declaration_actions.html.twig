@@ -23,7 +23,7 @@
     <table class="declaration-actions">
         <thead>
             <tr>
-                <th>Type</th>
+                <th>Tâche</th>
                 <th>Intitulé</th>
                 <th>Date</th>
                 <th class="is-numeric">Jours</th>
@@ -37,7 +37,7 @@
         <tbody>
             {% for action in actions %}
                 <tr>
-                    <td>{{ action.eventType.name }}</td>
+                    <td>{{ action.task.name }}</td>
                     <td>
                         {{ action.title }}
                         {% if action.description %}
