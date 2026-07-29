@@ -62,6 +62,19 @@
             "config/routes/easyadmin.yaml"
         ]
     },
+    "league/flysystem-bundle": {
+        "version": "3.7",
+        "recipe": {
+            "repo": "github.com/symfony/recipes",
+            "branch": "main",
+            "version": "1.0",
+            "ref": "913dc3d7a5a1af0d2b044c5ac3a16e2f851d7380"
+        },
+        "files": [
+            "config/packages/flysystem.yaml",
+            "var/storage/.gitignore"
+        ]
+    },
     "phpstan/phpstan": {
         "version": "2.2.6"
     },
@@ -79,6 +92,9 @@
             "tests/bootstrap.php",
             "bin/phpunit"
         ]
+    },
+    "sensiolabs/gotenberg-bundle": {
+        "version": "v1.3.1"
     },
     "symfony/asset-mapper": {
         "version": "8.1",
@@ -193,6 +209,18 @@
             "version": "1.0",
             "ref": "fadbfe33303a76e25cb63401050439aa9b1a9c7f"
         }
+    },
+    "symfony/messenger": {
+        "version": "8.1",
+        "recipe": {
+            "repo": "github.com/symfony/recipes",
+            "branch": "main",
+            "version": "6.0",
+            "ref": "d8936e2e2230637ef97e5eecc0eea074eecae58b"
+        },
+        "files": [
+            "config/packages/messenger.yaml"
+        ]
     },
     "symfony/monolog-bundle": {
         "version": "4.0",

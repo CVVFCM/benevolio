@@ -1,0 +1,13 @@
+framework:
+    messenger:
+        transports:
+            # Runs in the same process, inside the request. Issuing a receipt is a
+            # handful of HTTP calls, which a treasurer can wait for today.
+            sync: 'sync://'
+
+        routing:
+            # Routed to `sync` DELIBERATELY, not left unrouted. Moving receipt
+            # generation off the request later is then a one-line change here — point
+            # this at a doctrine:// transport and run a consumer — with nothing to
+            # change in the handler, the listener or the tests.
+            App\Message\IssueReceipt: sync
