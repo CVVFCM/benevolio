@@ -11,7 +11,6 @@ use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
 use EasyCorp\Bundle\EasyAdminBundle\Field\BooleanField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\DateTimeField;
-use EasyCorp\Bundle\EasyAdminBundle\Field\MoneyField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\SlugField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -59,14 +58,6 @@ final class OrganizationCrudController extends AbstractCrudController
 
         yield BooleanField::new('active', 'organization.active')
             ->setHelp('organization.active.help');
-
-        // The association's own valuation of an hour of volunteer time, used when a
-        // task carries no rate of its own. Not the mileage barème — see
-        // Organization::$defaultHourlyRateCents.
-        yield MoneyField::new('defaultHourlyRateCents', 'organization.default_hourly_rate')
-            ->setCurrency('EUR')
-            ->setNumDecimals(2)
-            ->setHelp('organization.default_hourly_rate.help');
 
         yield DateTimeField::new('createdAt', 'organization.created_at')
             ->onlyOnIndex();

@@ -14,8 +14,6 @@ use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
 use EasyCorp\Bundle\EasyAdminBundle\Field\BooleanField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\DateTimeField;
-use EasyCorp\Bundle\EasyAdminBundle\Field\IntegerField;
-use EasyCorp\Bundle\EasyAdminBundle\Field\MoneyField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
@@ -81,37 +79,8 @@ final class TaskCrudController extends AbstractCrudController
         yield BooleanField::new('active', 'Proposé aux bénévoles')
             ->setHelp('Une tâche désactivée reste lisible sur les déclarations passées.');
 
-        // MoneyField stores cents natively, which is exactly how the column is
-        // defined — so nothing here converts, and nothing can convert twice.
-        yield MoneyField::new('hourlyRateCents', 'Taux horaire')
-            ->setCurrency('EUR')
-            ->setNumDecimals(2)
-            ->setHelp(
-                'Valorisation d\'une heure passée sur cette tâche. Laissez vide pour '
-                .'utiliser le taux par défaut de l\'association.',
-            )
-            ->onlyOnForms();
-
-        // Read-only twin for the listing. The raw column is null whenever the task
-        // uses the association's default — the ordinary case — and EasyAdmin renders
-        // null as "Aucun(e)", telling a treasurer the opposite of the truth. So show
-        // the rate actually in force, and say when it is inherited.
-        //
-        // IntegerField, not TextField, and not a virtual property either. TextField
-        // throws on the int column ("can't be converted into a string") because
-        // TextConfigurator runs before the formatValue callback; and pointing a field
-        // at a property Task does not have renders EasyAdmin's "Inaccessible" marker
-        // instead. An IntegerField accepts the column as it is, and formatValue then
-        // replaces what is displayed.
-        yield IntegerField::new('hourlyRateCents', 'Taux horaire')
-            ->formatValue(static function (mixed $value, Task $task): string {
-                $formatted = self::formatEuros($task->resolveHourlyRateCents());
-
-                return null === $task->getHourlyRateCents()
-                    ? sprintf('%s (défaut de l\'association)', $formatted)
-                    : $formatted;
-            })
-            ->hideOnForm();
+        // No rate here. A task's hourly rate is per financial year, so it lives on
+        // App\Entity\FiscalYear as an override — see FiscalYearCrudController.
 
         yield DateTimeField::new('createdAt', 'Créé le')
             ->hideOnForm();
@@ -140,18 +109,5 @@ final class TaskCrudController extends AbstractCrudController
                 $entityInstance->getName(),
             ));
         }
-    }
-
-    /**
-     * Cents to a French euro string: comma decimal separator, non-breaking space
-     * before the sign.
-     *
-     * Integer arithmetic, not $cents / 100 — putting a float in the middle of a
-     * money path is exactly what storing cents avoids. No thousands separator
-     * because Organization::MAX_HOURLY_RATE_CENTS caps a rate at 1 000,00 €.
-     */
-    private static function formatEuros(int $cents): string
-    {
-        return sprintf("%d,%02d\u{a0}€", intdiv($cents, 100), abs($cents % 100));
     }
 }
