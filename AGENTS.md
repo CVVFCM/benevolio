@@ -352,8 +352,17 @@ names the offending prefix. Keep that guard on any DSN added later.
 is only final once the volunteer opens an emailed link, an instance that cannot
 send mail is an instance in which nothing can be declared. Symfony's default
 `null://null` would swallow every message without an error, so the chart refuses to
-render instead of letting the failure be silent. `MAIL_FROM` defaults to
-`noreply@<host>`; the relay behind the DSN has to be allowed to send as it.
+render instead of letting the failure be silent.
+
+**`MAIL_FROM` is the platform's own address**, `benevolat@cvvfcm.fr` by default,
+configured deployment-wide (`app.mailFrom`, `MAIL_FROM` in `.env`) and **not** per
+association. `DeclarationConfirmationMailer` puts the association's name in the
+display name and its address nowhere: the platform sends on their behalf, and a
+spoofed sender domain lands the mail in spam. It is a literal, deliberately not
+derived from `host` — this address has to be a *verified sender* at the relay, and
+one the chart invented for itself would not be, so the mail would be accepted here
+and dropped there. The template refuses an empty value and refuses a
+`Name <addr>` form.
 
 **Kubernetes probes `/health`** (`App\Controller\HealthController`), and it is the
 only route outside a tenant or the backoffice. There is nothing else safe to probe:

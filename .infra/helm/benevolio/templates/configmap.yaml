@@ -9,7 +9,11 @@ data:
   APP_DEBUG: {{ .Values.app.debug | quote }}
   SERVER_NAME: {{ .Values.app.serverName | quote }}
   DEFAULT_URI: {{ .Values.app.defaultUri | default (printf "https://%s" .Values.host) | quote }}
-  MAIL_FROM: {{ .Values.app.mailFrom | default (printf "noreply@%s" .Values.host) | quote }}
+  {{- $mailFrom := required "app.mailFrom is required (the sender address, which must be a verified sender at the mail provider)" .Values.app.mailFrom }}
+  {{- if not (regexMatch "^[^@[:space:]]+@[^@[:space:]]+\\.[^@[:space:]]+$" $mailFrom) }}
+  {{- fail (printf "app.mailFrom must be a bare email address, got %q. A display name belongs nowhere here — the mailer already uses the association's name for that." $mailFrom) }}
+  {{- end }}
+  MAIL_FROM: {{ $mailFrom | quote }}
   # Bound FrankenPHP threads/workers (it otherwise sizes from the host core count and
   # OOMs the pod's memory limit). CLI pods (migrate) ignore these.
   FRANKENPHP_CONFIG: {{ printf "num_threads %d" (.Values.web.frankenphp.numThreads | int) | quote }}

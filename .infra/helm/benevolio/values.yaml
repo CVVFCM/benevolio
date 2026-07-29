@@ -42,10 +42,11 @@ app:
   serverName: ":80"
   # Base URL for URLs generated in CLI context. Empty → derived as https://<host>.
   defaultUri: ""
-  # Envelope sender for the confirmation mails. Empty → derived as noreply@<host>.
-  # Whatever relay secrets.mailerDsn points at must be allowed to send as this
-  # address, or the mail is accepted here and dropped there.
-  mailFrom: ""
+  # Sender for the confirmation mails. A literal, deliberately not derived from
+  # `host`: this address has to be a verified sender at whatever relay
+  # secrets.mailerDsn points at, and a value the chart invented for itself would
+  # not be — the mail would be accepted here and dropped there.
+  mailFrom: benevolat@cvvfcm.fr
 
 # PostgreSQL, always external. The chart used to be able to run its own via the
 # Bitnami subchart; that is gone, so there is exactly one way to point this at a
