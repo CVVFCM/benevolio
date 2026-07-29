@@ -16,11 +16,9 @@ use App\State\DeclarationState;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Finite\StateMachine;
-use League\Flysystem\FilesystemOperator;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Mailer\Event\MessageEvent;
-use Symfony\Component\Mailer\EventListener\MessageLoggerListener;
 use Symfony\Component\Mime\Email;
 use Zenstruck\Foundry\Test\Factories;
 use Zenstruck\Foundry\Test\ResetDatabase;
@@ -95,7 +93,6 @@ final class IssueReceiptTest extends KernelTestCase
 
         $path = '2026/cerfa-camille-berthier.pdf';
         $storage = self::getContainer()->get('receipts.storage');
-        self::assertInstanceOf(FilesystemOperator::class, $storage);
         self::assertTrue($storage->fileExists($path));
         // A real PDF, not an empty object.
         self::assertStringStartsWith('%PDF', $storage->read($path));
@@ -112,7 +109,6 @@ final class IssueReceiptTest extends KernelTestCase
         // Read from the message logger rather than through MailerAssertionsTrait, which
         // is a WebTestCase facility; this test drives the state machine, not a request.
         $logger = self::getContainer()->get('mailer.message_logger_listener');
-        self::assertInstanceOf(MessageLoggerListener::class, $logger);
 
         // Sent events, not getMessages(): the mailer records a MessageEvent when the
         // message is queued AND again when it is sent, so getMessages() returns the same

@@ -61,9 +61,11 @@ final class CerfaLayout
             // « Objet : …… » at y=87.9.
             'organizationObjet' => [24.0, 88.2],
 
-            // The outer box for « Œuvre ou organisme d'intérêt général … », in the left
-            // margin of that block.
-            'categoryGeneralInterest' => [9.4, 120.3],
+            // The outer box for « Œuvre ou organisme d'intérêt général … ». It is
+            // vertically CENTRED in that tall block, not level with its first line —
+            // measured by pixel scan at x 12.2-14.2, y 138.5-140.5, because unlike the
+            // ○ bullets it is drawn as vector and has no text bbox to find.
+            'categoryGeneralInterest' => [12.4, 138.3],
 
             // The ○ before « Association loi 1901 », measured at x=22.4-25.3, y=120.7.
             'categoryAssociation1901' => [22.6, 120.4],
@@ -91,8 +93,15 @@ final class CerfaLayout
             // x=123.6.
             'amountInWords' => [125.0, 125.4],
 
-            // « Date du versement ou du don : ……/……/…… » — after the colon at x=62.8.
-            'donationDate' => [65.0, 132.7],
+            // « Date du versement ou du don : ……/……/…… ».
+            //
+            // Split across the form's THREE dot groups instead of writing one date over
+            // the whole template, which left a trail of unused dots reading
+            // "21/06/2026/……". The slashes are the form's own, measured at x=72.9 and
+            // x=83.3; each part is centred in its group.
+            'donationDay' => [63.7, 132.7, 9.2, 'center'],
+            'donationMonth' => [73.0, 132.7, 10.3, 'center'],
+            'donationYear' => [83.4, 132.7, 9.5, 'center'],
 
             // « 200 du CGI », whose box sits to its left ("200" begins at x=38.7).
             'article200' => [34.6, 155.6],
@@ -101,7 +110,11 @@ final class CerfaLayout
             // remboursement » — THE box that makes this receipt what it is.
             'natureVolunteerExpenses' => [12.0, 188.7],
 
-            'signatureDate' => [140.0, 218.0],
+            // The « Date et signature » box has its own ……/……/…… run; same treatment,
+            // slashes measured at x=115.3 and x=122.2.
+            'signatureDay' => [109.0, 222.9, 6.3, 'center'],
+            'signatureMonth' => [115.4, 222.9, 6.8, 'center'],
+            'signatureYear' => [122.3, 222.9, 5.9, 'center'],
         ],
     ];
 }

@@ -148,10 +148,14 @@ final class ReceiptGeneratorTest extends KernelTestCase
             'volunteerAddressCountry' => 'France',
             'amount' => '43,25',
             'amountInWords' => 'Quarante-trois euros et vingt-cinq centimes',
-            'donationDate' => '21/06/2026',
+            'donationDay' => '21',
+            'donationMonth' => '06',
+            'donationYear' => '2026',
             'article200' => CerfaLayout::TICK,
             'natureVolunteerExpenses' => CerfaLayout::TICK,
-            'signatureDate' => '29/07/2026',
+            'signatureDay' => '29',
+            'signatureMonth' => '07',
+            'signatureYear' => '2026',
         ];
     }
 

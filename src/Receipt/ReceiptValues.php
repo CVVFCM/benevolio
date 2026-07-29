@@ -79,8 +79,11 @@ final readonly class ReceiptValues
                 'amountInWords' => new AmountInWords()->forCents($amountCents),
 
                 // The date of the donation is the day the volunteering finished, not the
-                // day the treasurer got round to validating it.
-                'donationDate' => $donationDate->format('d/m/Y'),
+                // day the treasurer got round to validating it. Split because the form
+                // supplies its own slashes — see CerfaLayout.
+                'donationDay' => $donationDate->format('d'),
+                'donationMonth' => $donationDate->format('m'),
+                'donationYear' => $donationDate->format('Y'),
 
                 // Article 200, not 978: 978 is the IFI, which this never concerns.
                 'article200' => CerfaLayout::TICK,
@@ -89,7 +92,9 @@ final readonly class ReceiptValues
                 // than for a cash gift. Without it the document says the wrong thing.
                 'natureVolunteerExpenses' => CerfaLayout::TICK,
 
-                'signatureDate' => $issuedAt->format('d/m/Y'),
+                'signatureDay' => $issuedAt->format('d'),
+                'signatureMonth' => $issuedAt->format('m'),
+                'signatureYear' => $issuedAt->format('Y'),
             ],
         );
     }
