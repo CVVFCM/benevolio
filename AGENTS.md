@@ -470,11 +470,17 @@ Run `bin/console` and `composer` **inside the php container** (`make cli`, or
 migrations on container start.
 
 App served at `https://localhost`. `composer reset` (so `make reset`) leaves three
-logins: **`admin@example.com` / `!ChangeMe!`** — a platform super-admin created by
-the reset script itself — plus the fixture accounts
-`super-admin@benevolio.test` and `admin@cvvfcm.test`, whose password is in
+logins: **`admin@example.com` / `!ChangeMe!`** — an admin **of CVVFCM**, created by
+the reset script itself, so it lands in `/admin` where the features are — plus the
+fixture accounts `super-admin@benevolio.test` (the platform, `/platform`) and
+`admin@cvvfcm.test`, whose password is in
 `App\Factory\UserFactory::DEFAULT_PASSWORD`. The association's public form is at
 `/a/cvvfcm/declaration`.
+
+An account is one or the other, never both: a platform super-admin is attached to no
+association — `App\Tenant\UserTenantResolver` reads the association off the account to
+arm the tenant filter, so giving one an organization would scope the whole platform
+backoffice to it. `app:user:create` refuses that combination outright.
 
 **Password rules are deliberately weak**, and this applies in production too:
 minimum `User::PASSWORD_MIN_LENGTH` (8) characters, and nothing else.

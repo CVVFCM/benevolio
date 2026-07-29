@@ -87,7 +87,7 @@
             "bin/console doctrine:schema:drop --force --full-database",
             "bin/console doctrine:migrations:migrate --no-interaction",
             "bin/console doctrine:fixtures:load --no-interaction --append",
-            "bin/console app:user:create admin@example.com --role=super-admin --password='!ChangeMe!'"
+            "bin/console app:user:create admin@example.com --role=admin --organization=cvvfcm --password='!ChangeMe!'"
         ],
         "reset-test": [
             "bin/console -etest doctrine:database:create --if-not-exists",
