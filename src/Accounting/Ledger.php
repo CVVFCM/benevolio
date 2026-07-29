@@ -7,6 +7,8 @@ namespace App\Accounting;
 use App\Entity\FiscalYear;
 use App\Entity\Person;
 
+use function count;
+
 /**
  * The draft ledger of one exercice.
  *
@@ -51,6 +53,42 @@ final readonly class Ledger
         }
 
         return $total;
+    }
+
+    /**
+     * The exercice as one centralising écriture — what actually reaches the journal.
+     *
+     * Walked once, here, rather than left to the template: the volunteer count is a
+     * distinct count and the kilometres are only the valued ones, neither of which Twig
+     * should be deciding.
+     */
+    public function summary(): LedgerSummary
+    {
+        $volunteers = [];
+        $workHoursInHundredths = 0;
+        $waivedDistanceKm = 0;
+
+        foreach ($this->entries as $entry) {
+            $volunteers[$entry->action->getDeclaration()->getPerson()->getId()->toRfc4122()] = true;
+            $workHoursInHundredths += $entry->action->getWorkHoursInHundredths();
+
+            // Only travel that was actually valued. A journey as a passenger is declared
+            // but waives nothing, and including it would leave the kilometres shown next
+            // to the amount irreconcilable with the barème.
+            if ($entry->hasMileage()) {
+                $waivedDistanceKm += $entry->action->getTotalDistanceKm();
+            }
+        }
+
+        return new LedgerSummary(
+            fiscalYear: $this->fiscalYear,
+            hoursCents: $this->hoursCents(),
+            mileageCents: $this->mileageCents(),
+            volunteerCount: count($volunteers),
+            workHoursInHundredths: $workHoursInHundredths,
+            waivedDistanceKm: $waivedDistanceKm,
+            beyondFirstBand: $this->hasBeyondFirstBand(),
+        );
     }
 
     /**

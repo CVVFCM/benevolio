@@ -1,15 +1,49 @@
 {% extends '@EasyAdmin/page/content.html.twig' %}
 
 {#
-    The draft ledger of one exercice.
+    The exercice as it goes into the accounts.
 
-    Columns follow PCG art. 1032-1, which requires each record to carry its origin, its
-    content, its imputation and a reference to the pièce justificative. Amounts arrive in
-    cents and are formatted by the `euros` filter — never divided in the template, so no
-    float touches a figure headed for a receipt.
+    TWO écritures, not one table. The classe 8 pair (bénévolat valorisé) is off balance
+    sheet and presented at the foot of the compte de résultat; the abandon de frais is a
+    real flow through classe 6, 4 and 7. They are passed separately and their totals must
+    never meet — a single "total des contributions" would overstate what a volunteer may
+    deduct, which CGI art. 1740 A penalises at 25%.
+
+    Both are dated on the exercice's closing date: the movements happened all year, the
+    écriture recording them is passed at closing.
+
+    The per-volunteer detail is on its own page — admin/fiscal_year/ledger_detail.html.twig.
+    Amounts arrive in cents and go through the `euros` filter; nothing is divided here.
 #}
 
 {% macro amount(cents) %}{{ cents|euros }}{% endmacro %}
+
+{% macro entries(rows) %}
+    {% import _self as fmt %}
+
+    <table class="data-table ledger">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Compte</th>
+                <th>Libellé de l'écriture</th>
+                <th class="is-numeric">Débit</th>
+                <th class="is-numeric">Crédit</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in rows %}
+                <tr class="ledger__row">
+                    <td>{{ entry.date|format_date('short') }}</td>
+                    <td class="ledger__account">{{ entry.account.display }}</td>
+                    <td>{{ entry.label }}</td>
+                    <td class="is-numeric">{{ entry.debitCents ? fmt.amount(entry.debitCents) : '' }}</td>
+                    <td class="is-numeric">{{ entry.creditCents ? fmt.amount(entry.creditCents) : '' }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endmacro %}
 
 {% block content_title %}
     Écritures comptables — {{ fiscal_year.name }}
@@ -21,176 +55,99 @@
     <p class="ledger__period">
         Du {{ fiscal_year.beginsOn|format_date('long') }}
         au {{ fiscal_year.endsOn|format_date('long') }}.
-        Seules les actions <strong>validées</strong> figurent ici : une ligne sur laquelle
-        personne n'a statué n'est pas comptabilisable.
+        Seules les actions <strong>validées</strong> sont comptabilisées : une ligne sur
+        laquelle personne n'a statué n'est pas comptabilisable.
     </p>
 
-    {% if ledger.isEmpty %}
+    {% if summary.isEmpty %}
         <p class="ledger__empty">
-            Aucune action validée sur cet exercice. Les déclarations reçues apparaissent
-            dans « Déclarations reçues » ; elles rejoindront cette page une fois validées.
+            Aucune action validée sur cet exercice, donc aucune écriture à passer. Les
+            déclarations reçues apparaissent dans « Déclarations reçues » ; elles
+            rejoindront cette page une fois validées.
         </p>
     {% else %}
-        {% if ledger.hasBeyondFirstBand %}
+        {% if summary.beyondFirstBand %}
             <p class="ledger__warning" role="note">
                 <strong>Attention :</strong> au moins un bénévole dépasse
                 {{ 5000|number_format(0, ',', ' ') }} km sur l'exercice. Au-delà, le barème
                 applique une autre formule, avec un terme fixe, que cette application ne
                 calcule pas — les montants concernés sont donc <strong>sous-évalués</strong>.
-                Reprenez-les à la main avant d'établir un reçu.
+                Reprenez-les à la main avant de passer l'écriture.
             </p>
         {% endif %}
 
-        {% for group in ledger.byVolunteer %}
-            <section class="ledger__volunteer">
-                <h2>
-                    {{ group.person.fullName }}
-                    {% if group.beyondFirstBand %}
-                        <span class="ledger__flag" title="Au-delà de la première tranche du barème">
-                            au-delà de 5 000 km
-                        </span>
-                    {% endif %}
-                </h2>
+        <p class="ledger__volume">
+            {{ summary.volunteerCount }}
+            {{ summary.volunteerCount > 1 ? 'bénévoles' : 'bénévole' }}
+            · {{ summary.workHoursInHundredths|hours }} de bénévolat
+            · {{ summary.waivedDistanceKm }} km avec véhicule personnel
+        </p>
 
-                <table class="data-table ledger">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Compte</th>
-                            <th>Libellé de l'écriture</th>
-                            <th class="is-numeric">Débit</th>
-                            <th class="is-numeric">Crédit</th>
-                            <th>Pièce justificative</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for entry in group.entries %}
-                            {% set piece %}Déclaration du {{ entry.action.declaration.submittedAt|format_date('short') }}{% endset %}
+        {% if summary.offBalanceSheetEntries is not empty %}
+            <section class="ledger__entry">
+                <h2>Contributions volontaires en nature — hors bilan</h2>
 
-                            {#
-                                Bénévolat valorisé. Débit 864 / crédit 875 — under
-                                règlement ANC 2018-06, which swapped 870 and 875 from the
-                                old 99-01. Off balance sheet, and never receiptable.
-                            #}
-                            {% if entry.hasHours %}
-                                <tr class="ledger__row ledger__row--class8">
-                                    <td>{{ entry.action.date|format_date('short') }}</td>
-                                    <td class="ledger__account">{{ pcg_account('864').display }}</td>
-                                    <td>
-                                        {{ entry.action.task.name }} — {{ entry.action.workHours }} h
-                                        <br><small class="ledger__note">{{ entry.action.title }}</small>
-                                    </td>
-                                    <td class="is-numeric">{{ fmt.amount(entry.valuation.hoursCents) }}</td>
-                                    <td class="is-numeric"></td>
-                                    <td class="ledger__note">{{ piece }}</td>
-                                </tr>
-                                <tr class="ledger__row ledger__row--class8">
-                                    <td></td>
-                                    <td class="ledger__account">{{ pcg_account('875').display }}</td>
-                                    <td class="ledger__note">Contrepartie du bénévolat valorisé</td>
-                                    <td class="is-numeric"></td>
-                                    <td class="is-numeric">{{ fmt.amount(entry.valuation.hoursCents) }}</td>
-                                    <td></td>
-                                </tr>
-                            {% endif %}
+                {{ fmt.entries(summary.offBalanceSheetEntries) }}
 
-                            {#
-                                Abandon de frais, in two entries. Art. 141-4 requires the
-                                waiver to extinguish the debt owed to the volunteer, so
-                                4681 is the counterpart — the resource is not credited out
-                                of nowhere.
-                            #}
-                            {% if entry.hasMileage %}
-                                <tr class="ledger__row">
-                                    <td>{{ entry.action.date|format_date('short') }}</td>
-                                    <td class="ledger__account">{{ pcg_account('6251').display }}</td>
-                                    <td>
-                                        {{ entry.action.totalDistanceKm }} km
-                                        {% if entry.action.fiscalPower %}
-                                            <br><small class="ledger__note">{{ entry.action.fiscalPower.label }}</small>
-                                        {% endif %}
-                                    </td>
-                                    <td class="is-numeric">{{ fmt.amount(entry.valuation.mileageCents) }}</td>
-                                    <td class="is-numeric"></td>
-                                    <td class="ledger__note">{{ piece }}</td>
-                                </tr>
-                                <tr class="ledger__row">
-                                    <td></td>
-                                    <td class="ledger__account">{{ pcg_account('4681').display }}</td>
-                                    <td class="ledger__note">Frais à rembourser au bénévole</td>
-                                    <td class="is-numeric"></td>
-                                    <td class="is-numeric">{{ fmt.amount(entry.valuation.mileageCents) }}</td>
-                                    <td></td>
-                                </tr>
-                                <tr class="ledger__row ledger__row--waiver">
-                                    <td></td>
-                                    <td class="ledger__account">{{ pcg_account('4681').display }}</td>
-                                    <td class="ledger__note">Renonciation au remboursement</td>
-                                    <td class="is-numeric">{{ fmt.amount(entry.valuation.mileageCents) }}</td>
-                                    <td class="is-numeric"></td>
-                                    <td></td>
-                                </tr>
-                                <tr class="ledger__row ledger__row--waiver">
-                                    <td></td>
-                                    <td class="ledger__account">{{ pcg_account('75412').display }}</td>
-                                    <td class="ledger__note">Abandon de frais par le bénévole</td>
-                                    <td class="is-numeric"></td>
-                                    <td class="is-numeric">{{ fmt.amount(entry.valuation.mileageCents) }}</td>
-                                    <td></td>
-                                </tr>
-                            {% endif %}
-                        {% endfor %}
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <th colspan="3">Bénévolat valorisé (hors bilan, non reçu fiscal)</th>
-                            <th class="is-numeric">{{ fmt.amount(group.hoursCents) }}</th>
-                            <th class="is-numeric">{{ fmt.amount(group.hoursCents) }}</th>
-                            <th></th>
-                        </tr>
-                        <tr>
-                            <th colspan="3">Abandon de frais (ouvre droit à reçu fiscal)</th>
-                            <th class="is-numeric">{{ fmt.amount(group.mileageCents) }}</th>
-                            <th class="is-numeric">{{ fmt.amount(group.mileageCents) }}</th>
-                            <th></th>
-                        </tr>
-                    </tfoot>
-                </table>
+                <p class="ledger__note">
+                    Comptes {{ pcg_account('864').value }} / {{ pcg_account('875').value }},
+                    règlement ANC 2018-06 — et non le 870 du règlement 99-01, abrogé. Ces
+                    écritures ne passent pas par le bilan : elles sont présentées au pied du
+                    compte de résultat, en deux colonnes de totaux égaux (art. 211-3).
+                    <strong>Jamais de reçu fiscal</strong> : le temps donné n'ouvre aucun
+                    droit à réduction d'impôt.
+                </p>
             </section>
-        {% endfor %}
+        {% endif %}
 
-        <section class="ledger__totals">
-            <h2>Totaux de l'exercice</h2>
+        {% if summary.realFlowEntries is not empty %}
+            <section class="ledger__entry">
+                <h2>Abandon de frais — ouvre droit à reçu fiscal</h2>
 
-            <dl>
-                <dt>Bénévolat valorisé</dt>
-                <dd>
-                    {{ fmt.amount(ledger.hoursCents) }}
-                    <small class="ledger__note">
-                        Comptes {{ pcg_account('864').value }} / {{ pcg_account('875').value }}.
-                        Hors bilan, présenté au pied du compte de résultat en deux colonnes
-                        de totaux égaux. <strong>Jamais de reçu fiscal</strong> : le temps
-                        donné n'ouvre aucun droit à réduction d'impôt.
-                    </small>
-                </dd>
+                {{ fmt.entries(summary.realFlowEntries) }}
 
-                <dt>Abandon de frais</dt>
-                <dd>
-                    {{ fmt.amount(ledger.mileageCents) }}
-                    <small class="ledger__note">
-                        Compte {{ pcg_account('75412').value }}. C'est ce montant qui ouvre
-                        droit à un reçu fiscal (CERFA 2041-RD), où il figure en euros — le
-                        nombre de kilomètres n'y apparaît pas, mais son détail doit être
-                        conservé par l'association.
-                    </small>
-                </dd>
-            </dl>
+                <p class="ledger__note">
+                    Le compte {{ pcg_account('4681').value }} est la contrepartie exigée par
+                    l'art. 141-4 : la renonciation éteint la dette de l'association envers le
+                    bénévole, la ressource n'est donc pas créditée sans origine. C'est le
+                    solde du {{ pcg_account('75412').value }} qui ouvre droit au reçu fiscal
+                    (CERFA 2041-RD), où il figure en euros — le nombre de kilomètres n'y
+                    apparaît pas, mais son détail doit être conservé par l'association.
+                </p>
+            </section>
+        {% endif %}
 
-            {# The two are deliberately never summed: see App\Accounting\Ledger. #}
+        <section class="ledger__balance">
+            <h2>Balance par compte</h2>
+
+            <table class="data-table ledger">
+                <thead>
+                    <tr>
+                        <th>Compte</th>
+                        <th class="is-numeric">Débit</th>
+                        <th class="is-numeric">Crédit</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for balance in summary.balances %}
+                        <tr class="ledger__row">
+                            <td class="ledger__account">{{ balance.account.display }}</td>
+                            <td class="is-numeric">{{ balance.debitCents ? fmt.amount(balance.debitCents) : '' }}</td>
+                            <td class="is-numeric">{{ balance.creditCents ? fmt.amount(balance.creditCents) : '' }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {# The two families are deliberately never added: see App\Accounting\LedgerSummary. #}
             <p class="ledger__note">
-                Ces deux montants ne s'additionnent pas : ils relèvent de traitements
+                Les deux écritures ne s'additionnent pas : elles relèvent de traitements
                 comptables différents.
             </p>
         </section>
+
+        <p class="ledger__crosslink">
+            <a href="{{ detail_url }}">Détail par bénévole →</a>
+        </p>
     {% endif %}
 {% endblock %}
