@@ -19,6 +19,10 @@ services:
       # Development only. .env keeps null://null, so a checkout without this file
       # — and the test environment — send nowhere.
       MAILER_DSN: smtp://mailpit:1025
+      # The one S3 setting with no sensible default: the rest come from
+      # config/packages/flysystem.yaml, which is already pointed at a bucket and dummy
+      # credentials s3mock accepts.
+      S3_ENDPOINT: http://s3mock:9090
     volumes:
       - '.:/app:rw'
       - './.infra/docker/php/conf.d/symfony.dev.ini:/usr/local/etc/php/conf.d/symfony.ini:ro'
@@ -68,7 +72,7 @@ services:
     image: adobe/s3mock:3.12.0
     restart: unless-stopped
     environment:
-      initialBuckets: ${RECEIPTS_BUCKET:-benevolio-receipts}
+      initialBuckets: ${S3_BUCKET:-benevolio-receipts}
       # Otherwise every PUT is echoed in full, receipts included.
       retainFilesOnExit: "false"
     ports:

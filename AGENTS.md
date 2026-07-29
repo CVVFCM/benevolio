@@ -492,6 +492,25 @@ ext-intl is what actually runs — and the polyfill has no `SPELLOUT` at all. IC
 that friction, because French is where hand-rolling breaks: *quatre-vingts* but
 *quatre-vingt-un*, *soixante et onze* but *soixante-douze*, and *zéro euro* singular.
 
+### S3 configuration
+
+The variables are the ordinary ones — **`S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_KEY`,
+`S3_SECRET`** — matching cvvfcm-v4, so anything that already knows how to configure an S3
+bucket for that project configures this one.
+
+**Their defaults live in `config/packages/flysystem.yaml`**, as `env(...)` parameters, not in
+`.env`. `.env` is tracked, so a value there is a setting pretending to be configuration that
+every environment then has to override. Only `S3_ENDPOINT` has no default: development sets it
+to the s3mock container (`compose.override.yaml`), production to the Scaleway region endpoint.
+
+**Do not "helpfully" pass these through `compose.yaml` as `${S3_KEY:-}`.** An empty variable
+that is *set* is not an absent one: Symfony resolves `%env(S3_KEY)%` to `''` and the signing
+code then refuses to build a request, so the YAML default would be silently dead.
+
+**Production sets none of them yet**, nor `GOTENBERG_DSN` — the Helm chart has no S3 or
+Gotenberg wiring, so a deployed instance cannot store or render a receipt. Known, and separate
+from the naming above.
+
 ### Testing it
 
 `ReceiptGeneratorTest` and `IssueReceiptTest` hit **real Gotenberg and real s3mock** —
