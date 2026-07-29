@@ -14,9 +14,13 @@ use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\Process\Process;
 use Twig\Environment;
 
+use function base64_encode;
+use function count;
+use function file_get_contents;
 use function file_put_contents;
 use function filesize;
 use function is_string;
+use function json_decode;
 use function round;
 use function sprintf;
 use function strlen;
@@ -125,6 +129,67 @@ final class ReceiptGeneratorTest extends KernelTestCase
     }
 
     /**
+     * The signature reaches **page 2** of the layer, and page 1 stays clean.
+     *
+     * Asserted on the layer and not on the finished receipt on purpose: `qpdf --overlay`
+     * wraps each stamped page's content in a Form XObject, and qpdf's per-page image list
+     * only reports images in a page's *direct* resources — so after stamping it reports
+     * none at all, even for the form's own logos. The page a signature landed on is
+     * therefore only visible here. That it survives the stamping is the next test.
+     */
+    #[Test]
+    public function the_layer_puts_the_signature_on_page_two_only(): void
+    {
+        $layer = $this->gotenberg()->htmlToPdf(
+            'index.html',
+            $this->renderOverlay(self::values(), ['signature' => self::signatureDataUri()]),
+        );
+
+        self::assertSame([0, 1], $this->imagesPerPage($layer));
+    }
+
+    /**
+     * And it survives being pressed onto the official form.
+     *
+     * One more image object than the same receipt without a signature — the form itself
+     * carries two, so an absolute count would prove nothing.
+     */
+    #[Test]
+    public function the_stamped_receipt_carries_the_signature(): void
+    {
+        $unsigned = $this->imageObjectCount($this->generator()->generate(self::values()));
+        $signed = $this->imageObjectCount(
+            $this->generator()->generate(self::values(), ['signature' => self::signatureDataUri()]),
+        );
+
+        self::assertSame($unsigned + 1, $signed);
+    }
+
+    /**
+     * An association with no signature gets exactly the document it got before.
+     */
+    #[Test]
+    public function an_association_without_a_signature_gets_an_unsigned_form(): void
+    {
+        $html = $this->renderOverlay(self::values(), images: []);
+
+        self::assertStringNotContainsString('<img', $html);
+    }
+
+    #[Test]
+    public function the_signature_sits_inside_the_measured_box(): void
+    {
+        $html = $this->renderOverlay(self::values(), ['signature' => self::signatureDataUri()]);
+
+        // The box is x 106.9-184.1mm, y 216.2-233.4mm, and the date run already occupies
+        // x 109-128.2mm. These are CerfaLayout::IMAGES' numbers, so moving them shows here.
+        self::assertStringContainsString('left: 134mm', $html);
+        self::assertStringContainsString('top: 217.5mm', $html);
+        self::assertStringContainsString('max-inline-size: 48mm', $html);
+        self::assertStringContainsString('max-block-size: 14mm', $html);
+    }
+
+    /**
      * @return array<string, string>
      */
     private static function values(): array
@@ -165,22 +230,90 @@ final class ReceiptGeneratorTest extends KernelTestCase
 
         return new ReceiptGenerator(
             $container->get(Environment::class),
-            new GotenbergClient(HttpClient::create(), self::gotenbergDsn()),
+            $this->gotenberg(),
             new Filesystem(),
             __DIR__.'/../../resources/cerfa/2041-rd_11580-05.pdf',
         );
     }
 
+    private function gotenberg(): GotenbergClient
+    {
+        return new GotenbergClient(HttpClient::create(), self::gotenbergDsn());
+    }
+
+    /**
+     * The fixture signature, as it reaches the overlay: a `data:` URI.
+     *
+     * The real file, not a one-pixel stand-in — a PNG the browser refuses to decode would
+     * silently produce a blank box, and the point of these tests is to catch exactly that.
+     */
+    private static function signatureDataUri(): string
+    {
+        $contents = file_get_contents(__DIR__.'/../../resources/fixtures/organization-signature.png');
+        self::assertNotFalse($contents);
+
+        return 'data:image/png;base64,'.base64_encode($contents);
+    }
+
+    /**
+     * How many images each page carries, from qpdf's own JSON.
+     *
+     * @return list<int>
+     */
+    private function imagesPerPage(string $pdf): array
+    {
+        $path = sys_get_temp_dir().'/cerfa-images-test.pdf';
+        file_put_contents($path, $pdf);
+
+        $json = json_decode($this->qpdf(['--json=latest', '--json-key=pages', $path], allowWarnings: true), true);
+        self::assertIsArray($json);
+        self::assertArrayHasKey('pages', $json);
+        self::assertIsArray($json['pages']);
+
+        $counts = [];
+        foreach ($json['pages'] as $page) {
+            self::assertIsArray($page);
+            self::assertIsArray($page['images'] ?? null);
+            $counts[] = count($page['images']);
+        }
+
+        return $counts;
+    }
+
+    /**
+     * How many image objects the whole file holds.
+     *
+     * Read off the QDF form, where objects are written uncompressed, because this has to
+     * see inside the Form XObjects `--overlay` creates — which is exactly what the
+     * per-page listing above cannot do.
+     */
+    private function imageObjectCount(string $pdf): int
+    {
+        $path = sys_get_temp_dir().'/cerfa-image-objects-test.pdf';
+        file_put_contents($path, $pdf);
+
+        $count = preg_match_all(
+            '#/Subtype\s*/Image#',
+            $this->qpdf(['--qdf', '--object-streams=disable', $path, '-'], allowWarnings: true),
+        );
+        self::assertNotFalse($count);
+
+        return $count;
+    }
+
     /**
      * @param array<string, string> $values
+     * @param array<string, string> $images
      */
-    private function renderOverlay(array $values): string
+    private function renderOverlay(array $values, array $images = []): string
     {
         return self::getContainer()->get(Environment::class)->render(
             'receipt/cerfa_overlay.html.twig',
             [
                 'fields' => CerfaLayout::FIELDS,
                 'values' => $values,
+                'images' => CerfaLayout::IMAGES,
+                'image_values' => $images,
                 'ticks' => ['categoryGeneralInterest', 'categoryAssociation1901', 'article200', 'natureVolunteerExpenses'],
                 'layout_font_size' => CerfaLayout::FONT_SIZE,
             ],

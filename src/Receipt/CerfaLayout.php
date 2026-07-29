@@ -20,6 +20,9 @@ namespace App\Receipt;
  * and the signature are on **page 2**. `qpdf --overlay` maps overlay page n onto form
  * page n, so the layer has to be two pages too.
  *
+ * Text positions live in FIELDS, images in IMAGES — see IMAGES for why they cannot share
+ * a shape.
+ *
  * @see resources/cerfa/README.md for what to do when the form is revised.
  */
 final class CerfaLayout
@@ -115,6 +118,32 @@ final class CerfaLayout
             'signatureDay' => [109.0, 222.9, 6.3, 'center'],
             'signatureMonth' => [115.4, 222.9, 6.8, 'center'],
             'signatureYear' => [122.3, 222.9, 5.9, 'center'],
+        ],
+    ];
+
+    /**
+     * page => field => [x, y, max width, max height] in millimetres, for values that are
+     * images rather than text.
+     *
+     * Separate from FIELDS because an image is placed inside a box and not on a baseline:
+     * it is given a maximum width *and* height, and the browser keeps its aspect ratio, so
+     * a wide scanned signature and a square stamp both fit without being distorted.
+     *
+     * The « Date et signature » box was measured by scanning a 100 dpi render of page 2 for
+     * its rules — it is vector, so `pdftotext` reports nothing for it:
+     *
+     *   - the box itself: x 106.9 → 184.1 mm, y 216.2 → 233.4 mm
+     *   - the « Date et signature » label sits above it, at y 211.8 mm
+     *   - the date run below already occupies x 109.0 → 128.2 mm at y 222.9 mm
+     *
+     * So the signature goes to the right of the date, inside the box, with a millimetre of
+     * clearance on every side.
+     *
+     * @var array<int, array<string, array{float, float, float, float}>>
+     */
+    public const array IMAGES = [
+        2 => [
+            'signature' => [134.0, 217.5, 48.0, 14.0],
         ],
     ];
 }

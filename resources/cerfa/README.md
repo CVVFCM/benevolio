@@ -23,5 +23,14 @@ every value**. Replacing this PDF means re-measuring the coordinate map in
 `App\Receipt\CerfaLayout` and looking at the result, not just running the tests — the
 tests can prove a value is present, not that it landed on the right line.
 
+Re-measure `CerfaLayout::IMAGES` as well: the « Date et signature » box holds the
+association's signature, and both the box and the checkboxes are **vector**, so
+`pdftotext -bbox` reports nothing for them. They were found by scanning a 100 dpi render for
+long dark runs:
+
+```bash
+pdftoppm -f 2 -l 2 -r 100 -png 2041-rd_11580-05.pdf page   # then scan page-2.png for rules
+```
+
 Check the page count and size too: the overlay assumes **2 pages, A4, portrait**, and
 stamps page 1.

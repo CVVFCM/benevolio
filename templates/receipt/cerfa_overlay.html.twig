@@ -51,6 +51,16 @@
             .tick {
                 font-weight: 700;
             }
+
+            /*
+                An image gets a maximum width AND height and no dimensions of its own, so
+                the browser scales it inside that box and keeps its aspect ratio: a wide
+                scanned signature and a square stamp both fit, neither is distorted, and
+                neither can grow out of the box it was measured into.
+            */
+            .img {
+                position: absolute;
+            }
         </style>
     </head>
     <body>
@@ -69,6 +79,27 @@
                                 {%- endif %}
                             "
                         >{{ values[field] }}</span>
+                    {% endif %}
+                {% endfor %}
+
+                {#
+                    Images, when there are any. An association with no signature must get
+                    exactly the PDF it got before this existed, which is why the loop is
+                    over positions but guarded on the value.
+                #}
+                {% for field, position in images[page] ?? [] %}
+                    {% if image_values[field] is defined and image_values[field] is not empty %}
+                        <img
+                            class="img"
+                            src="{{ image_values[field] }}"
+                            alt=""
+                            style="
+                                left: {{ position[0] }}mm;
+                                top: {{ position[1] }}mm;
+                                max-inline-size: {{ position[2] }}mm;
+                                max-block-size: {{ position[3] }}mm;
+                            "
+                        >
                     {% endif %}
                 {% endfor %}
             </div>

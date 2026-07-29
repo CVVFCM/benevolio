@@ -27,6 +27,8 @@ final readonly class ReceiptValues
         public string $volunteerAddress,
         /** @var array<string, string> */
         private array $fields,
+        /** @var array<string, string> */
+        private array $images,
     ) {
     }
 
@@ -44,6 +46,10 @@ final readonly class ReceiptValues
         assert(null !== $address);
 
         $donationDate = self::latestActionDate($declaration) ?? $issuedAt;
+
+        // The signature is optional, by decision: an association that has not uploaded one
+        // still gets its receipt, and signs it by hand. ReceiptEligibility does not ask.
+        $signature = $organization->getSignatureDataUri();
 
         return new self(
             volunteerName: $person->getFullName(),
@@ -96,6 +102,7 @@ final readonly class ReceiptValues
                 'signatureMonth' => $issuedAt->format('m'),
                 'signatureYear' => $issuedAt->format('Y'),
             ],
+            images: null === $signature ? [] : ['signature' => $signature],
         );
     }
 
@@ -105,6 +112,19 @@ final readonly class ReceiptValues
     public function forOverlay(): array
     {
         return $this->fields;
+    }
+
+    /**
+     * The image values, keyed by the field names in CerfaLayout::IMAGES.
+     *
+     * Kept apart from the text fields rather than mixed into them: a `data:` URI is not a
+     * value to print, and the template positions the two differently.
+     *
+     * @return array<string, string>
+     */
+    public function imagesForOverlay(): array
+    {
+        return $this->images;
     }
 
     /**

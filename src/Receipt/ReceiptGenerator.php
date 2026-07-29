@@ -49,13 +49,16 @@ final readonly class ReceiptGenerator
     }
 
     /**
-     * @param array<string, string> $values keyed by the field names in CerfaLayout
+     * @param array<string, string> $values keyed by the field names in CerfaLayout::FIELDS
+     * @param array<string, string> $images `data:` URIs, keyed by CerfaLayout::IMAGES
      */
-    public function generate(array $values): string
+    public function generate(array $values, array $images = []): string
     {
         $html = $this->twig->render('receipt/cerfa_overlay.html.twig', [
             'fields' => CerfaLayout::FIELDS,
             'values' => $values,
+            'images' => CerfaLayout::IMAGES,
+            'image_values' => $images,
             'ticks' => self::tickFields(),
             'layout_font_size' => CerfaLayout::FONT_SIZE,
         ]);

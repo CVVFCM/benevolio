@@ -134,9 +134,29 @@ year it began in. A line no
 exercice covers is stored and listed but **unvalued**: without a barème for the period
 there is no figure to state.
 
-The ledger (`/admin/fiscal-year/{id}/ledger`) lists **validated lines only** — an
-unruled line is not bookable — grouped by volunteer, which is the unit a CERFA is
-issued for and the unit the barème's distance bands are keyed to.
+### Two accounting pages, and what each is for
+
+Both list **validated lines only** — an unruled line is not bookable.
+
+`/admin/fiscal-year/{id}/ledger` is the **écriture the association books**:
+`App\Accounting\LedgerSummary`, one centralising entry per family, dated on the exercice's
+**close** (the movements happened all year; the écriture recording them is passed at
+closing), plus a balance per compte. This is what a treasurer copies into a journal, and
+it is what they asked for — the per-volunteer detail is not what goes into the accounts.
+
+`…/ledger/detail` is that detail, grouped by volunteer: the unit a CERFA is issued for and
+the unit the barème's distance bands are keyed to. It justifies an individual receipt.
+
+The summary shows the two families as **two tables, never one**, so nothing invites a
+combined total — the figure `Ledger` and `LedgerSummary` both exist to prevent. Its
+kilometre count is the **valued** kilometres only: a journey as a passenger is declared but
+waives nothing, and counting it would leave a reader unable to reconcile the kilometres
+against the amount beside them.
+
+`LedgerSummary::balances()` returns `list<AccountBalance>`, not an array keyed by account
+number: **PCG codes are numeric strings and PHP turns the key `'864'` into the integer
+864**, so a keyed array of them cannot be typed honestly at PHPStan max, let alone read back
+by code that thinks in strings.
 
 ### Double opt-in — a declaration is not final when it is submitted
 
@@ -265,6 +285,12 @@ Two resolvers run in priority order, first match wins:
 - **`Organization` and `User` are not `TenantAware`.** `Organization` *is* the
   tenant; filtering `User` would break authentication, because the user provider
   runs before any tenant is known.
+- **`MyOrganizationCrudController` is the only CRUD under `/admin` on a
+  non-`TenantAware` entity**, and therefore the only one no filter protects: another
+  association's UUID in the URL would be editable. It checks the instance against
+  `TenantContext` on `detail()`, on `edit()` *and* in `updateEntity()`, and
+  `tests/Controller/Admin/MyOrganizationTest` proves all three. Anything similar must do
+  the same.
 - **`DeclarationAction` is the one documented exception**, by decision: it is
   reached through its `Declaration`, which is tenant-scoped. The filter therefore
   does *not* touch it, and anything querying it directly must scope itself. Three
@@ -297,7 +323,13 @@ super-admin must never be given an `Organization`.
 EasyAdmin registers **every** CRUD controller under **every** dashboard by
 default. The `deniedControllers` list on `App\Controller\Admin\DashboardController`
 is what keeps the platform CRUDs off `/admin`; there is a test for it. Any CRUD
-added to `/admin` must be tenant-scoped.
+added to `/admin` must be tenant-scoped. `/platform` uses `allowedControllers`, a
+whitelist, so a new `/admin` CRUD does not appear there by accident.
+
+An association edits its own record — CERFA identity and signature — from
+« Mon association » in `/admin`; the super-admin still edits everything from
+`/platform`. The slug is read-only on the association's side: it addresses the public
+volunteer URLs, and changing it invalidates links already handed out.
 
 ## Layout
 
@@ -429,6 +461,30 @@ Coordinates live in `App\Receipt\CerfaLayout`, measured with `pdftotext -bbox` a
 converted from points. A revision of the form moves all of them — see
 `resources/cerfa/README.md`, and **look at the result**, because a test can prove a value
 is present but not that it landed on the right line.
+
+### The signature
+
+`CerfaLayout::IMAGES` positions images, `FIELDS` positions text; they cannot share a shape,
+because an image is given a box (`[x, y, max width, max height]`) and a string is given a
+baseline. A `max-inline-size`/`max-block-size` pair with no width or height keeps the
+aspect ratio, so a wide scanned signature and a square stamp both fit.
+
+The « Date et signature » box is at **x 106.9→184.1 mm, y 216.2→233.4 mm**, found by pixel
+scan of a render — it is vector, so `pdftotext` reports nothing for it. The date run lot 7
+placed already occupies x 109→128.2, so the image goes to its right.
+
+The signature is embedded as a `data:` URI. It has to be: Gotenberg renders the layer in a
+container that cannot reach this application, so a URL comes back as a broken image on a
+receipt already sent.
+
+**A signature is optional.** `ReceiptEligibility` does not ask for one, and an association
+without one gets the same document as before, to sign by hand.
+
+**TRAP — you cannot count images per page after `--overlay`.** qpdf wraps each stamped
+page's content in a Form XObject, and its `--json` per-page image list only reports a page's
+*direct* resources, so after stamping it reports none at all — even the form's own logos.
+`ReceiptGeneratorTest` therefore asserts the page on the *layer* and counts
+`/Subtype /Image` objects in the QDF form of the finished file.
 
 `App\Receipt\AmountInWords` is the only place that touches `NumberFormatter`, with one
 documented suppression: PHPStan resolves it to Symfony's polyfill and forbids it, while
@@ -605,6 +661,32 @@ and in `ps`**, so it is for throwaway accounts; use the prompt for anything real
   Symfony already ships `validators.fr.xlf` and `security.fr.xlf`, so do not
   duplicate those.
 
+### Uploaded files
+
+There is no VichUploader, and no upload directory. The one uploaded file — the
+association's signature — is stored **in the database**, in `organization_signature`, as
+base64 in a TEXT column. It is consumed as a `data:` URI anyway (Gotenberg cannot fetch a
+URL from this application), so bytes on disk would buy nothing and a container filesystem
+loses them at the next deployment.
+
+- **`Organization` holds the *owning* side** of the one-to-one. That row is hydrated on
+  every request to resolve the tenant; an owning to-one reads only `signature_id` and the
+  image loads lazily. The inverse side would cost an extra query on every request.
+- **Never hold an `UploadedFile` on an entity.** `Organization` is reachable from the
+  security token through `User`, and `ContextListener` serializes that token into the
+  session on **every** response: an `UploadedFile` in the graph throws *"Serialization of
+  'UploadedFile' is not allowed"* and turns every response after the upload into a 500.
+  `signatureUpload` is therefore a virtual property — getter and setter only, which is all
+  PropertyAccess needs — and the setter converts and forgets.
+- Because the file is not kept, **`#[Assert\Image]` has nothing to inspect**. The same
+  three facts are checked on the stored result by `Organization::validateSignature()`,
+  which attaches its violations to `signatureUpload` so the message lands under the field.
+- **1 MB cap** (`OrganizationSignature::MAX_FILE_SIZE`), because no custom php.ini ships in
+  the image and `upload_max_filesize` is PHP's 2M default — a larger cap would be refused
+  by PHP before Symfony saw the file, and the user would get an empty field instead of a
+  message.
+- Raster only. An SVG is markup and has no business in a stamped PDF.
+
 ### State machines (finite)
 
 The state enum implements `Finite\State` and declares its own transitions — see
@@ -744,6 +826,10 @@ produces one orphan per object built — `DeclarationActionFactory` learned this
 expensive way and now exposes `for()` / `forDeclaration()` instead.
 
 Run `make reset-test` once, then `make test`.
+
+`phpunit.dist.xml` raises `memory_limit` to 512M. The suite peaks near 100 MB against PHP's
+128 MB default, mostly booting kernels, and one run has already died mid-test with *"Allowed
+memory size exhausted"*. Set there rather than on a command line, so CI gets it too.
 
 ## Linters — MANDATORY
 

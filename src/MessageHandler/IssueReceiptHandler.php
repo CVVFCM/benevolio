@@ -79,7 +79,7 @@ final readonly class IssueReceiptHandler
                 $number = $this->numbers->allocate($fiscalYear);
                 $values = ReceiptValues::from($declaration, $number, $assessment->amountCents, $issuedAt);
 
-                $pdf = $this->generator->generate($values->forOverlay());
+                $pdf = $this->generator->generate($values->forOverlay(), $values->imagesForOverlay());
                 $path = $this->storage->store($fiscalYear, $declaration->getPerson(), $pdf);
 
                 $receipt = new Receipt(
