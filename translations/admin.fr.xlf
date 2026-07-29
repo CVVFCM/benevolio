@@ -63,6 +63,13 @@
             </segment>
         </unit>
 
+        <unit id="menu.my_organization">
+            <segment>
+                <source>menu.my_organization</source>
+                <target>Mon association</target>
+            </segment>
+        </unit>
+
         <unit id="dashboard.no_sections_yet">
             <segment>
                 <source>dashboard.no_sections_yet</source>

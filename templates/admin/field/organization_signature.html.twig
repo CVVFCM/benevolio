@@ -1,0 +1,31 @@
+{#
+    The stored signature, on the « Mon association » detail page.
+
+    `field.value` is the App\Entity\OrganizationSignature, or null. Shown at roughly the
+    size the CERFA gives it — a signature that looks fine at 400 px and illegible at 14 mm
+    is worth noticing here rather than on a receipt already sent to a volunteer.
+
+    The image is embedded as a data: URI, which is how the receipt overlay consumes it too:
+    App\Entity\OrganizationSignature::toDataUri() is the single place it is built.
+#}
+{% set signature = field.value %}
+
+{% if signature is null %}
+    <span class="signature__empty">
+        Aucune signature enregistrée. Les reçus fiscaux partiront avec le cadre
+        « Date et signature » vide.
+    </span>
+{% else %}
+    <figure class="signature">
+        <img
+            src="{{ signature.toDataUri }}"
+            alt="Signature de l'association"
+            class="signature__image"
+        >
+        <figcaption class="signature__caption">
+            {{ signature.originalFilename ?? 'Sans nom de fichier' }}
+            — déposée le {{ signature.uploadedAt|format_datetime('short', 'short') }}
+            — {{ (signature.approximateByteSize / 1024)|round }} Ko
+        </figcaption>
+    </figure>
+{% endif %}
