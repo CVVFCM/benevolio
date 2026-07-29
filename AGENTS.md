@@ -373,6 +373,79 @@ assertions should be unreachable there, because the form validated the same rule
 and reported them per field; reaching one means the two rule sets have drifted,
 which is when a loud failure is wanted.
 
+## The CERFA — generating the receipt
+
+Validating a declaration issues **CERFA n°11580\*05, form 2041-RD**, files it in object
+storage and emails it to the volunteer. `App\State\Listener\ReceiptOnValidation` reacts
+to the transition, not to the call site, and dispatches `IssueReceipt`.
+
+**Only the *abandon de frais* goes in the amount box.** Donated hours are off balance
+sheet and open no right to a deduction, so summing them in would overstate what the
+volunteer may claim — CGI art. 1740 A penalises amounts wrongly stated at 25%. The mail
+says so in as many words, because the volunteer gave the hours and is the one who would
+put the wrong figure on a tax return.
+
+**`App\Receipt\ReceiptEligibility` refuses more often than it issues**, and every
+refusal is an ordinary outcome recorded in French on the declaration — "no receipt"
+alone reads as a fault rather than as paperwork to finish. It refuses without a
+SIREN/RNA or a postal address (the document would not be valid), when no exercice
+covers the dates (no
+barème, so no figure to state), and when nothing was waived.
+
+Numbers come from `ReceiptNumberAllocator`: `2026-0001`, continuous per exercice and
+**never reused**, from a counter on `FiscalYear` taken under a `PESSIMISTIC_WRITE` lock.
+A counter and not `MAX(number) + 1`, so deleting a receipt cannot free its number. The
+number and the receipt commit in one transaction — an allocated number that never became
+a receipt is a gap in a sequence that must be continuous.
+
+The object key is `<year>/cerfa-firstname-lastname.pdf`, which **can collide**: two
+volunteers sharing a name, or one receipted twice in an exercice, overwrite each other.
+That was a deliberate naming choice; `App\Entity\Receipt` is what keeps it from losing
+anything, since every number, amount, date and printed identity stays in the database.
+
+### How the PDF is made, and why it is not simpler
+
+`Twig → Gotenberg → qpdf --overlay`, and each step is forced:
+
+- **The official form has no form fields.** `pdfinfo` says `Form: none` — it was
+  flattened by PDF24 and Ghostscript — so there is nothing to fill, and the values
+  must be stamped.
+- **Gotenberg cannot stamp.** It converts HTML, and `pdfengines/merge` concatenates
+  pages rather than superimposing them. So Gotenberg renders a transparent layer and qpdf
+  presses it on, which keeps the form vector.
+- **TRAP — Gotenberg defaults to Letter** and ignores `@page { size: A4 }` in the
+  document. Without `preferCssPageSize`, the layer comes back 612×792 and qpdf scales it
+  onto a 595×842 page: every value drifts 7–10 mm off its line. Obvious on the page,
+  invisible to a test that only counts pages — so `ReceiptGeneratorTest` measures the
+  page box.
+- **TRAP — the entry file must be called `index.html`**, or Gotenberg answers 400
+  without saying why. And a `DataPart` inside a `body` array is *not* multipart; it
+  needs a `FormDataPart`, or Gotenberg answers 415.
+- The layer is **two pages**, because the form is: the organisation block is on page 1,
+  the donor, the amount and the boxes on page 2. qpdf maps overlay page *n* onto form
+  page *n*, so a one-page layer silently loses half the receipt.
+
+Coordinates live in `App\Receipt\CerfaLayout`, measured with `pdftotext -bbox` and
+converted from points. A revision of the form moves all of them — see
+`resources/cerfa/README.md`, and **look at the result**, because a test can prove a value
+is present but not that it landed on the right line.
+
+`App\Receipt\AmountInWords` is the only place that touches `NumberFormatter`, with one
+documented suppression: PHPStan resolves it to Symfony's polyfill and forbids it, while
+ext-intl is what actually runs — and the polyfill has no `SPELLOUT` at all. ICU is worth
+that friction, because French is where hand-rolling breaks: *quatre-vingts* but
+*quatre-vingt-un*, *soixante et onze* but *soixante-douze*, and *zéro euro* singular.
+
+### Testing it
+
+`ReceiptGeneratorTest` and `IssueReceiptTest` hit **real Gotenberg and real s3mock** —
+mocking them would prove none of the seams above. Both need `make up`.
+
+**TRAP in mail assertions:** the mailer records a `MessageEvent` when a message is queued
+*and* again when it is sent, so `getEvents()->getMessages()` returns the same mail twice.
+Filter on `!$event->isQueued()` — an `assertCount(1)` on the messages fails against
+perfectly correct behaviour.
+
 ## Running (Docker, via Makefile)
 
 **Use the Makefile, not raw `docker compose`** (except `docker compose logs`).
