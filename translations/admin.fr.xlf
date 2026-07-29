@@ -124,6 +124,72 @@
                 <target>Désactiver une association ferme son administration et ses formulaires publics, sans supprimer ses données.</target>
             </segment>
         </unit>
+        <unit id="organization.cerfa_fieldset">
+            <segment>
+                <source>organization.cerfa_fieldset</source>
+                <target>Reçu fiscal (CERFA 2041-RD)</target>
+            </segment>
+        </unit>
+        <unit id="organization.cerfa_fieldset.help">
+            <segment>
+                <source>organization.cerfa_fieldset.help</source>
+                <target>Ces informations figurent sur chaque reçu fiscal. Sans numéro SIREN ou RNA, aucun reçu n'est émis : un reçu sans ce numéro ne serait pas valable.</target>
+            </segment>
+        </unit>
+        <unit id="organization.siren_or_rna">
+            <segment>
+                <source>organization.siren_or_rna</source>
+                <target>Numéro SIREN ou RNA</target>
+            </segment>
+        </unit>
+        <unit id="organization.siren_or_rna.help">
+            <segment>
+                <source>organization.siren_or_rna.help</source>
+                <target>SIREN (9 chiffres) ou RNA (W suivi de 9 chiffres).</target>
+            </segment>
+        </unit>
+        <unit id="organization.objet">
+            <segment>
+                <source>organization.objet</source>
+                <target>Objet de l'association</target>
+            </segment>
+        </unit>
+        <unit id="organization.objet.help">
+            <segment>
+                <source>organization.objet.help</source>
+                <target>Reproduit tel quel sur le reçu.</target>
+            </segment>
+        </unit>
+        <unit id="organization.address_number">
+            <segment>
+                <source>organization.address_number</source>
+                <target>N°</target>
+            </segment>
+        </unit>
+        <unit id="organization.address_street">
+            <segment>
+                <source>organization.address_street</source>
+                <target>Rue</target>
+            </segment>
+        </unit>
+        <unit id="organization.address_postcode">
+            <segment>
+                <source>organization.address_postcode</source>
+                <target>Code postal</target>
+            </segment>
+        </unit>
+        <unit id="organization.address_city">
+            <segment>
+                <source>organization.address_city</source>
+                <target>Commune</target>
+            </segment>
+        </unit>
+        <unit id="organization.address_country">
+            <segment>
+                <source>organization.address_country</source>
+                <target>Pays</target>
+            </segment>
+        </unit>
         <unit id="organization.created_at">
             <segment>
                 <source>organization.created_at</source>

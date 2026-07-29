@@ -10,8 +10,11 @@ use Doctrine\ORM\EntityManagerInterface;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
 use EasyCorp\Bundle\EasyAdminBundle\Field\BooleanField;
+use EasyCorp\Bundle\EasyAdminBundle\Field\CountryField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\DateTimeField;
+use EasyCorp\Bundle\EasyAdminBundle\Field\FormField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\SlugField;
+use EasyCorp\Bundle\EasyAdminBundle\Field\TextareaField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
@@ -58,6 +61,25 @@ final class OrganizationCrudController extends AbstractCrudController
 
         yield BooleanField::new('active', 'organization.active')
             ->setHelp('organization.active.help');
+
+        // What CERFA 2041-RD asks about the beneficiary. Without the SIREN/RNA a
+        // receipt is not a valid document, so App\Receipt\ReceiptEligibility refuses
+        // to issue one rather than leaving the line blank — see that class.
+        yield FormField::addFieldset('organization.cerfa_fieldset')
+            ->setHelp('organization.cerfa_fieldset.help');
+
+        yield TextField::new('sirenOrRna', 'organization.siren_or_rna')
+            ->setHelp('organization.siren_or_rna.help');
+
+        yield TextareaField::new('objet', 'organization.objet')
+            ->setHelp('organization.objet.help')
+            ->hideOnIndex();
+
+        yield TextField::new('addressNumber', 'organization.address_number')->hideOnIndex();
+        yield TextField::new('addressStreet', 'organization.address_street')->hideOnIndex();
+        yield TextField::new('addressPostcode', 'organization.address_postcode')->hideOnIndex();
+        yield TextField::new('addressCity', 'organization.address_city')->hideOnIndex();
+        yield CountryField::new('addressCountry', 'organization.address_country')->hideOnIndex();
 
         yield DateTimeField::new('createdAt', 'organization.created_at')
             ->onlyOnIndex();

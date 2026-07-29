@@ -68,6 +68,22 @@ class Declaration implements TenantAware
     #[ORM\Column]
     private bool $expensesWaived;
 
+    /**
+     * The CERFA issued for this declaration, or null.
+     *
+     * Null is an ordinary state with several innocent causes — nothing was waived, no
+     * exercice covers the date, the association has no SIREN yet — so the reason lives
+     * beside it rather than being inferred from the absence.
+     */
+    #[ORM\OneToOne(targetEntity: Receipt::class, mappedBy: 'declaration')]
+    private ?Receipt $receipt = null;
+
+    /**
+     * Why no receipt was issued, when none was. French, and shown to the treasurer.
+     */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $receiptWithheldReason = null;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private DateTimeImmutable $submittedAt;
 
@@ -217,6 +233,31 @@ class Declaration implements TenantAware
     public function isExpensesWaived(): bool
     {
         return $this->expensesWaived;
+    }
+
+    public function getReceipt(): ?Receipt
+    {
+        return $this->receipt;
+    }
+
+    /**
+     * Called by Receipt's constructor, which owns the association.
+     */
+    public function attachReceipt(Receipt $receipt): void
+    {
+        $this->receipt = $receipt;
+        // A receipt and a reason not to have one are mutually exclusive.
+        $this->receiptWithheldReason = null;
+    }
+
+    public function getReceiptWithheldReason(): ?string
+    {
+        return $this->receiptWithheldReason;
+    }
+
+    public function withholdReceipt(string $reason): void
+    {
+        $this->receiptWithheldReason = $reason;
     }
 
     public function getSubmittedAt(): DateTimeImmutable
