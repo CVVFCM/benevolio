@@ -1,0 +1,43 @@
+# yaml-language-server: $schema=../../vendor/symfony/dependency-injection/Loader/schema/services.schema.json
+
+# Where generated CERFA receipts live.
+#
+# One storage, one client, so the same code faces adobe/s3mock in development and Scaleway
+# Object Storage in production — compose.override.yaml supplies the former, the Helm chart
+# the latter.
+#
+# The defaults live here rather than in `.env`, as in cvvfcm-v4. `.env` is tracked, so a
+# value put there is configuration pretending to be a setting, and every environment then
+# has to override it. Only S3_ENDPOINT has no usable default: development points at the
+# s3mock container, production at the Scaleway region endpoint, and there is nothing
+# sensible in between.
+parameters:
+    env(S3_ENDPOINT): null
+    env(S3_REGION): 'fr-par'
+    env(S3_BUCKET): 'benevolio-receipts'
+    # Meaningless against s3mock, but they cannot be empty: the signing code refuses to
+    # build a request without a key and a secret. Production overrides both from a secret.
+    env(S3_KEY): 's3mock'
+    env(S3_SECRET): 's3mock'
+
+flysystem:
+    storages:
+        receipts.storage:
+            # The discoverable format (adapter name as the key). The older
+            # `adapter:`/`options:` pair is deprecated since flysystem-bundle 3.5.
+            asyncaws:
+                client: 'receipts.s3_client'
+                bucket: '%env(S3_BUCKET)%'
+
+services:
+    # Built by hand rather than from a bare s3:// DSN: Scaleway needs an explicit
+    # endpoint and region and path-style addressing, none of which the DSN form
+    # expresses. s3mock needs exactly the same, which is why one client serves both.
+    receipts.s3_client:
+        class: AsyncAws\S3\S3Client
+        arguments:
+            -   endpoint: '%env(S3_ENDPOINT)%'
+                region: '%env(S3_REGION)%'
+                accessKeyId: '%env(S3_KEY)%'
+                accessKeySecret: '%env(S3_SECRET)%'
+                pathStyleEndpoint: true

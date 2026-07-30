@@ -13,6 +13,11 @@
     <php>
         <ini name="display_errors" value="1" />
         <ini name="error_reporting" value="-1" />
+        <!-- The suite peaks around 100 MB against PHP's 128 MB default, mostly booting
+             kernels, and one run has already died mid-test with "Allowed memory size
+             exhausted" while reading an uploaded file. Raised here rather than on a
+             command line so every invocation gets it, CI included. -->
+        <ini name="memory_limit" value="512M" />
         <server name="APP_ENV" value="test" force="true" />
         <server name="SHELL_VERBOSITY" value="-1" />
     </php>

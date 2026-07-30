@@ -5,13 +5,25 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Repository\OrganizationRepository;
+use App\ValueObject\Address;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Validator\Context\ExecutionContextInterface;
+
+use function base64_decode;
+use function base64_encode;
+use function file_get_contents;
+use function getimagesizefromstring;
+use function in_array;
+use function intdiv;
+use function mb_trim;
+use function strlen;
 
 /**
  * The tenant: one association loi 1901.
@@ -30,6 +42,10 @@ class Organization
 {
     public const int NAME_MAX_LENGTH = 150;
     public const int SLUG_MAX_LENGTH = 100;
+
+    /** SIREN is 9 digits, an RNA number is `W` + 9 digits. */
+    public const int SIREN_OR_RNA_MAX_LENGTH = 20;
+    public const int OBJET_MAX_LENGTH = 500;
 
     #[ORM\Id]
     #[ORM\Column(type: UuidType::NAME, unique: true)]
@@ -59,6 +75,98 @@ class Organization
      */
     #[ORM\Column]
     private bool $active = true;
+
+    /*
+     * ---------------------------------------------------------------- CERFA ----
+     *
+     * What form 2041-RD asks about the beneficiary organisation, and none of which
+     * the application needed until it started issuing receipts.
+     *
+     * All nullable, because every association that already exists predates these
+     * columns. A receipt is refused rather than issued incomplete — see
+     * App\Receipt\ReceiptEligibility — so "absent" never means "printed blank".
+     */
+
+    /**
+     * SIREN (9 digits) or RNA (W + 9 digits). **Without it a receipt is not a valid
+     * document**, which is why issuance refuses when it is missing rather than
+     * leaving the line empty. Mandatory on the form since revision *05.
+     */
+    #[ORM\Column(length: self::SIREN_OR_RNA_MAX_LENGTH, nullable: true)]
+    #[Assert\Length(max: self::SIREN_OR_RNA_MAX_LENGTH)]
+    #[Assert\Regex(
+        pattern: '/^(\d{9}|W\d{9})$/',
+        message: 'Indiquez un SIREN (9 chiffres) ou un numéro RNA (W suivi de 9 chiffres).',
+    )]
+    private ?string $sirenOrRna = null;
+
+    /*
+     * The postal address, as loose columns rather than an #[ORM\Embedded] of
+     * App\ValueObject\Address.
+     *
+     * NOT a preference: Doctrine cannot express a genuinely nullable embeddable. An
+     * organisation without an address would hydrate all-null columns into Address's
+     * non-nullable typed properties and raise a TypeError. So the parts are stored
+     * here and getPostalAddress() builds the value object when they are all present —
+     * which keeps Address as the single place that knows how an address validates and
+     * how it reads.
+     */
+    #[ORM\Column(length: 10, nullable: true)]
+    private ?string $addressNumber = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $addressStreet = null;
+
+    #[ORM\Column(length: 16, nullable: true)]
+    private ?string $addressPostcode = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $addressCity = null;
+
+    /** ISO 3166-1 alpha-2, like Address::$country. */
+    #[ORM\Column(length: 2, nullable: true, options: ['fixed' => true])]
+    private ?string $addressCountry = null;
+
+    /** The *objet* of the association, as declared. Printed verbatim on the form. */
+    #[ORM\Column(length: self::OBJET_MAX_LENGTH, nullable: true)]
+    #[Assert\Length(max: self::OBJET_MAX_LENGTH)]
+    private ?string $objet = null;
+
+    /**
+     * The signature stamped onto every reçu fiscal, or null while there is none.
+     *
+     * **The owning side, deliberately.** This row is hydrated on every request by
+     * App\Tenant\TenantRequestListener, and an owning to-one reads only `signature_id` —
+     * the image loads lazily, when a receipt or the back-office preview asks for it. See
+     * App\Entity\OrganizationSignature for the rest of the reasoning.
+     *
+     * `orphanRemoval` so replacing a signature does not leave the old one behind.
+     */
+    #[ORM\OneToOne(cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?OrganizationSignature $signature = null;
+
+    /*
+     * There is deliberately NO $signatureUpload property.
+     *
+     * `signatureUpload` is a virtual property — getter and setter only, which is all
+     * Symfony's PropertyAccess needs to bind a form field. **An UploadedFile must never be
+     * held on this entity**: Organization is reachable from the security token through
+     * User, and Symfony's ContextListener serializes that token into the session on every
+     * response. An UploadedFile in the graph makes that throw ("Serialization of
+     * 'UploadedFile' is not allowed") and every response after the upload is a 500.
+     *
+     * The file is therefore converted on the way in and dropped, and what gets validated
+     * is the stored signature — see validateSignature() below.
+     */
+
+    /**
+     * The « supprimer la signature » checkbox. Not a column either.
+     *
+     * Without it a signature could be replaced but never removed: an empty file input
+     * means "keep what is there", which is the only sane reading of an edit form.
+     */
+    private bool $signatureCleared = false;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private DateTimeImmutable $createdAt;
@@ -118,6 +226,250 @@ class Organization
         $this->active = $active;
 
         return $this;
+    }
+
+    public function getSirenOrRna(): ?string
+    {
+        return $this->sirenOrRna;
+    }
+
+    public function setSirenOrRna(?string $sirenOrRna): self
+    {
+        $sirenOrRna = null === $sirenOrRna ? null : mb_trim($sirenOrRna);
+        $this->sirenOrRna = '' === $sirenOrRna ? null : $sirenOrRna;
+
+        return $this;
+    }
+
+    public function getObjet(): ?string
+    {
+        return $this->objet;
+    }
+
+    public function setObjet(?string $objet): self
+    {
+        $this->objet = $objet;
+
+        return $this;
+    }
+
+    /**
+     * The address as a value object, or null while it is incomplete.
+     *
+     * Built on demand rather than mapped, for the reason recorded on the columns
+     * above. Returns null rather than a half-filled Address: the CERFA either carries
+     * a real address or the receipt is not issued.
+     */
+    public function getPostalAddress(): ?Address
+    {
+        if (null === $this->addressStreet || null === $this->addressPostcode
+            || null === $this->addressCity || null === $this->addressCountry) {
+            return null;
+        }
+
+        return new Address(
+            $this->addressNumber,
+            $this->addressStreet,
+            $this->addressPostcode,
+            $this->addressCity,
+            $this->addressCountry,
+        );
+    }
+
+    public function setPostalAddress(?Address $address): self
+    {
+        $this->addressNumber = $address?->number;
+        $this->addressStreet = $address?->street;
+        $this->addressPostcode = $address?->postcode;
+        $this->addressCity = $address?->city;
+        $this->addressCountry = $address?->country;
+
+        return $this;
+    }
+
+    public function getAddressNumber(): ?string
+    {
+        return $this->addressNumber;
+    }
+
+    public function setAddressNumber(?string $addressNumber): self
+    {
+        $this->addressNumber = $addressNumber;
+
+        return $this;
+    }
+
+    public function getAddressStreet(): ?string
+    {
+        return $this->addressStreet;
+    }
+
+    public function setAddressStreet(?string $addressStreet): self
+    {
+        $this->addressStreet = $addressStreet;
+
+        return $this;
+    }
+
+    public function getAddressPostcode(): ?string
+    {
+        return $this->addressPostcode;
+    }
+
+    public function setAddressPostcode(?string $addressPostcode): self
+    {
+        $this->addressPostcode = $addressPostcode;
+
+        return $this;
+    }
+
+    public function getAddressCity(): ?string
+    {
+        return $this->addressCity;
+    }
+
+    public function setAddressCity(?string $addressCity): self
+    {
+        $this->addressCity = $addressCity;
+
+        return $this;
+    }
+
+    public function getAddressCountry(): ?string
+    {
+        return $this->addressCountry;
+    }
+
+    public function setAddressCountry(?string $addressCountry): self
+    {
+        $this->addressCountry = $addressCountry;
+
+        return $this;
+    }
+
+    public function getSignature(): ?OrganizationSignature
+    {
+        return $this->signature;
+    }
+
+    public function setSignature(?OrganizationSignature $signature): self
+    {
+        $this->signature = $signature;
+
+        return $this;
+    }
+
+    /**
+     * Always null: a file input on an edit form starts empty, and re-offering the stored
+     * signature would mean re-uploading it on every save.
+     */
+    public function getSignatureUpload(): ?UploadedFile
+    {
+        return null;
+    }
+
+    /**
+     * Turns an uploaded image into the stored signature, replacing any previous one.
+     *
+     * A null argument is what an untouched file input submits, and it means "leave the
+     * signature alone" — not "remove it". Removal is $signatureCleared.
+     *
+     * The UploadedFile is read and forgotten here, never stored on the entity — see the
+     * comment where the property would have been. What is validated is the result, by
+     * validateSignature(), so an oversized file or something that is not an image is still
+     * refused; nothing is flushed when validation fails.
+     */
+    public function setSignatureUpload(?UploadedFile $file): self
+    {
+        if (null === $file) {
+            return $this;
+        }
+
+        // Validation has already refused anything that is not a PNG or JPEG within the
+        // size limit; getMimeType() is guessed from the contents rather than trusted from
+        // the request, and falls back to the declared type only if guessing fails.
+        $this->signature = new OrganizationSignature(
+            $file->getMimeType() ?? $file->getClientMimeType(),
+            base64_encode((string) file_get_contents($file->getPathname())),
+            $file->getClientOriginalName(),
+        );
+
+        return $this;
+    }
+
+    public function isSignatureCleared(): bool
+    {
+        return $this->signatureCleared;
+    }
+
+    /**
+     * Ticking the box drops the signature; orphanRemoval deletes the row on flush.
+     */
+    public function setSignatureCleared(bool $cleared): self
+    {
+        $this->signatureCleared = $cleared;
+
+        if ($cleared) {
+            $this->signature = null;
+        }
+
+        return $this;
+    }
+
+    /**
+     * What #[Assert\Image] would have said about the uploaded file, said about the result.
+     *
+     * The constraint cannot live on the upload, because the upload is not kept (see above),
+     * so the same three facts are checked on the stored bytes instead: a declared type this
+     * application will stamp, a size PHP could actually have accepted, and contents that
+     * really are an image — a PDF renamed `.png` gets past a form and fails in Gotenberg,
+     * hours later, on a receipt already promised to a volunteer.
+     *
+     * Violations are attached to `signatureUpload` so the message appears under the file
+     * field the person just used, rather than as a form-wide error about a column.
+     */
+    #[Assert\Callback]
+    public function validateSignature(ExecutionContextInterface $context): void
+    {
+        if (null === $this->signature) {
+            return;
+        }
+
+        if (!in_array($this->signature->getMimeType(), OrganizationSignature::ALLOWED_MIME_TYPES, true)) {
+            $context->buildViolation('Déposez une image PNG ou JPEG.')
+                ->atPath('signatureUpload')
+                ->addViolation();
+
+            return;
+        }
+
+        $bytes = base64_decode($this->signature->getBase64(), true);
+
+        if (false === $bytes || false === getimagesizefromstring($bytes)) {
+            $context->buildViolation('Ce fichier n\'est pas une image lisible.')
+                ->atPath('signatureUpload')
+                ->addViolation();
+
+            return;
+        }
+
+        if (strlen($bytes) > OrganizationSignature::MAX_FILE_SIZE) {
+            $context->buildViolation('L\'image ne doit pas dépasser {{ limit }} Ko.')
+                ->setParameter('{{ limit }}', (string) intdiv(OrganizationSignature::MAX_FILE_SIZE, 1024))
+                ->atPath('signatureUpload')
+                ->addViolation();
+        }
+    }
+
+    /**
+     * The signature as a `data:` URI, or null when there is none.
+     *
+     * The one place that string is built, so the receipt overlay and the back-office
+     * preview cannot disagree about it.
+     */
+    public function getSignatureDataUri(): ?string
+    {
+        return $this->signature?->toDataUri();
     }
 
     public function getCreatedAt(): DateTimeImmutable

@@ -47,6 +47,43 @@ app:
   # secrets.mailerDsn points at, and a value the chart invented for itself would
   # not be — the mail would be accepted here and dropped there.
   mailFrom: benevolat@cvvfcm.fr
+  # Object storage for the CERFA receipts (Scaleway, Paris). The endpoint and region are
+  # fixed; the bucket has to exist already — nothing in this chart creates it. The key and
+  # secret are in `secrets` below, and the variable names match cvvfcm-v4, so the same
+  # SCW_ACCESS_KEY / SCW_SECRET_KEY organisation secrets serve both.
+  s3Endpoint: https://s3.fr-par.scw.cloud
+  s3Region: fr-par
+  s3Bucket: benevolio-receipts
+  # Where the receipt overlay is rendered. Empty → the Gotenberg Service this chart
+  # deploys. Set it to point at an instance that already exists somewhere else.
+  gotenbergDsn: ""
+
+# Gotenberg, which turns the receipt's HTML overlay into the PDF that is then stamped onto
+# the official CERFA with qpdf. In-cluster because it is a hard dependency of validating a
+# declaration, and an external one is a second thing to keep alive.
+#
+# Chromium is the whole cost here: it idles around 100 MiB and spikes while converting.
+# ClusterIP only — see the Service. Never expose it: Gotenberg renders whatever HTML it is
+# handed, from inside the cluster network.
+gotenberg:
+  enabled: true
+  image:
+    repository: gotenberg/gotenberg
+    tag: "8"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  # The image runs as its own unprivileged user (gotenberg, uid 1001) and needs a writable
+  # /tmp for Chromium, so no runAsUser is forced here and the root filesystem is left
+  # writable.
+  securityContext: {}
+  nodeSelector: {}
+  tolerations: []
 
 # PostgreSQL, always external. The chart used to be able to run its own via the
 # Bitnami subchart; that is gone, so there is exactly one way to point this at a
@@ -66,6 +103,12 @@ secrets:
   # an app in which nothing can be declared. The default null://null would make
   # that failure silent, which is precisely what must not happen in production.
   mailerDsn: ""
+  # Scaleway Object Storage credentials (SCW_ACCESS_KEY / SCW_SECRET_KEY in CD).
+  # REQUIRED, for the same reason as mailerDsn: config/packages/flysystem.yaml carries
+  # development defaults, so leaving these empty does not fail — it signs a request to AWS
+  # with the literal key "s3mock" and the receipt is lost. A refused deploy is better.
+  s3Key: ""
+  s3Secret: ""
 
 # Database migration job (Helm post-install/post-upgrade hook).
 migrations:

@@ -18,6 +18,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\DateField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IntegerField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\MoneyField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
+use EasyCorp\Bundle\EasyAdminBundle\Router\AdminUrlGeneratorInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -32,7 +33,10 @@ use function sprintf;
  * createEntity(), where the tenant has to be supplied because the form has no
  * organization field. Same shape as App\Controller\Admin\TaskCrudController.
  *
- * The interesting page is the ledger, not the form: see the `ledger` action below.
+ * The interesting pages are not the form. `ledger` is the écriture the association books —
+ * one centralising entry per family, dated on the exercice's close — and `ledgerDetail` is
+ * the per-volunteer breakdown that justifies an individual reçu fiscal. They were one page
+ * until the summary turned out to be what a treasurer actually needs.
  *
  * CONVENTION EXCEPTION: see App\Controller\Admin\DashboardController.
  *
@@ -42,11 +46,13 @@ use function sprintf;
 final class FiscalYearCrudController extends AbstractCrudController
 {
     private const string ACTION_LEDGER = 'ledger';
+    private const string ACTION_LEDGER_DETAIL = 'ledgerDetail';
 
     public function __construct(
         private readonly TenantContext $tenantContext,
         private readonly LedgerBuilder $ledgerBuilder,
         private readonly Environment $twig,
+        private readonly AdminUrlGeneratorInterface $adminUrlGenerator,
     ) {
     }
 
@@ -85,10 +91,14 @@ final class FiscalYearCrudController extends AbstractCrudController
         $ledger = Action::new(self::ACTION_LEDGER, 'Écritures comptables', 'fa fa-book')
             ->linkToCrudAction(self::ACTION_LEDGER);
 
+        $ledgerDetail = Action::new(self::ACTION_LEDGER_DETAIL, 'Détail par bénévole', 'fa fa-users')
+            ->linkToCrudAction(self::ACTION_LEDGER_DETAIL);
+
         return $actions
             ->add(Crud::PAGE_INDEX, Action::DETAIL)
             ->add(Crud::PAGE_INDEX, $ledger)
-            ->add(Crud::PAGE_DETAIL, $ledger);
+            ->add(Crud::PAGE_DETAIL, $ledger)
+            ->add(Crud::PAGE_DETAIL, $ledgerDetail);
     }
 
     public function configureFields(string $pageName): iterable
@@ -149,7 +159,12 @@ final class FiscalYearCrudController extends AbstractCrudController
     }
 
     /**
-     * The draft ledger: every validated contribution of this exercice, as PCG entries.
+     * The écriture of the exercice: what actually gets booked.
+     *
+     * One centralising entry per family, dated on the exercice's close — not the
+     * per-volunteer detail, which is a different question and now a different page. A
+     * treasurer opening this should be able to copy six figures into their journal
+     * without adding anything up.
      *
      * A custom action rather than a field template, because the page needs a query of
      * its own — the lines are not an association of FiscalYear, they are found by
@@ -161,6 +176,37 @@ final class FiscalYearCrudController extends AbstractCrudController
     #[AdminRoute(path: '/{entityId}/ledger', name: 'ledger', options: ['methods' => ['GET']])]
     public function ledger(AdminContext $context): Response
     {
+        $fiscalYear = $this->fiscalYearOf($context);
+
+        return new Response($this->twig->render('admin/fiscal_year/ledger.html.twig', [
+            'fiscal_year' => $fiscalYear,
+            'summary' => $this->ledgerBuilder->build($fiscalYear)->summary(),
+            'detail_url' => $this->urlFor(self::ACTION_LEDGER_DETAIL, $fiscalYear),
+        ]));
+    }
+
+    /**
+     * The same contributions, per volunteer — what justifies an individual reçu fiscal.
+     *
+     * @param AdminContext<FiscalYear> $context
+     */
+    #[AdminRoute(path: '/{entityId}/ledger/detail', name: 'ledger_detail', options: ['methods' => ['GET']])]
+    public function ledgerDetail(AdminContext $context): Response
+    {
+        $fiscalYear = $this->fiscalYearOf($context);
+
+        return new Response($this->twig->render('admin/fiscal_year/ledger_detail.html.twig', [
+            'fiscal_year' => $fiscalYear,
+            'ledger' => $this->ledgerBuilder->build($fiscalYear),
+            'summary_url' => $this->urlFor(self::ACTION_LEDGER, $fiscalYear),
+        ]));
+    }
+
+    /**
+     * @param AdminContext<FiscalYear> $context
+     */
+    private function fiscalYearOf(AdminContext $context): FiscalYear
+    {
         $fiscalYear = $context->getEntity()->getInstance();
 
         // FiscalYear IS TenantAware, so another association's exercice simply comes
@@ -170,10 +216,16 @@ final class FiscalYearCrudController extends AbstractCrudController
             throw new NotFoundHttpException('Fiscal year not found.');
         }
 
-        return new Response($this->twig->render('admin/fiscal_year/ledger.html.twig', [
-            'fiscal_year' => $fiscalYear,
-            'ledger' => $this->ledgerBuilder->build($fiscalYear),
-        ]));
+        return $fiscalYear;
+    }
+
+    private function urlFor(string $action, FiscalYear $fiscalYear): string
+    {
+        return $this->adminUrlGenerator
+            ->setController(self::class)
+            ->setAction($action)
+            ->setEntityId($fiscalYear->getId()->toRfc4122())
+            ->generateUrl();
     }
 
     /**

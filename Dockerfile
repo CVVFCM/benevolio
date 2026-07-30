@@ -13,6 +13,15 @@ SHELL ["/bin/bash", "-euxo", "pipefail", "-c"]
 
 ARG EXTERNAL_USER_ID
 
+# qpdf is not optional: ReceiptGenerator stamps the rendered overlay onto the official
+# CERFA with `qpdf --overlay`, which Gotenberg cannot do — its merge route concatenates
+# pages rather than superimposing them.
+RUN set -eux; \
+    apt-get update; \
+    apt-get install --no-install-recommends -y qpdf; \
+    rm -rf /var/lib/apt/lists/*; \
+    sync
+
 RUN set -eux; \
     install-php-extensions \
           @composer \

@@ -1,0 +1,149 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Receipt;
+
+/**
+ * Where each value sits on CERFA 2041-RD.
+ *
+ * ONE PLACE, on purpose. The form is stamped, not filled — it carries no form fields —
+ * so every value is positioned by hand, and a revision of the form moves all of them.
+ * Keeping the numbers here means re-measuring touches this file and nothing else.
+ *
+ * **Millimetres from the top-left of the page**, matching the CSS the overlay template
+ * emits. The figures were measured off the shipped PDF with `pdftotext -bbox`, whose
+ * boxes are in points, converted at 25.4/72 — they are not guesses, but they are also
+ * not exact: the values sit on dotted rules, so a millimetre either way is invisible.
+ *
+ * The two pages matter. The organisation block is on **page 1**; the donor, the amount
+ * and the signature are on **page 2**. `qpdf --overlay` maps overlay page n onto form
+ * page n, so the layer has to be two pages too.
+ *
+ * Text positions live in FIELDS, images in IMAGES — see IMAGES for why they cannot share
+ * a shape.
+ *
+ * @see resources/cerfa/README.md for what to do when the form is revised.
+ */
+final class CerfaLayout
+{
+    /** The dotted rules sit at roughly this size; matching it keeps values on the line. */
+    public const string FONT_SIZE = '9pt';
+
+    /** What a ticked box looks like. A plain X prints everywhere and photocopies. */
+    public const string TICK = 'X';
+
+    /**
+     * page => field => [x, y] in millimetres, or [x, y, width, align] where a value
+     * needs to be boxed (the amount is right-aligned against "Euros").
+     *
+     * @var array<int, array<string, array{float, float}|array{float, float, float, string}>>
+     */
+    public const array FIELDS = [
+        1 => [
+            // The « Numéro d'ordre du reçu » box, under its label at y=34.3.
+            'receiptNumber' => [150.0, 39.0],
+
+            // « Nom ou dénomination : » ends at x=54.6, y=56.5.
+            'organizationName' => [57.0, 56.8],
+
+            // « Numéro SIREN ou RNA¹ : » — the rule starts after the colon.
+            'sirenOrRna' => [63.0, 65.2],
+
+            // « N° …… Rue …… » at y=73.9.
+            'organizationAddressNumber' => [21.0, 74.2],
+            'organizationAddressStreet' => [47.0, 74.2],
+
+            // « Code postal …… Commune …… » at y=78.8.
+            'organizationAddressPostcode' => [35.0, 79.1],
+            'organizationAddressCity' => [82.0, 79.1],
+
+            // « Pays : …… » at y=83.1.
+            'organizationAddressCountry' => [22.0, 83.4],
+
+            // « Objet : …… » at y=87.9.
+            'organizationObjet' => [24.0, 88.2],
+
+            // The outer box for « Œuvre ou organisme d'intérêt général … ». It is
+            // vertically CENTRED in that tall block, not level with its first line —
+            // measured by pixel scan at x 12.2-14.2, y 138.5-140.5, because unlike the
+            // ○ bullets it is drawn as vector and has no text bbox to find.
+            'categoryGeneralInterest' => [12.4, 138.3],
+
+            // The ○ before « Association loi 1901 », measured at x=22.4-25.3, y=120.7.
+            'categoryAssociation1901' => [22.6, 120.4],
+        ],
+        2 => [
+            // « Nom : …… » / « Prénoms : …… » at y≈85.7.
+            'volunteerLastName' => [24.0, 86.2],
+            'volunteerFirstName' => [126.0, 86.2],
+
+            // « N° …… Rue …… » at y=96.0.
+            'volunteerAddressNumber' => [21.0, 96.3],
+            'volunteerAddressStreet' => [47.0, 96.3],
+
+            // « Code postal …… Commune …… » at y=101.1.
+            'volunteerAddressPostcode' => [35.0, 101.4],
+            'volunteerAddressCity' => [82.0, 101.4],
+
+            // « Pays : …… » at y=106.4.
+            'volunteerAddressCountry' => [22.0, 106.7],
+
+            // The amount, right-aligned so it finishes just before « Euros » (x=56.8).
+            'amount' => [24.0, 125.4, 31.0, 'right'],
+
+            // « Somme en toutes lettres : …… » — the rule starts after the colon at
+            // x=123.6.
+            'amountInWords' => [125.0, 125.4],
+
+            // « Date du versement ou du don : ……/……/…… ».
+            //
+            // Split across the form's THREE dot groups instead of writing one date over
+            // the whole template, which left a trail of unused dots reading
+            // "21/06/2026/……". The slashes are the form's own, measured at x=72.9 and
+            // x=83.3; each part is centred in its group.
+            'donationDay' => [63.7, 132.7, 9.2, 'center'],
+            'donationMonth' => [73.0, 132.7, 10.3, 'center'],
+            'donationYear' => [83.4, 132.7, 9.5, 'center'],
+
+            // « 200 du CGI », whose box sits to its left ("200" begins at x=38.7).
+            'article200' => [34.6, 155.6],
+
+            // « Frais engagés par les bénévoles, dont ils renoncent expressément au
+            // remboursement » — THE box that makes this receipt what it is.
+            'natureVolunteerExpenses' => [12.0, 188.7],
+
+            // The « Date et signature » box has its own ……/……/…… run; same treatment,
+            // slashes measured at x=115.3 and x=122.2.
+            'signatureDay' => [109.0, 222.9, 6.3, 'center'],
+            'signatureMonth' => [115.4, 222.9, 6.8, 'center'],
+            'signatureYear' => [122.3, 222.9, 5.9, 'center'],
+        ],
+    ];
+
+    /**
+     * page => field => [x, y, max width, max height] in millimetres, for values that are
+     * images rather than text.
+     *
+     * Separate from FIELDS because an image is placed inside a box and not on a baseline:
+     * it is given a maximum width *and* height, and the browser keeps its aspect ratio, so
+     * a wide scanned signature and a square stamp both fit without being distorted.
+     *
+     * The « Date et signature » box was measured by scanning a 100 dpi render of page 2 for
+     * its rules — it is vector, so `pdftotext` reports nothing for it:
+     *
+     *   - the box itself: x 106.9 → 184.1 mm, y 216.2 → 233.4 mm
+     *   - the « Date et signature » label sits above it, at y 211.8 mm
+     *   - the date run below already occupies x 109.0 → 128.2 mm at y 222.9 mm
+     *
+     * So the signature goes to the right of the date, inside the box, with a millimetre of
+     * clearance on every side.
+     *
+     * @var array<int, array<string, array{float, float, float, float}>>
+     */
+    public const array IMAGES = [
+        2 => [
+            'signature' => [134.0, 217.5, 48.0, 14.0],
+        ],
+    ];
+}

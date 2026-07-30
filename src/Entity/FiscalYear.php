@@ -143,6 +143,17 @@ class FiscalYear implements TenantAware
     #[ORM\OneToMany(targetEntity: FiscalYearMileageRate::class, mappedBy: 'fiscalYear', cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $mileageRates;
 
+    /**
+     * How many receipts this exercice has issued, and therefore what the next number
+     * is. Only App\Receipt\ReceiptNumberAllocator moves it, under a row lock.
+     *
+     * A counter rather than `MAX(number) + 1`: the numbering must be continuous and
+     * never reused, so it has to survive a receipt being deleted. Counting existing
+     * rows would silently hand out a number that had already been issued.
+     */
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
+    private int $lastReceiptSequence = 0;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private DateTimeImmutable $createdAt;
 
@@ -323,6 +334,23 @@ class FiscalYear implements TenantAware
     public function removeMileageRate(FiscalYearMileageRate $rate): void
     {
         $this->mileageRates->removeElement($rate);
+    }
+
+    public function getLastReceiptSequence(): int
+    {
+        return $this->lastReceiptSequence;
+    }
+
+    /**
+     * Takes the next number in this exercice's sequence.
+     *
+     * Deliberately NOT public API for general use — call it only from
+     * App\Receipt\ReceiptNumberAllocator, which holds the row lock that makes it safe.
+     * Called without that lock, two concurrent validations both read the same value.
+     */
+    public function takeNextReceiptSequence(): int
+    {
+        return ++$this->lastReceiptSequence;
     }
 
     public function getCreatedAt(): DateTimeImmutable

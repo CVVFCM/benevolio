@@ -22,6 +22,8 @@ use function sprintf;
  * — and `format_currency` would need exactly that. Here the split is integral and the
  * decimal separator is the comma a French reader expects.
  *
+ * `hours` is the same idea for durations, which are stored in hundredths of an hour.
+ *
  * `pcg_account` keeps account numbers out of the markup as bare strings: a template
  * asking for '870' instead of '875' would be a wrong ledger with nothing to catch it,
  * whereas an unknown case throws.
@@ -32,6 +34,7 @@ final class AccountingExtension extends AbstractExtension
     {
         return [
             new TwigFilter('euros', $this->euros(...)),
+            new TwigFilter('hours', $this->hours(...)),
         ];
     }
 
@@ -56,6 +59,21 @@ final class AccountingExtension extends AbstractExtension
             "%s,%02d\u{a0}€",
             number_format($units, 0, ',', "\u{202f}"),
             $remainder,
+        );
+    }
+
+    /**
+     * Hundredths of an hour to a readable duration: "1275" → "12,75 h".
+     *
+     * Hours are stored in hundredths for the same reason amounts are stored in cents, so
+     * they are formatted the same way: integer split, comma, no float on the way.
+     */
+    public function hours(int $hundredths): string
+    {
+        return sprintf(
+            "%s,%02d\u{a0}h",
+            number_format(intdiv($hundredths, 100), 0, ',', "\u{202f}"),
+            abs($hundredths % 100),
         );
     }
 

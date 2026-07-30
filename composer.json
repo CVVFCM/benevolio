@@ -13,6 +13,8 @@
         "doctrine/doctrine-migrations-bundle": "^4.0",
         "doctrine/orm": "^3.6",
         "easycorp/easyadmin-bundle": "^5.3",
+        "league/flysystem-async-aws-s3": "^3.31",
+        "league/flysystem-bundle": "^3.7",
         "symfony/asset-mapper": "8.1.*",
         "symfony/brevo-mailer": "8.1.*",
         "symfony/console": "8.1.*",
@@ -20,7 +22,9 @@
         "symfony/expression-language": "8.1.*",
         "symfony/flex": "^2",
         "symfony/framework-bundle": "8.1.*",
+        "symfony/http-client": "8.1.*",
         "symfony/mailer": "8.1.*",
+        "symfony/messenger": "8.1.*",
         "symfony/monolog-bundle": "^4.0",
         "symfony/notifier": "8.1.*",
         "symfony/runtime": "8.1.*",
@@ -83,7 +87,7 @@
             "bin/console doctrine:schema:drop --force --full-database",
             "bin/console doctrine:migrations:migrate --no-interaction",
             "bin/console doctrine:fixtures:load --no-interaction --append",
-            "bin/console app:user:create admin@example.com --role=super-admin --password='!ChangeMe!'"
+            "bin/console app:user:create admin@example.com --role=admin --organization=cvvfcm --password='!ChangeMe!'"
         ],
         "reset-test": [
             "bin/console -etest doctrine:database:create --if-not-exists",

@@ -120,6 +120,10 @@ jobs:
           APP_SECRET: ${{ secrets.APP_SECRET }}
           MAILER_DSN: ${{ secrets.MAILER_DSN }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # Scaleway Object Storage, for the CERFA receipts. The same organisation secrets
+          # cvvfcm-v4 uses — one set of credentials, one naming.
+          SCW_ACCESS_KEY: ${{ secrets.SCW_ACCESS_KEY }}
+          SCW_SECRET_KEY: ${{ secrets.SCW_SECRET_KEY }}
         run: |
           # Through a file rather than --set. A DSN may legitimately contain a comma,
           # which --set reads as a value separator, and it would then be silently
@@ -132,6 +136,8 @@ jobs:
               'secrets': {
                   'appSecret': os.environ['APP_SECRET'],
                   'mailerDsn': os.environ['MAILER_DSN'],
+                  's3Key': os.environ['SCW_ACCESS_KEY'],
+                  's3Secret': os.environ['SCW_SECRET_KEY'],
               },
               'database': {'url': os.environ['DATABASE_URL']},
           }))

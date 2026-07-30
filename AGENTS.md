@@ -134,9 +134,29 @@ year it began in. A line no
 exercice covers is stored and listed but **unvalued**: without a barème for the period
 there is no figure to state.
 
-The ledger (`/admin/fiscal-year/{id}/ledger`) lists **validated lines only** — an
-unruled line is not bookable — grouped by volunteer, which is the unit a CERFA is
-issued for and the unit the barème's distance bands are keyed to.
+### Two accounting pages, and what each is for
+
+Both list **validated lines only** — an unruled line is not bookable.
+
+`/admin/fiscal-year/{id}/ledger` is the **écriture the association books**:
+`App\Accounting\LedgerSummary`, one centralising entry per family, dated on the exercice's
+**close** (the movements happened all year; the écriture recording them is passed at
+closing), plus a balance per compte. This is what a treasurer copies into a journal, and
+it is what they asked for — the per-volunteer detail is not what goes into the accounts.
+
+`…/ledger/detail` is that detail, grouped by volunteer: the unit a CERFA is issued for and
+the unit the barème's distance bands are keyed to. It justifies an individual receipt.
+
+The summary shows the two families as **two tables, never one**, so nothing invites a
+combined total — the figure `Ledger` and `LedgerSummary` both exist to prevent. Its
+kilometre count is the **valued** kilometres only: a journey as a passenger is declared but
+waives nothing, and counting it would leave a reader unable to reconcile the kilometres
+against the amount beside them.
+
+`LedgerSummary::balances()` returns `list<AccountBalance>`, not an array keyed by account
+number: **PCG codes are numeric strings and PHP turns the key `'864'` into the integer
+864**, so a keyed array of them cannot be typed honestly at PHPStan max, let alone read back
+by code that thinks in strings.
 
 ### Double opt-in — a declaration is not final when it is submitted
 
@@ -265,6 +285,12 @@ Two resolvers run in priority order, first match wins:
 - **`Organization` and `User` are not `TenantAware`.** `Organization` *is* the
   tenant; filtering `User` would break authentication, because the user provider
   runs before any tenant is known.
+- **`MyOrganizationCrudController` is the only CRUD under `/admin` on a
+  non-`TenantAware` entity**, and therefore the only one no filter protects: another
+  association's UUID in the URL would be editable. It checks the instance against
+  `TenantContext` on `detail()`, on `edit()` *and* in `updateEntity()`, and
+  `tests/Controller/Admin/MyOrganizationTest` proves all three. Anything similar must do
+  the same.
 - **`DeclarationAction` is the one documented exception**, by decision: it is
   reached through its `Declaration`, which is tenant-scoped. The filter therefore
   does *not* touch it, and anything querying it directly must scope itself. Three
@@ -297,7 +323,13 @@ super-admin must never be given an `Organization`.
 EasyAdmin registers **every** CRUD controller under **every** dashboard by
 default. The `deniedControllers` list on `App\Controller\Admin\DashboardController`
 is what keeps the platform CRUDs off `/admin`; there is a test for it. Any CRUD
-added to `/admin` must be tenant-scoped.
+added to `/admin` must be tenant-scoped. `/platform` uses `allowedControllers`, a
+whitelist, so a new `/admin` CRUD does not appear there by accident.
+
+An association edits its own record — CERFA identity and signature — from
+« Mon association » in `/admin`; the super-admin still edits everything from
+`/platform`. The slug is read-only on the association's side: it addresses the public
+volunteer URLs, and changing it invalidates links already handed out.
 
 ## Layout
 
@@ -373,6 +405,123 @@ assertions should be unreachable there, because the form validated the same rule
 and reported them per field; reaching one means the two rule sets have drifted,
 which is when a loud failure is wanted.
 
+## The CERFA — generating the receipt
+
+Validating a declaration issues **CERFA n°11580\*05, form 2041-RD**, files it in object
+storage and emails it to the volunteer. `App\State\Listener\ReceiptOnValidation` reacts
+to the transition, not to the call site, and dispatches `IssueReceipt`.
+
+**Only the *abandon de frais* goes in the amount box.** Donated hours are off balance
+sheet and open no right to a deduction, so summing them in would overstate what the
+volunteer may claim — CGI art. 1740 A penalises amounts wrongly stated at 25%. The mail
+says so in as many words, because the volunteer gave the hours and is the one who would
+put the wrong figure on a tax return.
+
+**`App\Receipt\ReceiptEligibility` refuses more often than it issues**, and every
+refusal is an ordinary outcome recorded in French on the declaration — "no receipt"
+alone reads as a fault rather than as paperwork to finish. It refuses without a
+SIREN/RNA or a postal address (the document would not be valid), when no exercice
+covers the dates (no
+barème, so no figure to state), and when nothing was waived.
+
+Numbers come from `ReceiptNumberAllocator`: `2026-0001`, continuous per exercice and
+**never reused**, from a counter on `FiscalYear` taken under a `PESSIMISTIC_WRITE` lock.
+A counter and not `MAX(number) + 1`, so deleting a receipt cannot free its number. The
+number and the receipt commit in one transaction — an allocated number that never became
+a receipt is a gap in a sequence that must be continuous.
+
+The object key is `<year>/cerfa-firstname-lastname.pdf`, which **can collide**: two
+volunteers sharing a name, or one receipted twice in an exercice, overwrite each other.
+That was a deliberate naming choice; `App\Entity\Receipt` is what keeps it from losing
+anything, since every number, amount, date and printed identity stays in the database.
+
+### How the PDF is made, and why it is not simpler
+
+`Twig → Gotenberg → qpdf --overlay`, and each step is forced:
+
+- **The official form has no form fields.** `pdfinfo` says `Form: none` — it was
+  flattened by PDF24 and Ghostscript — so there is nothing to fill, and the values
+  must be stamped.
+- **Gotenberg cannot stamp.** It converts HTML, and `pdfengines/merge` concatenates
+  pages rather than superimposing them. So Gotenberg renders a transparent layer and qpdf
+  presses it on, which keeps the form vector.
+- **TRAP — Gotenberg defaults to Letter** and ignores `@page { size: A4 }` in the
+  document. Without `preferCssPageSize`, the layer comes back 612×792 and qpdf scales it
+  onto a 595×842 page: every value drifts 7–10 mm off its line. Obvious on the page,
+  invisible to a test that only counts pages — so `ReceiptGeneratorTest` measures the
+  page box.
+- **TRAP — the entry file must be called `index.html`**, or Gotenberg answers 400
+  without saying why. And a `DataPart` inside a `body` array is *not* multipart; it
+  needs a `FormDataPart`, or Gotenberg answers 415.
+- The layer is **two pages**, because the form is: the organisation block is on page 1,
+  the donor, the amount and the boxes on page 2. qpdf maps overlay page *n* onto form
+  page *n*, so a one-page layer silently loses half the receipt.
+
+Coordinates live in `App\Receipt\CerfaLayout`, measured with `pdftotext -bbox` and
+converted from points. A revision of the form moves all of them — see
+`resources/cerfa/README.md`, and **look at the result**, because a test can prove a value
+is present but not that it landed on the right line.
+
+### The signature
+
+`CerfaLayout::IMAGES` positions images, `FIELDS` positions text; they cannot share a shape,
+because an image is given a box (`[x, y, max width, max height]`) and a string is given a
+baseline. A `max-inline-size`/`max-block-size` pair with no width or height keeps the
+aspect ratio, so a wide scanned signature and a square stamp both fit.
+
+The « Date et signature » box is at **x 106.9→184.1 mm, y 216.2→233.4 mm**, found by pixel
+scan of a render — it is vector, so `pdftotext` reports nothing for it. The date run lot 7
+placed already occupies x 109→128.2, so the image goes to its right.
+
+The signature is embedded as a `data:` URI. It has to be: Gotenberg renders the layer in a
+container that cannot reach this application, so a URL comes back as a broken image on a
+receipt already sent.
+
+**A signature is optional.** `ReceiptEligibility` does not ask for one, and an association
+without one gets the same document as before, to sign by hand.
+
+**TRAP — you cannot count images per page after `--overlay`.** qpdf wraps each stamped
+page's content in a Form XObject, and its `--json` per-page image list only reports a page's
+*direct* resources, so after stamping it reports none at all — even the form's own logos.
+`ReceiptGeneratorTest` therefore asserts the page on the *layer* and counts
+`/Subtype /Image` objects in the QDF form of the finished file.
+
+`App\Receipt\AmountInWords` is the only place that touches `NumberFormatter`, with one
+documented suppression: PHPStan resolves it to Symfony's polyfill and forbids it, while
+ext-intl is what actually runs — and the polyfill has no `SPELLOUT` at all. ICU is worth
+that friction, because French is where hand-rolling breaks: *quatre-vingts* but
+*quatre-vingt-un*, *soixante et onze* but *soixante-douze*, and *zéro euro* singular.
+
+### S3 configuration
+
+The variables are the ordinary ones — **`S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_KEY`,
+`S3_SECRET`** — matching cvvfcm-v4, so anything that already knows how to configure an S3
+bucket for that project configures this one.
+
+**Their defaults live in `config/packages/flysystem.yaml`**, as `env(...)` parameters, not in
+`.env`. `.env` is tracked, so a value there is a setting pretending to be configuration that
+every environment then has to override. Only `S3_ENDPOINT` has no default: development sets it
+to the s3mock container (`compose.override.yaml`), production to the Scaleway region endpoint.
+
+**Do not "helpfully" pass these through `compose.yaml` as `${S3_KEY:-}`.** An empty variable
+that is *set* is not an absent one: Symfony resolves `%env(S3_KEY)%` to `''` and the signing
+code then refuses to build a request, so the YAML default would be silently dead.
+
+**In production the chart supplies all five**, and refuses to render without the credentials —
+see *Deploying*. That is not belt-and-braces: because the defaults above are the development
+ones, an unset key does not fail loudly, it signs a request to AWS with the literal key
+`s3mock`.
+
+### Testing it
+
+`ReceiptGeneratorTest` and `IssueReceiptTest` hit **real Gotenberg and real s3mock** —
+mocking them would prove none of the seams above. Both need `make up`.
+
+**TRAP in mail assertions:** the mailer records a `MessageEvent` when a message is queued
+*and* again when it is sent, so `getEvents()->getMessages()` returns the same mail twice.
+Filter on `!$event->isQueued()` — an `assertCount(1)` on the messages fails against
+perfectly correct behaviour.
+
 ## Running (Docker, via Makefile)
 
 **Use the Makefile, not raw `docker compose`** (except `docker compose logs`).
@@ -397,11 +546,17 @@ Run `bin/console` and `composer` **inside the php container** (`make cli`, or
 migrations on container start.
 
 App served at `https://localhost`. `composer reset` (so `make reset`) leaves three
-logins: **`admin@example.com` / `!ChangeMe!`** — a platform super-admin created by
-the reset script itself — plus the fixture accounts
-`super-admin@benevolio.test` and `admin@cvvfcm.test`, whose password is in
+logins: **`admin@example.com` / `!ChangeMe!`** — an admin **of CVVFCM**, created by
+the reset script itself, so it lands in `/admin` where the features are — plus the
+fixture accounts `super-admin@benevolio.test` (the platform, `/platform`) and
+`admin@cvvfcm.test`, whose password is in
 `App\Factory\UserFactory::DEFAULT_PASSWORD`. The association's public form is at
 `/a/cvvfcm/declaration`.
+
+An account is one or the other, never both: a platform super-admin is attached to no
+association — `App\Tenant\UserTenantResolver` reads the association off the account to
+arm the tenant filter, so giving one an organization would scope the whole platform
+backoffice to it. `app:user:create` refuses that combination outright.
 
 **Password rules are deliberately weak**, and this applies in production too:
 minimum `User::PASSWORD_MIN_LENGTH` (8) characters, and nothing else.
@@ -432,10 +587,26 @@ moving tag.
 
 **Secrets come from two places, and the split matters.** Infrastructure ones are
 **organization** secrets shared with the other repos — `OCI_*`, `OKE_KUBECONFIG`,
-`CLOUDFLARE_API_TOKEN`. Application ones belong to this repo's **`prod`
-environment** — `APP_SECRET`, `DATABASE_URL`, `MAILER_DSN`. Never move an
-application secret up to the organization: it would hand every other repo the keys
-to this database.
+`CLOUDFLARE_API_TOKEN`, and `SCW_ACCESS_KEY` / `SCW_SECRET_KEY` for Object Storage,
+which cvvfcm-v4 already uses under those names. Application ones belong to this
+repo's **`prod` environment** — `APP_SECRET`, `DATABASE_URL`, `MAILER_DSN`. Never
+move an application secret up to the organization: it would hand every other repo
+the keys to this database.
+
+**Object storage and Gotenberg are chart-configured, and both refuse to render when
+they are not.** `app.s3Endpoint` / `s3Region` / `s3Bucket` land in the ConfigMap,
+`secrets.s3Key` / `s3Secret` in the Secret, and CD fills the last two from the
+Scaleway organization secrets. They are `required` for the same reason
+`secrets.mailerDsn` is, and worse: the defaults in
+`config/packages/flysystem.yaml` are the *development* ones, so an unset key does
+not fail — it signs a request to **AWS** with the literal key `s3mock` and the
+receipt is lost. The bucket must already exist; nothing in the chart creates it.
+
+The chart ships **its own Gotenberg** (`gotenberg.enabled`, ClusterIP only —
+it renders whatever HTML it is handed, so it must never be exposed).
+`GOTENBERG_DSN` is derived from that Service unless `app.gotenbergDsn` points
+somewhere else; with neither, rendering fails at template time rather than on the
+first validated declaration.
 
 **The database is external, and the chart cannot run its own.** It used to bundle
 the Bitnami PostgreSQL subchart; that is gone, along with `helm dependency update`
@@ -525,6 +696,32 @@ and in `ps`**, so it is for throwaway accounts; use the prompt for anything real
   `translations/*.fr.xlf` (`messages` for the app, `admin` for EasyAdmin);
   Symfony already ships `validators.fr.xlf` and `security.fr.xlf`, so do not
   duplicate those.
+
+### Uploaded files
+
+There is no VichUploader, and no upload directory. The one uploaded file — the
+association's signature — is stored **in the database**, in `organization_signature`, as
+base64 in a TEXT column. It is consumed as a `data:` URI anyway (Gotenberg cannot fetch a
+URL from this application), so bytes on disk would buy nothing and a container filesystem
+loses them at the next deployment.
+
+- **`Organization` holds the *owning* side** of the one-to-one. That row is hydrated on
+  every request to resolve the tenant; an owning to-one reads only `signature_id` and the
+  image loads lazily. The inverse side would cost an extra query on every request.
+- **Never hold an `UploadedFile` on an entity.** `Organization` is reachable from the
+  security token through `User`, and `ContextListener` serializes that token into the
+  session on **every** response: an `UploadedFile` in the graph throws *"Serialization of
+  'UploadedFile' is not allowed"* and turns every response after the upload into a 500.
+  `signatureUpload` is therefore a virtual property — getter and setter only, which is all
+  PropertyAccess needs — and the setter converts and forgets.
+- Because the file is not kept, **`#[Assert\Image]` has nothing to inspect**. The same
+  three facts are checked on the stored result by `Organization::validateSignature()`,
+  which attaches its violations to `signatureUpload` so the message lands under the field.
+- **1 MB cap** (`OrganizationSignature::MAX_FILE_SIZE`), because no custom php.ini ships in
+  the image and `upload_max_filesize` is PHP's 2M default — a larger cap would be refused
+  by PHP before Symfony saw the file, and the user would get an empty field instead of a
+  message.
+- Raster only. An SVG is markup and has no business in a stamped PDF.
 
 ### State machines (finite)
 
@@ -665,6 +862,10 @@ produces one orphan per object built — `DeclarationActionFactory` learned this
 expensive way and now exposes `for()` / `forDeclaration()` instead.
 
 Run `make reset-test` once, then `make test`.
+
+`phpunit.dist.xml` raises `memory_limit` to 512M. The suite peaks near 100 MB against PHP's
+128 MB default, mostly booting kernels, and one run has already died mid-test with *"Allowed
+memory size exhausted"*. Set there rather than on a command line, so CI gets it too.
 
 ## Linters — MANDATORY
 

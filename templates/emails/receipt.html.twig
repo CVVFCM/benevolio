@@ -1,0 +1,59 @@
+{# Inline styles and a table layout on purpose: mail clients strip <style> blocks
+   and have no CSS grid. This does not share the site's stylesheet. #}
+<!DOCTYPE html>
+<html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Votre reçu fiscal</title>
+    </head>
+    <body style="margin:0;padding:24px;background:#f7f4ee;color:#16202b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:16px;line-height:1.6;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:600px;margin:0 auto;background:#fffdfa;border:1px solid #ded6c9;border-radius:10px;">
+            <tr>
+                <td style="padding:24px 24px 8px;">
+                    <p style="margin:0 0 16px;font-size:20px;font-weight:600;">
+                        Votre reçu fiscal n° {{ receipt.number }}
+                    </p>
+
+                    <p style="margin:0 0 16px;">Bonjour {{ person.firstName }},</p>
+
+                    <p style="margin:0 0 16px;">
+                        Vous trouverez en pièce jointe votre reçu fiscal établi par
+                        {{ organization.name }}, pour un montant de
+                        <strong>{{ receipt.amountCents|euros }}</strong>.
+                    </p>
+
+                    {# The distinction a volunteer is most likely to get wrong: they gave
+                       hours, so they expect the hours to count. They do not, and they are
+                       the one who would put a wrong figure on a tax return. #}
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 16px;background:#f6ecd9;border-left:1px solid #8a5f1a;border-radius:6px;">
+                        <tr>
+                            <td style="padding:12px 16px;font-size:15px;">
+                                Ce reçu porte uniquement sur les <strong>frais que vous avez
+                                engagés et dont vous avez renoncé au remboursement</strong> —
+                                vos déplacements. Les heures de bénévolat que vous avez
+                                déclarées n'y figurent pas : le temps donné n'ouvre pas droit
+                                à une réduction d'impôt.
+                            </td>
+                        </tr>
+                    </table>
+
+                    <p style="margin:0 0 16px;">
+                        Conservez ce document : c'est lui qui justifie la réduction d'impôt
+                        prévue à l'article 200 du code général des impôts.
+                    </p>
+
+                    <p style="margin:0 0 24px;">Merci pour votre engagement.</p>
+                </td>
+            </tr>
+            <tr>
+                <td style="padding:0 24px 24px;border-top:1px solid #ded6c9;">
+                    <p style="margin:16px 0 0;color:#646d7a;font-size:13px;">
+                        {{ organization.name }}
+                        {%- if organization.sirenOrRna %} — {{ organization.sirenOrRna }}{% endif %}
+                    </p>
+                </td>
+            </tr>
+        </table>
+    </body>
+</html>

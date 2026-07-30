@@ -19,6 +19,10 @@ services:
       # Development only. .env keeps null://null, so a checkout without this file
       # — and the test environment — send nowhere.
       MAILER_DSN: smtp://mailpit:1025
+      # The one S3 setting with no sensible default: the rest come from
+      # config/packages/flysystem.yaml, which is already pointed at a bucket and dummy
+      # credentials s3mock accepts.
+      S3_ENDPOINT: http://s3mock:9090
     volumes:
       - '.:/app:rw'
       - './.infra/docker/php/conf.d/symfony.dev.ini:/usr/local/etc/php/conf.d/symfony.ini:ro'
@@ -45,4 +49,33 @@ services:
         protocol: tcp
       - target: 8025
         published: ${MAILPIT_HTTP_PORT:-8025}
+        protocol: tcp
+
+  # Renders the HTML overlay layer that is then stamped onto the official CERFA with
+  # qpdf. Dev-only like Mailpit: production points GOTENBERG_DSN at its own instance.
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    restart: unless-stopped
+    # Chromium only; no LibreOffice route is used, and disabling it cuts the memory
+    # this container idles at.
+    command:
+      - gotenberg
+      - --libreoffice-disable-routes=true
+    ports:
+      - target: 3000
+        published: ${GOTENBERG_PORT:-3000}
+        protocol: tcp
+
+  # Stands in for Scaleway Object Storage. The bucket is created at start-up, so a
+  # fresh checkout has somewhere to write without anyone running a CLI first.
+  s3mock:
+    image: adobe/s3mock:3.12.0
+    restart: unless-stopped
+    environment:
+      initialBuckets: ${S3_BUCKET:-benevolio-receipts}
+      # Otherwise every PUT is echoed in full, receipts included.
+      retainFilesOnExit: "false"
+    ports:
+      - target: 9090
+        published: ${S3MOCK_PORT:-9090}
         protocol: tcp
