@@ -53,7 +53,7 @@ app:
   # SCW_ACCESS_KEY / SCW_SECRET_KEY organisation secrets serve both.
   s3Endpoint: https://s3.fr-par.scw.cloud
   s3Region: fr-par
-  s3Bucket: benevolio-receipts
+  s3Bucket: benevolio
   # Where the receipt overlay is rendered. Empty → the Gotenberg Service this chart
   # deploys. Set it to point at an instance that already exists somewhere else.
   gotenbergDsn: ""

@@ -72,7 +72,7 @@ services:
     image: adobe/s3mock:3.12.0
     restart: unless-stopped
     environment:
-      initialBuckets: ${S3_BUCKET:-benevolio-receipts}
+      initialBuckets: ${S3_BUCKET:-benevolio}
       # Otherwise every PUT is echoed in full, receipts included.
       retainFilesOnExit: "false"
     ports:
