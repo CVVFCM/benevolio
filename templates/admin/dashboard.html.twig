@@ -6,4 +6,16 @@
     <p>
         {{ 'dashboard.no_sections_yet'|trans({}, 'admin') }}
     </p>
+
+    {#
+        The once-a-year job, on the page a treasurer lands on. It sits here because it is the
+        only task with a season: everything else is opened when there is something to do,
+        this is opened when a year is over.
+    #}
+    <p class="dashboard__actions">
+        <a href="{{ generate_receipts_url }}" class="btn btn-primary">
+            <i class="fa fa-file-invoice"></i>
+            Générer les reçus fiscaux d'une année
+        </a>
+    </p>
 {% endblock %}

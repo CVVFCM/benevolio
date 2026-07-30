@@ -1,0 +1,101 @@
+{% extends '@EasyAdmin/page/content.html.twig' %}
+
+{#
+    What a run did, volunteer by volunteer.
+
+    Skips are listed as prominently as issues. A run that quietly did nothing for half the
+    association would otherwise look exactly like one that worked — and "no receipt" is
+    usually ordinary paperwork (nothing waived), not a fault.
+#}
+
+{% block content_title %}Reçus fiscaux {{ report.year }}{% endblock %}
+
+{% block main %}
+    {% if report.isRefused %}
+        <p class="admin-warning" role="alert">
+            <strong>Aucun reçu n'a été émis.</strong> {{ report.refusalReason }}
+        </p>
+    {% elseif report.hasNothingToDo %}
+        <p class="receipt-run__intro">
+            Aucune action validée sur {{ report.year }} : il n'y a rien à établir. Les
+            déclarations reçues apparaissent dans « Déclarations reçues » ; elles compteront
+            pour cette année une fois validées.
+        </p>
+    {% else %}
+        <p class="receipt-run__summary">
+            <strong>{{ report.issuedCount }}</strong>
+            {{ report.issuedCount > 1 ? 'reçus émis' : 'reçu émis' }}
+            pour un total de <strong>{{ report.totalCents|euros }}</strong>
+            {%- if report.skippedCount > 0 %},
+                {{ report.skippedCount }}
+                {{ report.skippedCount > 1 ? 'bénévoles écartés' : 'bénévole écarté' }}
+            {%- endif %}.
+        </p>
+
+        {% if report.unvaluedLineCount > 0 %}
+            <p class="admin-warning" role="note">
+                <strong>{{ report.unvaluedLineCount }}</strong>
+                {{ report.unvaluedLineCount > 1 ? 'actions ne sont' : 'action n\'est' }}
+                couverte{{ report.unvaluedLineCount > 1 ? 's' : '' }} par aucun exercice
+                comptable : sans barème pour la période, aucun montant ne peut être établi,
+                {{ report.unvaluedLineCount > 1 ? 'elles sont' : 'elle est' }} donc
+                <strong>absente{{ report.unvaluedLineCount > 1 ? 's' : '' }} des reçus</strong>.
+                Créez l'exercice manquant puis relancez si nécessaire.
+            </p>
+        {% endif %}
+
+        {% if report.issued is not empty %}
+            <section class="receipt-run__section">
+                <h2>Reçus émis</h2>
+
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>N° d'ordre</th>
+                            <th>Bénévole</th>
+                            <th class="is-numeric">Montant</th>
+                            <th>Envoyé à</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for outcome in report.issued %}
+                            <tr>
+                                <td>{{ outcome.receipt.number }}</td>
+                                <td>{{ outcome.person.fullName }}</td>
+                                <td class="is-numeric">{{ outcome.receipt.amountCents|euros }}</td>
+                                <td>{{ outcome.person.email.value }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+        {% endif %}
+
+        {% if report.skipped is not empty %}
+            <section class="receipt-run__section">
+                <h2>Sans reçu</h2>
+
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Bénévole</th>
+                            <th>Raison</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for outcome in report.skipped %}
+                            <tr>
+                                <td>{{ outcome.person.fullName }}</td>
+                                <td>{{ outcome.skipReason }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+        {% endif %}
+    {% endif %}
+
+    <p class="ledger__crosslink">
+        <a href="{{ index_url }}">Tous les reçus fiscaux →</a>
+    </p>
+{% endblock %}

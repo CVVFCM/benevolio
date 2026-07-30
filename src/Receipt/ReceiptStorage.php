@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Receipt;
 
-use App\Entity\FiscalYear;
 use App\Entity\Person;
 use League\Flysystem\FilesystemOperator;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -15,15 +14,18 @@ use function sprintf;
 /**
  * Where a receipt PDF lives.
  *
- * `<year>/cerfa-firstname-lastname.pdf`, as asked. **The key can collide**: two volunteers
- * sharing a name, or one volunteer receipted twice in an exercice, overwrite each other.
- * That was a deliberate choice about naming, and App\Entity\Receipt is what keeps it from
- * losing anything — every number, amount and date stays in the database even when the
- * object is replaced.
+ * `<year>/cerfa-firstname-lastname-<number>.pdf`, under the `receipts/` prefix the storage
+ * itself carries (see config/packages/flysystem.yaml) — so the prefix can move without
+ * rewriting the paths already recorded on App\Entity\Receipt.
  *
- * The directory is the exercice's **first** year, not the issue date's: a receipt issued
- * in January 2027 for the 2026 exercice belongs with 2026, and an exercice that straddles
- * the calendar still files in one place.
+ * **The number is in the key, and that is what makes the key safe.** Re-running a year
+ * issues a new receipt rather than replacing the old one, so a name-only key would leave the
+ * earlier row pointing at a PDF that had been overwritten. Two volunteers sharing a name are
+ * separated by the same token. The collision risk lot 7 accepted is closed.
+ *
+ * The directory is the **civil year the receipt covers**, which is also what the document
+ * says — not the year it was issued in: a 2025 receipt produced in January 2026 files under
+ * 2025.
  */
 final readonly class ReceiptStorage
 {
@@ -34,9 +36,9 @@ final readonly class ReceiptStorage
     ) {
     }
 
-    public function store(FiscalYear $fiscalYear, Person $person, string $pdf): string
+    public function store(int $year, Person $person, string $number, string $pdf): string
     {
-        $path = $this->pathFor($fiscalYear, $person);
+        $path = $this->pathFor($year, $person, $number);
 
         $this->filesystem->write($path, $pdf);
 
@@ -48,7 +50,7 @@ final readonly class ReceiptStorage
         return $this->filesystem->read($path);
     }
 
-    public function pathFor(FiscalYear $fiscalYear, Person $person): string
+    public function pathFor(int $year, Person $person, string $number): string
     {
         // Slugged, because a name reaches this from a public form: accents, spaces and
         // anything else a volunteer might type must not decide an object key.
@@ -56,6 +58,6 @@ final readonly class ReceiptStorage
             ->slug(sprintf('%s %s', $person->getFirstName(), $person->getLastName()))
             ->lower();
 
-        return sprintf('%s/cerfa-%s.pdf', $fiscalYear->getBeginsOn()->format('Y'), $name);
+        return sprintf('%d/cerfa-%s-%s.pdf', $year, $name, $number);
     }
 }

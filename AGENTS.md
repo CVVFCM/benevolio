@@ -45,11 +45,14 @@ Two consequences that are easy to get wrong:
   **BOFiP BOI-IR-RICI-250-20 is stale**: still the 12/09/2012 version, still printing
   the old flat rate. Cite it for the conditions (§170), the justificatifs (§210) and
   the renonciation wording (§240) — never for figures.
-- The barème is **piecewise**, and only its first band is modelled: bands above
-  5 000 km use a different formula with an additive constant, keyed to the volunteer's
-  *cumulative* kilometres for the year. `App\Accounting\ContributionValuation`
-  carries a `beyondFirstBand` flag and the ledger page says the figure is understated
-  rather than presenting one it cannot stand behind.
+- The barème is **piecewise**, and this application models **only the first band, with no
+  cumulative tracking at all** — deliberately, and it must not be added back. Bands above
+  5 000 km use another formula keyed to the volunteer's cumulative kilometres **across
+  every association they drive for**, which nothing here can see: one association's
+  records are not the volunteer's total. A flag computed from local kilometres would claim
+  knowledge that does not exist. The band-1 rate is applied to what is declared, and the
+  volunteer's own situation is theirs to settle. (An earlier version carried a
+  `beyondFirstBand` flag and a warning on the ledger; both are gone.)
 
 **Volunteers have no account.** They are not `User`s. They identify themselves by
 filling the first step of the public form under `/a/{organizationSlug}/declaration`.
@@ -144,8 +147,9 @@ Both list **validated lines only** — an unruled line is not bookable.
 closing), plus a balance per compte. This is what a treasurer copies into a journal, and
 it is what they asked for — the per-volunteer detail is not what goes into the accounts.
 
-`…/ledger/detail` is that detail, grouped by volunteer: the unit a CERFA is issued for and
-the unit the barème's distance bands are keyed to. It justifies an individual receipt.
+`…/ledger/detail` is that detail, grouped by volunteer — what justifies an individual reçu
+fiscal. **It is not the receipt's own period**: a receipt covers a civil year and this covers
+the exercice, so the two never share a query. See `App\Receipt\YearlyReceiptRun`.
 
 The summary shows the two families as **two tables, never one**, so nothing invites a
 combined total — the figure `Ledger` and `LedgerSummary` both exist to prevent. Its
@@ -407,9 +411,23 @@ which is when a loud failure is wanted.
 
 ## The CERFA — generating the receipt
 
-Validating a declaration issues **CERFA n°11580\*05, form 2041-RD**, files it in object
-storage and emails it to the volunteer. `App\State\Listener\ReceiptOnValidation` reacts
-to the transition, not to the call site, and dispatches `IssueReceipt`.
+**A receipt covers one volunteer for one CIVIL YEAR, and nothing issues one automatically.**
+`App\Receipt\YearlyReceiptRun` is the only thing that creates a `Receipt`, called from
+« Reçus fiscaux » in the back office (`ReceiptCrudController::chooseYear` → `generate`) or
+from `app:receipts:generate <year> --organization=<slug>`.
+
+Lot 7 did it the other way — one receipt per declaration, dispatched when the declaration
+was validated — and that could not work. A volunteer files several declarations a year and
+carries **one** figure to their income-tax return (CGI art. 200 applies to the *revenus* of
+a calendar year), and no receipt can be complete before the year has ended. The listener,
+the `IssueReceipt` message and its handler are gone; `Declaration` has no receipt relation
+and no withheld reason. Do not reintroduce a per-declaration hook.
+
+**The civil year is not the exercice.** An association may run September to August; the
+ledger follows that, the receipt does not. Each line is priced by the exercice covering
+**its own date** (`ContributionValuator::value()`), so the rates follow the books while the
+total follows the tax year. A line no exercice covers has no barème: it is left out of the
+amount and **counted in the report**, never priced at zero.
 
 **Only the *abandon de frais* goes in the amount box.** Donated hours are off balance
 sheet and open no right to a deduction, so summing them in would overstate what the
@@ -417,23 +435,39 @@ volunteer may claim — CGI art. 1740 A penalises amounts wrongly stated at 25%.
 says so in as many words, because the volunteer gave the hours and is the one who would
 put the wrong figure on a tax return.
 
-**`App\Receipt\ReceiptEligibility` refuses more often than it issues**, and every
-refusal is an ordinary outcome recorded in French on the declaration — "no receipt"
-alone reads as a fault rather than as paperwork to finish. It refuses without a
-SIREN/RNA or a postal address (the document would not be valid), when no exercice
-covers the dates (no
-barème, so no figure to state), and when nothing was waived.
+**Refusals are ordinary outcomes, and they are reported.**
+`App\Receipt\ReceiptEligibility` answers the association-level question **once per run** —
+no SIREN/RNA, no postal address, and nothing is attempted at all. A volunteer who waived
+nothing is skipped with a reason. Both land on the report page and in the command's output:
+a run that quietly did nothing for half the association would look exactly like one that
+worked.
 
-Numbers come from `ReceiptNumberAllocator`: `2026-0001`, continuous per exercice and
-**never reused**, from a counter on `FiscalYear` taken under a `PESSIMISTIC_WRITE` lock.
-A counter and not `MAX(number) + 1`, so deleting a receipt cannot free its number. The
-number and the receipt commit in one transaction — an allocated number that never became
-a receipt is a gap in a sequence that must be continuous.
+**Re-running a year issues new receipts with new numbers**, and the previous ones stay in
+the database — that is what a rectificatif is. The object key carries the number, so the
+earlier PDF survives too.
 
-The object key is `<year>/cerfa-firstname-lastname.pdf`, which **can collide**: two
-volunteers sharing a name, or one receipted twice in an exercice, overwrite each other.
-That was a deliberate naming choice; `App\Entity\Receipt` is what keeps it from losing
-anything, since every number, amount, date and printed identity stays in the database.
+Numbers come from `ReceiptNumberAllocator`: `0001`, **one continuous series per association**
+whatever year the receipt covers, from a counter on `Organization` taken under a
+`PESSIMISTIC_WRITE` lock. On the association and not on a period, because an exercice
+running September to August cannot number a January-to-December document. A counter and not
+`MAX(number) + 1`, so deleting a receipt cannot free its number. The number, the object and
+the row commit in one transaction, and there is **one transaction per volunteer** — a
+failure on the twelfth must not undo the first eleven.
+
+The object key is `receipts/<year>/cerfa-firstname-lastname-<number>.pdf` — `receipts/` from
+the flysystem prefix, in the bucket `benevolio`. The number in the key is what makes it safe:
+a reissue no longer overwrites the earlier PDF, and two volunteers sharing a name no longer
+collide. The collision lot 7 accepted is closed.
+
+**The mail goes out inside the run**, one per volunteer, in series. That is an accepted cost:
+fifty volunteers means fifty PDFs and fifty mails in one request, which is why
+`app:receipts:generate` exists and why moving the run onto a Messenger transport is the
+obvious escape if it ever stops fitting.
+
+The command asks for confirmation, and **`--no-interaction` demands `--force`**. A
+confirmation defaulting to "no" answers itself when nothing is on the terminal, so without
+that guard the command would exit 0 having issued nothing — the worst outcome for a step a
+deployment script is relying on.
 
 ### How the PDF is made, and why it is not simpler
 
@@ -498,6 +532,11 @@ The variables are the ordinary ones — **`S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET
 `S3_SECRET`** — matching cvvfcm-v4, so anything that already knows how to configure an S3
 bucket for that project configures this one.
 
+**One bucket, `benevolio`**, with the receipts under a `receipts/` **prefix declared on the
+storage** rather than built into the keys. So `Receipt::$storagePath` holds
+`<year>/cerfa-….pdf` and keeps meaning the same thing if the layout ever moves, and whatever
+else the application has to file later goes in a sibling directory instead of a second bucket.
+
 **Their defaults live in `config/packages/flysystem.yaml`**, as `env(...)` parameters, not in
 `.env`. `.env` is tracked, so a value there is a setting pretending to be configuration that
 every environment then has to override. Only `S3_ENDPOINT` has no default: development sets it
@@ -514,8 +553,9 @@ ones, an unset key does not fail loudly, it signs a request to AWS with the lite
 
 ### Testing it
 
-`ReceiptGeneratorTest` and `IssueReceiptTest` hit **real Gotenberg and real s3mock** —
-mocking them would prove none of the seams above. Both need `make up`.
+`ReceiptGeneratorTest`, `YearlyReceiptRunTest`, `ReceiptAdminTest` and
+`GenerateReceiptsCommandTest` hit **real Gotenberg and real s3mock** — mocking them would
+prove none of the seams above. All of them need `make up`.
 
 **TRAP in mail assertions:** the mailer records a `MessageEvent` when a message is queued
 *and* again when it is sent, so `getEvents()->getMessages()` returns the same mail twice.

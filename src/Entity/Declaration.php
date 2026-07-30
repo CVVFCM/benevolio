@@ -27,7 +27,7 @@ use function sprintf;
  * Both statements are mandatory, so every declaration carries the waiver. That
  * matters legally: waiving reimbursement of expenses (*abandon de frais*) is what
  * turns those expenses into a donation eligible for a CERFA receipt (754x).
- * Donated hours, by contrast, are never receiptable (864/870, off balance sheet).
+ * Donated hours, by contrast, are never receiptable (864/875, off balance sheet).
  *
  * Not final: Doctrine needs to subclass entities for lazy-loading proxies.
  */
@@ -68,21 +68,14 @@ class Declaration implements TenantAware
     #[ORM\Column]
     private bool $expensesWaived;
 
-    /**
-     * The CERFA issued for this declaration, or null.
+    /*
+     * A declaration has NO link to a receipt, and no reason for not having one.
      *
-     * Null is an ordinary state with several innocent causes — nothing was waived, no
-     * exercice covers the date, the association has no SIREN yet — so the reason lives
-     * beside it rather than being inferred from the absence.
+     * It used to own both: lot 7 issued a CERFA the moment a declaration was validated. A
+     * receipt is a civil year of one volunteer's waived expenses — several declarations,
+     * possibly none of them decisive on their own — so a per-declaration relation could
+     * only ever mislead. See App\Entity\Receipt and App\Receipt\YearlyReceiptRun.
      */
-    #[ORM\OneToOne(targetEntity: Receipt::class, mappedBy: 'declaration')]
-    private ?Receipt $receipt = null;
-
-    /**
-     * Why no receipt was issued, when none was. French, and shown to the treasurer.
-     */
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $receiptWithheldReason = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private DateTimeImmutable $submittedAt;
@@ -233,31 +226,6 @@ class Declaration implements TenantAware
     public function isExpensesWaived(): bool
     {
         return $this->expensesWaived;
-    }
-
-    public function getReceipt(): ?Receipt
-    {
-        return $this->receipt;
-    }
-
-    /**
-     * Called by Receipt's constructor, which owns the association.
-     */
-    public function attachReceipt(Receipt $receipt): void
-    {
-        $this->receipt = $receipt;
-        // A receipt and a reason not to have one are mutually exclusive.
-        $this->receiptWithheldReason = null;
-    }
-
-    public function getReceiptWithheldReason(): ?string
-    {
-        return $this->receiptWithheldReason;
-    }
-
-    public function withholdReceipt(string $reason): void
-    {
-        $this->receiptWithheldReason = $reason;
     }
 
     public function getSubmittedAt(): DateTimeImmutable
