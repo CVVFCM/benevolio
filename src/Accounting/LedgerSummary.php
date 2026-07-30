@@ -44,8 +44,6 @@ final readonly class LedgerSummary
          * these kilometres against the barème and the amount beside them.
          */
         public int $waivedDistanceKm,
-        /** True when any volunteer passed the first band, so the page can say so once. */
-        public bool $beyondFirstBand,
     ) {
     }
 

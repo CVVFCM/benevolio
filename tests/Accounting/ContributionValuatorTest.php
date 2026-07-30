@@ -167,24 +167,6 @@ final class ContributionValuatorTest extends KernelTestCase
     }
 
     #[Test]
-    public function it_flags_a_volunteer_past_the_first_band(): void
-    {
-        $organization = OrganizationFactory::createOne();
-        $fiscalYear = $this->year2025($organization);
-        $action = $this->actionOn($organization, '2025-06-15', [
-            'ownVehicle' => true,
-            'fiscalPower' => FiscalPower::FIVE_CV,
-            'journeys' => 1,
-            'distanceKm' => 100,
-        ]);
-
-        // 4 950 already + 100 = 5 050, past the 5 000 km band-1 limit.
-        self::assertTrue($this->valuator->valueWithin($action, $fiscalYear, 4950)->beyondFirstBand);
-        // 4 800 + 100 = 4 900, still inside it.
-        self::assertFalse($this->valuator->valueWithin($action, $fiscalYear, 4800)->beyondFirstBand);
-    }
-
-    #[Test]
     public function a_per_task_override_beats_the_default(): void
     {
         $organization = OrganizationFactory::createOne();

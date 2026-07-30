@@ -66,16 +66,6 @@
             rejoindront cette page une fois validées.
         </p>
     {% else %}
-        {% if summary.beyondFirstBand %}
-            <p class="ledger__warning" role="note">
-                <strong>Attention :</strong> au moins un bénévole dépasse
-                {{ 5000|number_format(0, ',', ' ') }} km sur l'exercice. Au-delà, le barème
-                applique une autre formule, avec un terme fixe, que cette application ne
-                calcule pas — les montants concernés sont donc <strong>sous-évalués</strong>.
-                Reprenez-les à la main avant de passer l'écriture.
-            </p>
-        {% endif %}
-
         <p class="ledger__volume">
             {{ summary.volunteerCount }}
             {{ summary.volunteerCount > 1 ? 'bénévoles' : 'bénévole' }}

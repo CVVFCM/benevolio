@@ -15,9 +15,9 @@ use App\State\DeclarationActionState;
  * **Validated only.** A line a treasurer has not ruled on is not bookable, and putting
  * it in a PCG table would say it is.
  *
- * Grouped by volunteer, because that is the unit a CERFA is issued for and the unit the
- * barème's distance bands are keyed to — and it is what lets the first-band check mean
- * anything: 5 000 km is per volunteer per year, not per line.
+ * Grouped by volunteer on the detail page, because that is the unit a reçu fiscal is issued
+ * for — though the receipt itself is a civil year and this is an exercice, so the two never
+ * share a query. See App\Receipt\YearlyReceiptRun.
  */
 final readonly class LedgerBuilder
 {
@@ -29,24 +29,13 @@ final readonly class LedgerBuilder
 
     public function build(FiscalYear $fiscalYear): Ledger
     {
-        $lines = $this->validatedActionsIn($fiscalYear);
-
-        // Kilometres accumulate per volunteer across the exercice, so the lines have to
-        // be walked in date order for the band check to be truthful about which line
-        // crossed the limit.
         $entries = [];
-        $kmSoFar = [];
 
-        foreach ($lines as $action) {
-            $personId = $action->getDeclaration()->getPerson()->getId()->toRfc4122();
-            $prior = $kmSoFar[$personId] ?? 0;
-
+        foreach ($this->validatedActionsIn($fiscalYear) as $action) {
             $entries[] = new LedgerEntry(
                 action: $action,
-                valuation: $this->valuator->valueWithin($action, $fiscalYear, $prior),
+                valuation: $this->valuator->valueWithin($action, $fiscalYear),
             );
-
-            $kmSoFar[$personId] = $prior + $action->getTotalDistanceKm();
         }
 
         return new Ledger($fiscalYear, $entries);
@@ -68,6 +57,8 @@ final readonly class LedgerBuilder
             // to the year it began in.
             ->andWhere('declaration_action.date >= :beginsOn')
             ->andWhere('declaration_action.date <= :endsOn')
+            // Date order because it reads like a journal, not because anything depends on
+            // it: nothing accumulates across lines any more.
             ->setParameter('state', DeclarationActionState::VALIDATED->value)
             ->setParameter('beginsOn', $fiscalYear->getBeginsOn())
             ->setParameter('endsOn', $fiscalYear->getEndsOn())
