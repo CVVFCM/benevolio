@@ -87,14 +87,14 @@ final readonly class Ledger
             volunteerCount: count($volunteers),
             workHoursInHundredths: $workHoursInHundredths,
             waivedDistanceKm: $waivedDistanceKm,
-            beyondFirstBand: $this->hasBeyondFirstBand(),
         );
     }
 
     /**
-     * Entries grouped by volunteer, which is the unit a CERFA is issued for.
+     * Entries grouped by volunteer, which is what justifies an individual reçu fiscal —
+     * though the receipt covers a civil year and this covers an exercice.
      *
-     * @return array<string, array{person: Person, entries: list<LedgerEntry>, hoursCents: int, mileageCents: int, beyondFirstBand: bool}>
+     * @return array<string, array{person: Person, entries: list<LedgerEntry>, hoursCents: int, mileageCents: int}>
      */
     public function byVolunteer(): array
     {
@@ -110,30 +110,14 @@ final readonly class Ledger
                     'entries' => [],
                     'hoursCents' => 0,
                     'mileageCents' => 0,
-                    'beyondFirstBand' => false,
                 ];
             }
 
             $grouped[$key]['entries'][] = $entry;
             $grouped[$key]['hoursCents'] += $entry->valuation->hoursCents;
             $grouped[$key]['mileageCents'] += $entry->valuation->mileageCents;
-            // Sticky: once a volunteer has crossed the first band, every later figure
-            // for them is understated too.
-            $grouped[$key]['beyondFirstBand'] = $grouped[$key]['beyondFirstBand'] || $entry->valuation->beyondFirstBand;
         }
 
         return $grouped;
-    }
-
-    /** Whether any volunteer has passed the first band, so the page can say so once. */
-    public function hasBeyondFirstBand(): bool
-    {
-        foreach ($this->entries as $entry) {
-            if ($entry->valuation->beyondFirstBand) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

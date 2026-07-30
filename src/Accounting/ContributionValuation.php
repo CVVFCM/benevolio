@@ -24,16 +24,6 @@ final readonly class ContributionValuation
         public int $mileageCents,
         /** The exercice whose rates were used. */
         public FiscalYear $fiscalYear,
-        /**
-         * True when this volunteer's kilometres for the exercice have passed the first
-         * band of the barème, so `mileageCents` is **understated**.
-         *
-         * The scale beyond 5 000 km uses a different formula with an additive constant,
-         * which this application does not model — see FiscalYear::FIRST_BAND_LIMIT_KM.
-         * Surfaced rather than swallowed: a treasurer must not put a figure on a CERFA
-         * without knowing it is short.
-         */
-        public bool $beyondFirstBand,
     ) {
     }
 }

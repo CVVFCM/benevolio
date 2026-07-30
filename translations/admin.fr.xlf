@@ -63,6 +63,13 @@
             </segment>
         </unit>
 
+        <unit id="menu.receipts">
+            <segment>
+                <source>menu.receipts</source>
+                <target>Reçus fiscaux</target>
+            </segment>
+        </unit>
+
         <unit id="menu.my_organization">
             <segment>
                 <source>menu.my_organization</source>

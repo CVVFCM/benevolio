@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Receipt;
 
-use App\Entity\Declaration;
+use App\Entity\Organization;
+use App\Entity\Person;
 use DateTimeImmutable;
 use Symfony\Component\Intl\Countries;
 
@@ -32,23 +33,30 @@ final readonly class ReceiptValues
     ) {
     }
 
-    public static function from(
-        Declaration $declaration,
+    /**
+     * One volunteer's receipt for one civil year.
+     *
+     * `$donationDate` is the **last day of waived travel inside the year**, decided by the
+     * caller which has the lines in hand. The form has a single « Date du versement ou du
+     * don » and the receipt covers twelve months, so something has to be chosen: a real date
+     * the association can point at beats 31 December, which on a year still running would be
+     * a date in the future.
+     */
+    public static function forYear(
+        Organization $organization,
+        Person $person,
         string $number,
         int $amountCents,
+        DateTimeImmutable $donationDate,
         DateTimeImmutable $issuedAt,
     ): self {
-        $organization = $declaration->getOrganization();
-        $person = $declaration->getPerson();
         $address = $organization->getPostalAddress();
 
-        // Eligibility refuses without an address, so reaching here means there is one.
+        // The run refuses an association without an address, so reaching here means one.
         assert(null !== $address);
 
-        $donationDate = self::latestActionDate($declaration) ?? $issuedAt;
-
-        // The signature is optional, by decision: an association that has not uploaded one
-        // still gets its receipt, and signs it by hand. ReceiptEligibility does not ask.
+        // Optional by decision: an association that has not uploaded a signature still gets
+        // its receipts, and signs them by hand.
         $signature = $organization->getSignatureDataUri();
 
         return new self(
@@ -84,9 +92,7 @@ final readonly class ReceiptValues
                 'amount' => self::amount($amountCents),
                 'amountInWords' => new AmountInWords()->forCents($amountCents),
 
-                // The date of the donation is the day the volunteering finished, not the
-                // day the treasurer got round to validating it. Split because the form
-                // supplies its own slashes — see CerfaLayout.
+                // Split because the form supplies its own slashes — see CerfaLayout.
                 'donationDay' => $donationDate->format('d'),
                 'donationMonth' => $donationDate->format('m'),
                 'donationYear' => $donationDate->format('Y'),
@@ -134,24 +140,6 @@ final readonly class ReceiptValues
     private static function amount(int $cents): string
     {
         return sprintf('%d,%02d', intdiv($cents, 100), abs($cents % 100));
-    }
-
-    /**
-     * The last day any of the declared work happened — the date the waiver covers up to.
-     */
-    private static function latestActionDate(Declaration $declaration): ?DateTimeImmutable
-    {
-        $latest = null;
-
-        foreach ($declaration->getActions() as $action) {
-            $end = $action->getEndDate();
-
-            if (null === $latest || $end > $latest) {
-                $latest = $end;
-            }
-        }
-
-        return $latest;
     }
 
     /**

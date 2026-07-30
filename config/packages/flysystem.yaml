@@ -14,7 +14,9 @@
 parameters:
     env(S3_ENDPOINT): null
     env(S3_REGION): 'fr-par'
-    env(S3_BUCKET): 'benevolio-receipts'
+    # One bucket for the application, not one per kind of document: whatever else it ever
+    # has to file goes in a sibling directory of `receipts/` below.
+    env(S3_BUCKET): 'benevolio'
     # Meaningless against s3mock, but they cannot be empty: the signing code refuses to
     # build a request without a key and a secret. Production overrides both from a secret.
     env(S3_KEY): 's3mock'
@@ -28,6 +30,10 @@ flysystem:
             asyncaws:
                 client: 'receipts.s3_client'
                 bucket: '%env(S3_BUCKET)%'
+                # The directory, here rather than in App\Receipt\ReceiptStorage: keys stay
+                # `<year>/cerfa-….pdf`, so Receipt::$storagePath means the same thing
+                # whatever the bucket layout turns out to be.
+                prefix: 'receipts'
 
 services:
     # Built by hand rather than from a bare s3:// DSN: Scaleway needs an explicit

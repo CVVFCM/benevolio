@@ -60,16 +60,17 @@ class FiscalYear implements TenantAware
 
     public const int NAME_MAX_LENGTH = 40;
 
-    /**
-     * The first distance band of the barème stops here.
+    /*
+     * There is deliberately NO first-band limit here, and no cumulative-kilometre
+     * handling anywhere in this application.
      *
-     * Beyond it the published scale switches to a different formula — one with an
-     * additive constant, keyed to the volunteer's cumulative kilometres for the year
-     * — which this entity deliberately does not model. Anything past this figure is
-     * therefore **understated**, and the ledger page says so rather than presenting a
-     * number it cannot stand behind.
+     * The barème switches formula past 5 000 km, but that limit is **per volunteer, for
+     * everything they drive** — including for the other associations they help, which this
+     * application cannot see. A figure computed from one association's kilometres would be
+     * a guess, and flagging a "limit crossed" would claim knowledge nobody here has. The
+     * band-1 rate is applied to what is declared, and the association's own records are
+     * what settle the rest.
      */
-    public const int FIRST_BAND_LIMIT_KM = 5000;
 
     /** 12,00 €/h. A starting point, not a recommendation. */
     public const int DEFAULT_HOURLY_RATE_CENTS = 1200;
@@ -143,16 +144,11 @@ class FiscalYear implements TenantAware
     #[ORM\OneToMany(targetEntity: FiscalYearMileageRate::class, mappedBy: 'fiscalYear', cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $mileageRates;
 
-    /**
-     * How many receipts this exercice has issued, and therefore what the next number
-     * is. Only App\Receipt\ReceiptNumberAllocator moves it, under a row lock.
-     *
-     * A counter rather than `MAX(number) + 1`: the numbering must be continuous and
-     * never reused, so it has to survive a receipt being deleted. Counting existing
-     * rows would silently hand out a number that had already been issued.
+    /*
+     * The receipt counter used to live here. It moved to App\Entity\Organization when the
+     * receipt became a civil year: an exercice that runs September to August cannot number
+     * a document covering January to December.
      */
-    #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
-    private int $lastReceiptSequence = 0;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private DateTimeImmutable $createdAt;
@@ -334,23 +330,6 @@ class FiscalYear implements TenantAware
     public function removeMileageRate(FiscalYearMileageRate $rate): void
     {
         $this->mileageRates->removeElement($rate);
-    }
-
-    public function getLastReceiptSequence(): int
-    {
-        return $this->lastReceiptSequence;
-    }
-
-    /**
-     * Takes the next number in this exercice's sequence.
-     *
-     * Deliberately NOT public API for general use — call it only from
-     * App\Receipt\ReceiptNumberAllocator, which holds the row lock that makes it safe.
-     * Called without that lock, two concurrent validations both read the same value.
-     */
-    public function takeNextReceiptSequence(): int
-    {
-        return ++$this->lastReceiptSequence;
     }
 
     public function getCreatedAt(): DateTimeImmutable

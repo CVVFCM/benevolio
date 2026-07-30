@@ -35,15 +35,15 @@ final readonly class ReceiptMailer
 
     public function send(Receipt $receipt, string $pdf): void
     {
-        $declaration = $receipt->getDeclaration();
-        $organization = $declaration->getOrganization();
-        $person = $declaration->getPerson();
+        $organization = $receipt->getOrganization();
+        $person = $receipt->getPerson();
 
         $email = new TemplatedEmail()
             ->from(new Address($this->from, $organization->getName()))
             ->to(new Address($person->getEmail()->value, $person->getFullName()))
             ->subject(sprintf(
-                'Votre reçu fiscal n° %s — %s',
+                'Votre reçu fiscal %d n° %s — %s',
+                $receipt->getYear(),
                 $receipt->getNumber(),
                 $organization->getName(),
             ))
@@ -51,13 +51,12 @@ final readonly class ReceiptMailer
             ->textTemplate('emails/receipt.txt.twig')
             ->context([
                 'receipt' => $receipt,
-                'declaration' => $declaration,
                 'organization' => $organization,
                 'person' => $person,
             ])
             // Attached rather than linked: the volunteer needs to keep this for their
             // tax return, and a link would eventually stop working.
-            ->attach($pdf, sprintf('recu-fiscal-%s.pdf', $receipt->getNumber()), 'application/pdf');
+            ->attach($pdf, sprintf('recu-fiscal-%d-%s.pdf', $receipt->getYear(), $receipt->getNumber()), 'application/pdf');
 
         $this->mailer->send($email);
     }

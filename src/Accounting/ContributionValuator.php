@@ -32,13 +32,7 @@ final readonly class ContributionValuator
     ) {
     }
 
-    /**
-     * @param int $priorKmInYear kilometres this volunteer has already accumulated in
-     *                           the same exercice, for the first-band check. The caller
-     *                           knows the set of lines being presented; this class sees
-     *                           one at a time.
-     */
-    public function value(DeclarationAction $action, int $priorKmInYear = 0): ?ContributionValuation
+    public function value(DeclarationAction $action): ?ContributionValuation
     {
         $fiscalYear = $this->fiscalYears->findForDate(
             $action->getOrganization(),
@@ -49,7 +43,7 @@ final readonly class ContributionValuator
             return null;
         }
 
-        return $this->valueWithin($action, $fiscalYear, $priorKmInYear);
+        return $this->valueWithin($action, $fiscalYear);
     }
 
     /**
@@ -59,16 +53,12 @@ final readonly class ContributionValuator
      * otherwise re-query the fiscal year once per line to be told what it already
      * knows.
      */
-    public function valueWithin(
-        DeclarationAction $action,
-        FiscalYear $fiscalYear,
-        int $priorKmInYear = 0,
-    ): ContributionValuation {
+    public function valueWithin(DeclarationAction $action, FiscalYear $fiscalYear): ContributionValuation
+    {
         return new ContributionValuation(
             hoursCents: $this->hoursCents($action, $fiscalYear),
             mileageCents: $this->mileageCents($action, $fiscalYear),
             fiscalYear: $fiscalYear,
-            beyondFirstBand: $priorKmInYear + $action->getTotalDistanceKm() > FiscalYear::FIRST_BAND_LIMIT_KM,
         );
     }
 

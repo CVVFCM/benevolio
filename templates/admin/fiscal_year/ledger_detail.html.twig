@@ -39,26 +39,9 @@
             dans « Déclarations reçues » ; elles rejoindront cette page une fois validées.
         </p>
     {% else %}
-        {% if ledger.hasBeyondFirstBand %}
-            <p class="ledger__warning" role="note">
-                <strong>Attention :</strong> au moins un bénévole dépasse
-                {{ 5000|number_format(0, ',', ' ') }} km sur l'exercice. Au-delà, le barème
-                applique une autre formule, avec un terme fixe, que cette application ne
-                calcule pas — les montants concernés sont donc <strong>sous-évalués</strong>.
-                Reprenez-les à la main avant d'établir un reçu.
-            </p>
-        {% endif %}
-
         {% for group in ledger.byVolunteer %}
             <section class="ledger__volunteer">
-                <h2>
-                    {{ group.person.fullName }}
-                    {% if group.beyondFirstBand %}
-                        <span class="ledger__flag" title="Au-delà de la première tranche du barème">
-                            au-delà de 5 000 km
-                        </span>
-                    {% endif %}
-                </h2>
+                <h2>{{ group.person.fullName }}</h2>
 
                 <table class="data-table ledger">
                     <thead>

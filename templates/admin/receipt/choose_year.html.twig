@@ -1,0 +1,37 @@
+{% extends '@EasyAdmin/page/content.html.twig' %}
+
+{#
+    Where a year's reçus fiscaux are issued.
+
+    A GET page whose form POSTs to `generate`: issuing numbered tax documents and emailing
+    them must not be reachable by following a link, or by a browser prefetching one.
+#}
+
+{% block content_title %}Générer les reçus fiscaux{% endblock %}
+
+{% block main %}
+    <p class="receipt-run__intro">
+        Un reçu par bénévole, portant sur l'<strong>année civile</strong> — c'est la période
+        que le bénévole reporte sur sa déclaration de revenus, même si l'exercice comptable
+        de l'association ne suit pas l'année. Seules les actions <strong>validées</strong>
+        sont comptées, et seuls les <strong>frais abandonnés</strong> figurent sur le reçu :
+        le temps donné n'ouvre aucun droit à réduction d'impôt.
+    </p>
+
+    <p class="receipt-run__intro">
+        Chaque reçu part par courriel au bénévole, avec le PDF en pièce jointe. Relancer une
+        année déjà traitée émet de nouveaux reçus, avec de nouveaux numéros ; les précédents
+        restent consultables.
+    </p>
+
+    {{ form_start(form) }}
+        {{ form_errors(form) }}
+        {{ form_row(form.year) }}
+        {{ form_row(form.partialYearAcknowledged) }}
+
+        <button type="submit" class="btn btn-primary">
+            <i class="fa fa-file-invoice"></i>
+            Générer et envoyer
+        </button>
+    {{ form_end(form) }}
+{% endblock %}

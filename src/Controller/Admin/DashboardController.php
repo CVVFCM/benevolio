@@ -62,6 +62,12 @@ final class DashboardController extends AbstractDashboardController
     {
         return $this->render('admin/dashboard.html.twig', [
             'organization' => $this->tenantContext->getOrganization(),
+            // The one action a treasurer comes looking for once a year, and would otherwise
+            // have to find inside a CRUD they have no other reason to open.
+            'generate_receipts_url' => $this->adminUrlGenerator
+                ->setController(ReceiptCrudController::class)
+                ->setAction(ReceiptCrudController::ACTION_CHOOSE_YEAR)
+                ->generateUrl(),
         ]);
     }
 
@@ -91,6 +97,8 @@ final class DashboardController extends AbstractDashboardController
         yield MenuItem::linkTo(DeclarationCrudController::class, 'menu.declaration_list', 'fa fa-file-lines');
         yield MenuItem::linkTo(DeclarationActionCrudController::class, 'menu.declaration_actions', 'fa fa-list-check');
         yield MenuItem::linkTo(PersonCrudController::class, 'menu.people', 'fa fa-users');
+
+        yield MenuItem::linkTo(ReceiptCrudController::class, 'menu.receipts', 'fa fa-file-invoice');
 
         yield MenuItem::section('menu.configuration');
         yield MenuItem::linkTo(TaskCrudController::class, 'menu.tasks', 'fa fa-tags');

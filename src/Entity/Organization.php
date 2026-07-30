@@ -168,6 +168,22 @@ class Organization
      */
     private bool $signatureCleared = false;
 
+    /**
+     * How many reçus fiscaux this association has issued, and therefore what the next
+     * number is. Only App\Receipt\ReceiptNumberAllocator moves it, under a row lock.
+     *
+     * On the association and not on a period: the number is one continuous series,
+     * `0001`, `0002`, …, whatever year the receipt covers. It used to sit on FiscalYear,
+     * which stopped making sense when the receipt became a civil year — an exercice
+     * running September to August cannot number a January-to-December document.
+     *
+     * A counter rather than `MAX(number) + 1`: the numbering must be continuous and never
+     * reused, so it has to survive a receipt being deleted. Counting rows would silently
+     * hand out a number that had already been issued.
+     */
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
+    private int $lastReceiptSequence = 0;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private DateTimeImmutable $createdAt;
 
@@ -470,6 +486,23 @@ class Organization
     public function getSignatureDataUri(): ?string
     {
         return $this->signature?->toDataUri();
+    }
+
+    public function getLastReceiptSequence(): int
+    {
+        return $this->lastReceiptSequence;
+    }
+
+    /**
+     * Takes the next number in this association's receipt series.
+     *
+     * Deliberately NOT general-purpose API — call it only from
+     * App\Receipt\ReceiptNumberAllocator, which holds the row lock that makes it safe.
+     * Called without that lock, two concurrent runs both read the same value.
+     */
+    public function takeNextReceiptSequence(): int
+    {
+        return ++$this->lastReceiptSequence;
     }
 
     public function getCreatedAt(): DateTimeImmutable

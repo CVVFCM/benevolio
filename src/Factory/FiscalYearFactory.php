@@ -26,9 +26,10 @@ final class FiscalYearFactory extends PersistentObjectFactory
      * (JO du 7 avril 2023). Art. 6 B has not been revalorised since, so the same table
      * applies to revenus 2022 through 2025.
      *
-     * Band 1 only — up to 5 000 km. Beyond that the scale switches to a formula with
-     * an additive constant keyed to the volunteer's cumulative kilometres, which this
-     * application does not model; see FiscalYear::FIRST_BAND_LIMIT_KM.
+     * Band 1 only — up to 5 000 km. Beyond that the scale switches to a formula with an
+     * additive constant keyed to the volunteer's cumulative kilometres **across every
+     * association they drive for**, which is not knowable here; see the note on
+     * App\Entity\FiscalYear for why nothing in this application tries.
      *
      * NOT the old flat "barème bénévole" (0,324 €/km). That was abolished for revenus
      * 2022 by art. 21 of loi n° 2022-1157, which pointed CGI art. 200, 1 ter at the

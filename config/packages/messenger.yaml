@@ -1,13 +1,18 @@
 framework:
     messenger:
         transports:
-            # Runs in the same process, inside the request. Issuing a receipt is a
-            # handful of HTTP calls, which a treasurer can wait for today.
+            # Nothing is routed here at the moment. Kept because the moment anything is
+            # dispatched, `sync` is where it starts: in-process, inside the request, so the
+            # user sees the outcome on the page they are on.
+            #
+            # The receipt used to be routed here, dispatched when a declaration was
+            # validated. Receipts are now issued a whole civil year at a time from
+            # App\Receipt\YearlyReceiptRun, called straight from the controller and the
+            # console command — there is no per-declaration event left to react to. If that
+            # run ever needs to leave the request, it becomes a message routed here.
             sync: 'sync://'
 
-        routing:
-            # Routed to `sync` DELIBERATELY, not left unrouted. Moving receipt
-            # generation off the request later is then a one-line change here — point
-            # this at a doctrine:// transport and run a consumer — with nothing to
-            # change in the handler, the listener or the tests.
-            App\Message\IssueReceipt: sync
+        # TRAP, for whoever adds the first entry back: Messenger validates routed classes at
+        # COMPILE time. Routing a class that does not exist yet breaks the production cache
+        # warmup, and therefore the image build, long before any test runs.
+        routing: []
