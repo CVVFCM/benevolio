@@ -73,6 +73,14 @@ RUN set -eux; \
 
 COPY --chown=www-data:www-data . ./
 
+# Fail the BUILD if a runtime asset did not make it in.
+#
+# .dockerignore is an allowlist — `*` then `!…` — so a new directory is excluded by default and
+# nothing says so. resources/cerfa was missed exactly that way: the image built, deployed, went
+# ready, served every page, and then failed on the last step of issuing a receipt with
+# "qpdf: open /app/resources/cerfa/…: No such file or directory". Cheaper to notice here.
+RUN test -f resources/cerfa/2041-rd_11580-05.pdf
+
 
 RUN set -eux; \
     mkdir -p var/cache var/log; \
