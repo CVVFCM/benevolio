@@ -16,6 +16,12 @@ ARG EXTERNAL_USER_ID
 # qpdf is not optional: ReceiptGenerator stamps the rendered overlay onto the official
 # CERFA with `qpdf --overlay`, which Gotenberg cannot do — its merge route concatenates
 # pages rather than superimposing them.
+#
+# hadolint ignore=DL3008
+# Not pinned, on purpose. Debian moves package versions within a release, so an exact
+# `qpdf=11.9.0-1` breaks the build the day trixie ships a point update — a broken image for
+# a reproducibility the base image tag does not give us anyway. The version that matters is
+# FRANKENPHP_VERSION/DEBIAN_VERSION above, which are pinned.
 RUN set -eux; \
     apt-get update; \
     apt-get install --no-install-recommends -y qpdf; \
