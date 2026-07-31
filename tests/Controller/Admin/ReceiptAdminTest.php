@@ -59,6 +59,32 @@ final class ReceiptAdminTest extends WebTestCase
         self::assertSame(['2025'], $options);
     }
 
+    /**
+     * The form must post to a PATH, never to an absolute URL.
+     *
+     * In production TLS terminates at the Gateway, so the pod sees plain HTTP and EasyAdmin's
+     * absolute URLs came out as `http://…`: the browser warned that the data would travel in
+     * the clear, the edge redirected to https, the redirect turned the POST into a GET, and
+     * this POST-only route answered 405. `Dashboard::generateRelativeUrls()` is what prevents
+     * it, and nothing else in the test suite would notice it being removed.
+     */
+    #[Test]
+    public function the_form_posts_to_a_relative_url(): void
+    {
+        $organization = $this->association();
+        $this->volunteerWithWaivedTravel($organization, '2025-06-21');
+        $this->loginAdminOf($organization);
+
+        $crawler = $this->client->request('GET', '/admin/receipt/batch/choose-year');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(
+            '/admin/receipt/batch/generate',
+            // By name: the first form on an EasyAdmin page is its own search box.
+            $crawler->filter('form[name="receipt_year"]')->attr('action'),
+        );
+    }
+
     #[Test]
     public function generating_a_year_issues_and_reports_a_receipt(): void
     {

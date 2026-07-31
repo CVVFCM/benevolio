@@ -76,7 +76,19 @@ final class DashboardController extends AbstractDashboardController
         return Dashboard::new()
             ->setTitle($this->tenantContext->getOrganization()->getName())
             ->setTranslationDomain('admin')
-            ->setLocales(['fr']);
+            ->setLocales(['fr'])
+            // Paths, not absolute URLs, and this is load-bearing in production.
+            //
+            // TLS terminates at the Gateway, so the pod sees plain HTTP. EasyAdmin's absolute
+            // URLs were therefore built with scheme `http://`, and the « Générer et envoyer »
+            // form posted to http: the browser warned that the data would travel in the
+            // clear, the edge answered with a redirect to https, the redirect turned the POST
+            // into a GET, and a POST-only route replied 405. A relative action inherits the
+            // scheme of the page it was served on and cannot do that.
+            //
+            // SYMFONY_TRUSTED_PROXIES fixes the *cause* (see the Helm chart); this makes the
+            // admin immune to it either way.
+            ->generateRelativeUrls();
     }
 
     /**

@@ -40,6 +40,14 @@ app:
   debug: "false"
   # ":80" → plain HTTP only; Caddy will not attempt auto-HTTPS (TLS is at the Gateway).
   serverName: ":80"
+  # Which proxies Symfony believes about X-Forwarded-Proto / -For / -Host.
+  #
+  # Required precisely BECAUSE serverName is ":80": the pod only ever sees plain HTTP, so
+  # without this Symfony generates `http://` URLs and leaves the session cookie unmarked as
+  # Secure. `private_ranges` trusts the cluster network — anything already inside the cluster
+  # could forge those headers, which is the accepted trade for not pinning a Gateway pod CIDR
+  # that moves. Narrow it to a specific CIDR if that ever becomes worth the maintenance.
+  trustedProxies: private_ranges
   # Base URL for URLs generated in CLI context. Empty → derived as https://<host>.
   defaultUri: ""
   # Sender for the confirmation mails. A literal, deliberately not derived from
