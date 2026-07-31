@@ -14,13 +14,21 @@ imagePullSecrets: []
 # limit (avoids CFS throttling). Starting points — tune from `kubectl top`.
 web:
   replicaCount: 1
+  # 768Mi, not 512Mi, because of one request: decoding an uploaded signature. GD holds an
+  # image at 4 bytes per pixel, so the 16-megapixel ceiling the application enforces costs
+  # 64 MB, plus the scaled copy and the PNG buffer — and php.ini allows 256M per request to
+  # cover it. Two workers doing that at once against a 512Mi limit is an OOMKill, which
+  # Kubernetes reports as a crash rather than as "your scan was too big".
+  #
+  # Only the upload path is heavy; what gets STORED is a 1 000 px image of a few tens of
+  # kilobytes, so serving pages and issuing receipts stay where they were.
   resources:
     requests:
       cpu: 100m
-      memory: 192Mi
+      memory: 256Mi
     limits:
       cpu: 500m
-      memory: 512Mi
+      memory: 768Mi
   # FrankenPHP sizes threads/workers from the HOST core count by default (it doesn't see
   # the cgroup CPU limit) — on a big node that spawns far too many PHP workers and OOMs
   # the memory limit. Pin small explicit counts that fit the resources above.

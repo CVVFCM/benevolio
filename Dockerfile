@@ -36,6 +36,7 @@ RUN set -eux; \
     install-php-extensions \
           @composer \
           apcu \
+          gd \
           intl \
           mbstring \
           opcache \
@@ -46,6 +47,10 @@ RUN set -eux; \
     sync
 
 
+# The production php.ini. It existed in the repository from the start and was never copied
+# in, so production ran on PHP's bare defaults: no opcache preload, no raised upload limits.
+# That is why a signature over 2 MB was rejected before Symfony ever saw it.
+COPY --chown=www-data:www-data .infra/docker/php/conf.d/symfony.prod.ini /usr/local/etc/php/conf.d/symfony.ini
 COPY --chown=www-data:www-data .infra/docker/php/Caddyfile /etc/caddy/Caddyfile
 COPY --chown=www-data:www-data .infra/docker/php/docker-entrypoint /usr/local/bin/docker-entrypoint
 

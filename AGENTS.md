@@ -767,13 +767,37 @@ loses them at the next deployment.
   'UploadedFile' is not allowed"* and turns every response after the upload into a 500.
   `signatureUpload` is therefore a virtual property — getter and setter only, which is all
   PropertyAccess needs — and the setter converts and forgets.
-- Because the file is not kept, **`#[Assert\Image]` has nothing to inspect**. The same
-  three facts are checked on the stored result by `Organization::validateSignature()`,
-  which attaches its violations to `signatureUpload` so the message lands under the field.
-- **1 MB cap** (`OrganizationSignature::MAX_FILE_SIZE`), because no custom php.ini ships in
-  the image and `upload_max_filesize` is PHP's 2M default — a larger cap would be refused
-  by PHP before Symfony saw the file, and the user would get an empty field instead of a
-  message.
+- **An upload PHP threw away must not reach the conversion.** Over `upload_max_filesize`,
+  unwritable temp dir, connection cut: the `UploadedFile` arrives with an **empty path**, and
+  `getMimeType()` on it throws *"The "" file does not exist or is not readable."* — a 500 where
+  the user should be told their file was too big. Symfony's `FileType` adds the right form
+  error but **does not clear the data** (it only nulls values that are not file uploads at
+  all), so the setter has to check `isValid()` itself.
+- **16 MB accepted, ~1 000 px stored.** `App\Organization\SignatureFactory` — a service, using
+  **Imagine with its GD driver** (aliased in `services.yaml`; ext-imagick is not installed) —
+  scales anything longer than `STORED_MAX_EDGE_PX` and re-encodes it. Stored as uploaded, a
+  16 MB scan would be 21 MB of base64 in the row, the same again inside every overlay, a receipt
+  PDF per volunteer past what most relays accept as an attachment, and a request over PHP's
+  memory limit. An image already small enough is kept **byte for byte**.
+- **Re-encoded in its own format, not always PNG.** PNG is right for line art and for anything
+  with transparency, and wrong for a photograph: a 3 000 × 3 000 photo of a signed page came out
+  at ~650 KB as PNG against ~145 KB as JPEG, measured. A JPEG has no alpha to protect. A PNG
+  must stay PNG or the form's own printed rules end up behind a white rectangle.
+- **The conversion is a service, and the entity holds only the result.** No statics, no image
+  code on `Organization`, and no `UploadedFile` anywhere near it. The two form fields are
+  **unmapped**; `MyOrganizationCrudController::createEditFormBuilder()` adds a `POST_SUBMIT`
+  listener that calls the factory and puts a refusal on the file field. POST_SUBMIT and not
+  `updateEntity()`: an error added there would come after the form was already judged valid.
+- **`MAX_PIXELS` is a separate guard, and the byte cap does not cover it.** PNG compresses flat
+  artwork enormously, so a few-kilobyte file can hold a 12 000 × 12 000 canvas, and a decoder
+  allocates 4 bytes per pixel *the moment it decodes*. Checked before decoding; refusing is a
+  message, discovering it inside GD is a fatal error mid-request.
+- `ext-gd` is required (Dockerfile and CI both install it), `upload_max_filesize`/`post_max_size`
+  are raised in `.infra/docker/php/conf.d`, and `memory_limit` is 256M for the decode. **That
+  ini file was never copied into the image before this** — production ran on PHP's bare
+  defaults, which is why a 2 MB signature came back as an empty field. And a trap worth
+  remembering: a `#` comment containing parentheses is a **syntax error** in php.ini, and PHP
+  then ignores the whole file — comments there start with `;`.
 - Raster only. An SVG is markup and has no business in a stamped PDF.
 
 ### State machines (finite)

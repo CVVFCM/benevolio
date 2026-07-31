@@ -13,6 +13,7 @@
         "doctrine/doctrine-migrations-bundle": "^4.0",
         "doctrine/orm": "^3.6",
         "easycorp/easyadmin-bundle": "^5.3",
+        "imagine/imagine": "^1.5",
         "league/flysystem-async-aws-s3": "^3.31",
         "league/flysystem-bundle": "^3.7",
         "symfony/asset-mapper": "8.1.*",

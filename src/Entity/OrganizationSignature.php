@@ -42,15 +42,18 @@ class OrganizationSignature
     public const int ORIGINAL_FILENAME_MAX_LENGTH = 255;
 
     /**
-     * The largest file accepted, in bytes.
+     * The largest file accepted from the browser, in bytes.
      *
-     * 1 MB and not more because no custom php.ini ships with the image (see the
-     * Dockerfile), so `upload_max_filesize` is PHP's 2M default — a larger cap would be
-     * refused by PHP before Symfony ever saw the file, and the user would get a blank
-     * field rather than a message. A signature needs a fraction of it: at the 14 mm the
-     * CERFA box allows, even 600 px is over 1000 dpi.
+     * 16 MB, so a treasurer can drop a phone photo or a flatbed scan in without thinking
+     * about it. `upload_max_filesize` and `post_max_size` are raised to match in
+     * .infra/docker/php/conf.d — left at PHP's 2M default the browser field would just go
+     * blank with no message at all.
+     *
+     * **What is accepted is not what is stored.** App\Organization\SignatureFactory scales
+     * anything larger than a receipt can use before building one of these — see it for why,
+     * and for the pixel ceiling that the byte cap does not cover.
      */
-    public const int MAX_FILE_SIZE = 1024 * 1024;
+    public const int MAX_FILE_SIZE = 16 * 1024 * 1024;
 
     /** Raster only. An SVG is markup, and markup has no business in a stamped PDF. */
     public const array ALLOWED_MIME_TYPES = ['image/png', 'image/jpeg'];

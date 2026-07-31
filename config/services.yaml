@@ -31,6 +31,13 @@ services:
         resource: '../src/Controller/'
         tags: ['controller.service_arguments']
 
+    # Imagine resizes an uploaded signature down to what a receipt can carry — see
+    # App\Organization\SignatureFactory. GD and not Imagick: ext-gd is what the image installs,
+    # and this is one thumbnail of one PNG, not an image pipeline. The alias is what lets the
+    # factory depend on the interface, so swapping drivers is this line and nothing else.
+    Imagine\Gd\Imagine: ~
+    Imagine\Image\ImagineInterface: '@Imagine\Gd\Imagine'
+
     # The Gotenberg endpoint and the shipped CERFA are deployment facts, not something
     # the classes should discover for themselves.
     App\Receipt\GotenbergClient:
