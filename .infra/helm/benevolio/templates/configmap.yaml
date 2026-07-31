@@ -14,6 +14,17 @@ data:
   {{- fail (printf "app.mailFrom must be a bare email address, got %q. A display name belongs nowhere here — the mailer already uses the association's name for that." $mailFrom) }}
   {{- end }}
   MAIL_FROM: {{ $mailFrom | quote }}
+  # TLS terminates at the Gateway, so the pod is talked to over plain HTTP and Symfony
+  # believes the whole site is insecure unless it is told to read the forwarded headers.
+  # Consequences, all of them real and all of them silent: absolute URLs generated with
+  # scheme `http://` (a form posting to one gets downgraded to GET by the edge redirect and
+  # answered 405), and `cookie_secure: auto` deciding NOT to mark the session cookie Secure.
+  #
+  # `framework.trusted_proxies` defaults to this variable, so no application config is
+  # needed. `private_ranges` covers the cluster network; it does mean anything already
+  # inside the cluster could forge X-Forwarded-*, which is the accepted trade for not
+  # pinning a Gateway pod CIDR that changes under us.
+  SYMFONY_TRUSTED_PROXIES: {{ .Values.app.trustedProxies | quote }}
   # Object storage for the CERFA receipts. Endpoint and region are the Scaleway ones; the
   # bucket must exist already, since nothing here creates it. The key and secret are in the
   # Secret beside this. Defaults for all five live in config/packages/flysystem.yaml, but

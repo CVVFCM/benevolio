@@ -44,7 +44,11 @@ final class DashboardController extends AbstractDashboardController
         return Dashboard::new()
             ->setTitle('Benevolio — plateforme')
             ->setTranslationDomain('admin')
-            ->setLocales(['fr']);
+            ->setLocales(['fr'])
+            // Same reason as the tenant dashboard: behind a TLS-terminating Gateway,
+            // EasyAdmin's absolute URLs come out as `http://` and a form posting to one is
+            // downgraded to GET by the edge redirect. See App\Controller\Admin\DashboardController.
+            ->generateRelativeUrls();
     }
 
     public function configureMenuItems(): iterable
