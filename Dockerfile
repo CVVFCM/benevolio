@@ -17,11 +17,15 @@ ARG EXTERNAL_USER_ID
 # CERFA with `qpdf --overlay`, which Gotenberg cannot do — its merge route concatenates
 # pages rather than superimposing them.
 #
+# DL3008 (pin the apt version) is ignored on purpose. Debian moves package versions within a
+# release, so an exact `qpdf=11.9.0-1` breaks the build the day trixie ships a point update —
+# a broken image bought for a reproducibility the base image tag does not give us anyway. The
+# versions that matter here are FRANKENPHP_VERSION and DEBIAN_VERSION above, and both are
+# pinned.
+#
+# The directive must be the LAST line before the instruction: hadolint attaches it to the line
+# that follows, so a comment in between silently makes it apply to nothing.
 # hadolint ignore=DL3008
-# Not pinned, on purpose. Debian moves package versions within a release, so an exact
-# `qpdf=11.9.0-1` breaks the build the day trixie ships a point update — a broken image for
-# a reproducibility the base image tag does not give us anyway. The version that matters is
-# FRANKENPHP_VERSION/DEBIAN_VERSION above, which are pinned.
 RUN set -eux; \
     apt-get update; \
     apt-get install --no-install-recommends -y qpdf; \
