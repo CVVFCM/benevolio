@@ -67,8 +67,9 @@ final class OrganizationFactory extends PersistentObjectFactory
      * A stored signature, so a fixture association issues a *signed* receipt.
      *
      * Built straight into an OrganizationSignature rather than through
-     * Organization::setSignatureUpload(): an UploadedFile means a request, and there is no
-     * request here. The upload path is covered by its own test.
+     * App\Organization\SignatureFactory: the fixture image is already 600 px, so there is
+     * nothing to scale, and a factory has no request to build an UploadedFile from. The upload
+     * path has its own test.
      */
     public function withSignature(): self
     {

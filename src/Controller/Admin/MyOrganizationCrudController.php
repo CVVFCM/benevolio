@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Entity\Organization;
+use App\Exception\SignatureImageException;
+use App\Organization\SignatureFactory;
 use App\Tenant\TenantContext;
 use Doctrine\ORM\EntityManagerInterface;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
@@ -13,14 +15,21 @@ use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
 use EasyCorp\Bundle\EasyAdminBundle\Config\KeyValueStore;
 use EasyCorp\Bundle\EasyAdminBundle\Context\AdminContext;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
-use EasyCorp\Bundle\EasyAdminBundle\Field\BooleanField;
+use EasyCorp\Bundle\EasyAdminBundle\Dto\EntityDto;
 use EasyCorp\Bundle\EasyAdminBundle\Field\CountryField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\Field;
 use EasyCorp\Bundle\EasyAdminBundle\Field\FormField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextareaField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use EasyCorp\Bundle\EasyAdminBundle\Router\AdminUrlGeneratorInterface;
+use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\FileType;
+use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Form\FormError;
+use Symfony\Component\Form\FormEvent;
+use Symfony\Component\Form\FormEvents;
+use Symfony\Component\Form\FormInterface;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -51,9 +60,13 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('ROLE_ADMIN')]
 final class MyOrganizationCrudController extends AbstractCrudController
 {
+    private const string FIELD_SIGNATURE_UPLOAD = 'signatureUpload';
+    private const string FIELD_SIGNATURE_CLEARED = 'signatureCleared';
+
     public function __construct(
         private readonly TenantContext $tenantContext,
         private readonly AdminUrlGeneratorInterface $adminUrlGenerator,
+        private readonly SignatureFactory $signatures,
     ) {
     }
 
@@ -120,21 +133,48 @@ final class MyOrganizationCrudController extends AbstractCrudController
             ->onlyOnDetail();
 
         // Not an ImageField: that one uploads to a directory under public/, which on a
-        // container filesystem disappears at the next deployment. The file is stored in
-        // the database instead — see App\Entity\OrganizationSignature.
-        yield Field::new('signatureUpload', 'Déposer une signature')
+        // container filesystem disappears at the next deployment. The file is stored in the
+        // database instead — see App\Entity\OrganizationSignature.
+        //
+        // UNMAPPED, both of them. The entity holds no UploadedFile (it is in the session graph)
+        // and does no image work; applySignature() below reads these two fields after the form
+        // has bound and asks App\Organization\SignatureFactory for the result.
+        yield Field::new(self::FIELD_SIGNATURE_UPLOAD, 'Déposer une signature')
             ->setFormType(FileType::class)
-            ->setFormTypeOptions(['required' => false])
+            ->setFormTypeOptions(['required' => false, 'mapped' => false])
             ->setHelp('Image PNG ou JPEG, 16 Mo maximum — déposez votre scan tel quel, il sera '
                 .'réduit automatiquement à la taille utile sur le reçu. Laissez vide pour '
                 .'conserver la signature actuelle.')
             ->onlyOnForms();
 
-        // Declared after the upload on purpose: the fields are bound in this order, so if
-        // someone both uploads a file and ticks the box, the box wins and nothing is stored.
-        yield BooleanField::new('signatureCleared', 'Supprimer la signature actuelle')
-            ->renderAsSwitch(false)
+        yield Field::new(self::FIELD_SIGNATURE_CLEARED, 'Supprimer la signature actuelle')
+            ->setFormType(CheckboxType::class)
+            ->setFormTypeOptions(['required' => false, 'mapped' => false])
             ->onlyOnForms();
+    }
+
+    /**
+     * Reads the unmapped signature fields once the form has bound.
+     *
+     * POST_SUBMIT and not updateEntity(): the fields are unmapped, so nothing writes them to
+     * the entity by itself, and an error added here still marks the form invalid — which
+     * updateEntity(), running only on a valid form, would be too late to do.
+     *
+     * @param AdminContext<Organization> $context
+     *
+     * @return FormBuilderInterface<Organization>
+     */
+    public function createEditFormBuilder(EntityDto $entityDto, KeyValueStore $formOptions, AdminContext $context): FormBuilderInterface
+    {
+        return parent::createEditFormBuilder($entityDto, $formOptions, $context)
+            ->addEventListener(FormEvents::POST_SUBMIT, function (FormEvent $event): void {
+                $organization = $event->getData();
+                $form = $event->getForm();
+
+                if ($organization instanceof Organization) {
+                    $this->applySignature($form, $organization);
+                }
+            });
     }
 
     /**
@@ -184,6 +224,40 @@ final class MyOrganizationCrudController extends AbstractCrudController
         }
 
         parent::updateEntity($entityManager, $entityInstance);
+    }
+
+    /**
+     * Applies the two unmapped signature fields once the form has bound.
+     *
+     * Here rather than in a setter on the entity, for two reasons that both matter: an
+     * UploadedFile must never be held on Organization (it is reachable from the security token,
+     * which ContextListener serialises into the session on every response), and turning a file
+     * into a stored signature needs a service — which a setter cannot reach.
+     *
+     * A refusal becomes an error on the file field. Throwing would be a 500 over someone
+     * picking the wrong file, and this runs while the form is binding.
+     *
+     * An empty file input means "leave the signature alone", not "remove it" — removal is the
+     * checkbox, which is read second so that ticking it wins over an upload in the same submit.
+     *
+     * @param FormInterface<Organization> $form
+     */
+    private function applySignature(FormInterface $form, Organization $organization): void
+    {
+        $upload = $form->get(self::FIELD_SIGNATURE_UPLOAD)->getData();
+
+        if ($upload instanceof UploadedFile) {
+            try {
+                $organization->setSignature($this->signatures->fromUploadedFile($upload));
+            } catch (SignatureImageException $e) {
+                $form->get(self::FIELD_SIGNATURE_UPLOAD)->addError(new FormError($e->userMessage));
+            }
+        }
+
+        if (true === $form->get(self::FIELD_SIGNATURE_CLEARED)->getData()) {
+            // orphanRemoval on the association deletes the row on flush.
+            $organization->setSignature(null);
+        }
     }
 
     /**

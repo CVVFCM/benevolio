@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
-use App\Exception\SignatureImageException;
 use App\Repository\OrganizationRepository;
 use App\ValueObject\Address;
 use DateTimeImmutable;
@@ -12,12 +11,9 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
-use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Constraints as Assert;
-use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
-use function file_get_contents;
 use function mb_trim;
 
 /**
@@ -142,35 +138,17 @@ class Organization
     private ?OrganizationSignature $signature = null;
 
     /*
-     * There is deliberately NO $signatureUpload property.
+     * There is deliberately NO $signatureUpload property, and no image handling here.
      *
-     * `signatureUpload` is a virtual property — getter and setter only, which is all
-     * Symfony's PropertyAccess needs to bind a form field. **An UploadedFile must never be
-     * held on this entity**: Organization is reachable from the security token through
-     * User, and Symfony's ContextListener serializes that token into the session on every
-     * response. An UploadedFile in the graph makes that throw ("Serialization of
-     * 'UploadedFile' is not allowed") and every response after the upload is a 500.
+     * An UploadedFile must never be held on this entity: it is reachable from the security
+     * token through User, and Symfony's ContextListener serialises that token into the session
+     * on every response — a file in the graph throws "Serialization of 'UploadedFile' is not
+     * allowed" and every response after an upload becomes a 500.
      *
-     * The file is therefore converted on the way in and dropped, and what gets validated
-     * is the stored signature — see validateSignature() below.
+     * Turning a file into a signature belongs to App\Organization\SignatureFactory, which is a
+     * service, and App\Controller\Admin\MyOrganizationCrudController is what calls it while
+     * the form binds. All this entity does is hold the result.
      */
-
-    /**
-     * Why the last uploaded signature was refused, in French, or null. Not a column.
-     *
-     * A string and not the exception, let alone the file: this entity is reachable from the
-     * security token, and ContextListener serialises that token into the session on every
-     * response — see the comment where $signatureUpload would have been.
-     */
-    private ?string $signatureUploadError = null;
-
-    /**
-     * The « supprimer la signature » checkbox. Not a column either.
-     *
-     * Without it a signature could be replaced but never removed: an empty file input
-     * means "keep what is there", which is the only sane reading of an edit form.
-     */
-    private bool $signatureCleared = false;
 
     /**
      * How many reçus fiscaux this association has issued, and therefore what the next
@@ -377,96 +355,6 @@ class Organization
         $this->signature = $signature;
 
         return $this;
-    }
-
-    /**
-     * Always null: a file input on an edit form starts empty, and re-offering the stored
-     * signature would mean re-uploading it on every save.
-     */
-    public function getSignatureUpload(): ?UploadedFile
-    {
-        return null;
-    }
-
-    /**
-     * Turns an uploaded image into the stored signature, replacing any previous one.
-     *
-     * A null argument is what an untouched file input submits, and it means "leave the
-     * signature alone" — not "remove it". Removal is $signatureCleared.
-     *
-     * The UploadedFile is read and forgotten here, never stored on the entity — see the
-     * comment where the property would have been. What is validated is the result, by
-     * validateSignature(), so an oversized file or something that is not an image is still
-     * refused; nothing is flushed when validation fails.
-     */
-    public function setSignatureUpload(?UploadedFile $file): self
-    {
-        if (null === $file) {
-            return $this;
-        }
-
-        // Read, converted, and forgotten. The bytes go through
-        // OrganizationSignature::fromImage(), which scales anything longer than 1 000 px on
-        // its long side down before it is stored — a 16 MB scan is accepted from the browser
-        // and lands in the database as tens of kilobytes.
-        //
-        // The refusal is caught rather than thrown on: this runs while the form is binding,
-        // so an exception here would be a 500 on a wrong file. It becomes a violation on the
-        // file field instead, in validateSignature() below.
-        try {
-            $this->signature = OrganizationSignature::fromImage(
-                (string) file_get_contents($file->getPathname()),
-                $file->getClientOriginalName(),
-            );
-            $this->signatureUploadError = null;
-        } catch (SignatureImageException $e) {
-            $this->signatureUploadError = $e->userMessage;
-        }
-
-        return $this;
-    }
-
-    public function isSignatureCleared(): bool
-    {
-        return $this->signatureCleared;
-    }
-
-    /**
-     * Ticking the box drops the signature; orphanRemoval deletes the row on flush.
-     */
-    public function setSignatureCleared(bool $cleared): self
-    {
-        $this->signatureCleared = $cleared;
-
-        if ($cleared) {
-            $this->signature = null;
-        }
-
-        return $this;
-    }
-
-    /**
-     * Reports an upload the conversion refused.
-     *
-     * The refusal happens while the form is binding, in setSignatureUpload(), where throwing
-     * would be a 500 over a wrong file. The reason is kept as a string and turned into a
-     * violation here, on the file field the person just used.
-     *
-     * There is nothing left to validate about the stored image itself: it only exists if
-     * OrganizationSignature::fromImage() decoded it, found a type this application stamps, and
-     * scaled it to something a receipt can carry. Checking that again would be checking the
-     * constructor.
-     */
-    #[Assert\Callback]
-    public function validateSignature(ExecutionContextInterface $context): void
-    {
-        if (null === $this->signatureUploadError) {
-            return;
-        }
-
-        $context->buildViolation($this->signatureUploadError)
-            ->atPath('signatureUpload')
-            ->addViolation();
     }
 
     /**
