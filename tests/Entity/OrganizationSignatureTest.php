@@ -24,6 +24,9 @@ use function strlen;
 use function sys_get_temp_dir;
 use function uniqid;
 
+use const UPLOAD_ERR_INI_SIZE;
+use const UPLOAD_ERR_PARTIAL;
+
 /**
  * The signature: how a file becomes one, and what happens to the one it replaces.
  *
@@ -112,6 +115,50 @@ final class OrganizationSignatureTest extends KernelTestCase
         $violations = self::getContainer()->get(ValidatorInterface::class)->validate($organization);
 
         self::assertGreaterThan(0, count($violations));
+    }
+
+    /**
+     * An upload PHP threw away must not take the request with it.
+     *
+     * When a file exceeds `upload_max_filesize`, or the temporary directory is unwritable, PHP
+     * discards it and hands PHP-land an entry whose `tmp_name` is empty. Symfony's FileType
+     * adds a form error for that — and **does not clear the data** (it only nulls values that
+     * are not file uploads at all), so the invalid UploadedFile still reaches this setter.
+     * Calling getMimeType() on it threw `The "" file does not exist or is not readable.` and
+     * turned a too-large signature into a 500.
+     */
+    #[Test]
+    public function an_upload_php_rejected_is_ignored_rather_than_fatal(): void
+    {
+        $organization = new Organization();
+
+        $organization->setSignatureUpload(new UploadedFile(
+            '',
+            'signature.png',
+            'image/png',
+            UPLOAD_ERR_INI_SIZE,
+            test: true,
+        ));
+
+        // Nothing stored, nothing thrown: FileType has already put "the file was too large" on
+        // the field, which is the message the treasurer needs.
+        self::assertNull($organization->getSignature());
+    }
+
+    /**
+     * The same for an upload that failed for any other reason PHP reports.
+     */
+    #[Test]
+    public function a_partial_upload_is_ignored_too(): void
+    {
+        $organization = new Organization();
+        $organization->setSignatureUpload($this->upload());
+        $stored = $organization->getSignature();
+
+        $organization->setSignatureUpload(new UploadedFile('', 'signature.png', 'image/png', UPLOAD_ERR_PARTIAL, test: true));
+
+        // And the signature already stored is left alone.
+        self::assertSame($stored, $organization->getSignature());
     }
 
     /**
