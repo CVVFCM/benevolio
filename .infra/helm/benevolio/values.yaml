@@ -68,7 +68,7 @@ app:
 gotenberg:
   enabled: true
   image:
-    repository: gotenberg/gotenberg
+    repository: docker.io/gotenberg/gotenberg
     tag: "8"
     pullPolicy: IfNotPresent
   resources:

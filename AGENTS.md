@@ -555,7 +555,20 @@ ones, an unset key does not fail loudly, it signs a request to AWS with the lite
 
 `ReceiptGeneratorTest`, `YearlyReceiptRunTest`, `ReceiptAdminTest` and
 `GenerateReceiptsCommandTest` hit **real Gotenberg and real s3mock** — mocking them would
-prove none of the seams above. All of them need `make up`.
+prove none of the seams above. All of them need `make up` locally.
+
+**CI runs them too.** `ci.yaml` starts `gotenberg/gotenberg:8` and `adobe/s3mock` as service
+containers, and three details are what make that work:
+
+- The steps run **on the runner**, not inside a container on the services' network, so the
+  DSNs are `127.0.0.1:3000` / `:9090` and not service names.
+- **`qpdf` is installed with apt.** The Dockerfile installs it for the app image; the runner
+  has neither that image nor the binary, and without it every receipt test fails on a missing
+  command rather than on anything to do with receipts.
+- **Neither image ships curl**, so a `--health-cmd` on the service would fail forever and the
+  job would never start. A step polls both instead, and asserts the bucket exists —
+  `initialBuckets` is silently ignored under a wrong name, and the first PUT would 404
+  mid-test.
 
 **TRAP in mail assertions:** the mailer records a `MessageEvent` when a message is queued
 *and* again when it is sent, so `getEvents()->getMessages()` returns the same mail twice.

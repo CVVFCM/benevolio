@@ -33,14 +33,49 @@ jobs:
           --health-timeout 5s
           --health-retries 10
 
+      # Renders the receipt overlay. Not optional: ReceiptGeneratorTest,
+      # YearlyReceiptRunTest, ReceiptAdminTest and GenerateReceiptsCommandTest talk to a
+      # real Gotenberg on purpose — the whole difficulty of the CERFA lives in the seam
+      # between an HTML layer, a converter that cannot stamp and a stamper that cannot
+      # render, and a mock would prove none of it.
+      #
+      # No health-cmd: the image ships no curl, so the check would fail forever and the
+      # job would never start. The "Wait for" step below polls from the runner instead.
+      gotenberg:
+        image: gotenberg/gotenberg:8
+        ports:
+          - 3000:3000
+
+      # Stands in for Scaleway Object Storage. `initialBuckets` creates the bucket at
+      # start-up, so nothing has to run an S3 CLI first.
+      s3mock:
+        image: adobe/s3mock:3.12.0
+        env:
+          initialBuckets: benevolio
+          retainFilesOnExit: 'false'
+        ports:
+          - 9090:9090
+
     env:
       APP_ENV: dev
       APP_DEBUG: '1'
       APP_SECRET: ci-not-a-secret
       DATABASE_URL: postgresql://benevolio:benevolio@127.0.0.1:5432/benevolio?serverVersion=18&charset=utf8
+      # Service containers are reached on the runner's loopback, not by name: these steps
+      # run on the host, not inside a container on the same network.
+      GOTENBERG_DSN: http://127.0.0.1:3000
+      S3_ENDPOINT: http://127.0.0.1:9090
 
     steps:
       - uses: actions/checkout@v4
+
+      # qpdf is what presses the overlay onto the official form — Gotenberg cannot stamp.
+      # These tests run on the RUNNER, not in the project image where the Dockerfile
+      # installs it, so without this every receipt test fails on a missing binary.
+      - name: Install qpdf
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y qpdf
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -102,6 +137,25 @@ jobs:
 
       - name: Prepare the test database
         run: composer reset-test
+
+      # Both services are polled rather than health-checked: neither image ships curl, so a
+      # --health-cmd would fail forever and the job would never even start. Failing here
+      # instead says which one is missing, before a test reports it as a receipt fault.
+      - name: Wait for Gotenberg and s3mock
+        run: |
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:3000/health > /dev/null && break
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:3000/health > /dev/null
+
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:9090/ > /dev/null && break
+            sleep 2
+          done
+          # And the bucket really exists: `initialBuckets` is silently ignored if the
+          # variable name is wrong, and the first PUT would then 404 mid-test.
+          curl -fsS http://127.0.0.1:9090/ | grep -q '<Name>benevolio</Name>'
 
       - name: Run tests
         run: vendor/bin/phpunit --testdox --colors=always
