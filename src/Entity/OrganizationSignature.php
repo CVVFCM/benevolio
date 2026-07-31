@@ -4,13 +4,26 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Exception\SignatureImageException;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
+use function base64_encode;
+use function getimagesizefromstring;
+use function imagealphablending;
+use function imagecreatefromstring;
+use function imagepng;
+use function imagesavealpha;
+use function imagescale;
+use function in_array;
 use function intdiv;
+use function max;
+use function ob_get_clean;
+use function ob_start;
+use function round;
 use function sprintf;
 use function strlen;
 
@@ -42,15 +55,41 @@ class OrganizationSignature
     public const int ORIGINAL_FILENAME_MAX_LENGTH = 255;
 
     /**
-     * The largest file accepted, in bytes.
+     * The largest file accepted from the browser, in bytes.
      *
-     * 1 MB and not more because no custom php.ini ships with the image (see the
-     * Dockerfile), so `upload_max_filesize` is PHP's 2M default — a larger cap would be
-     * refused by PHP before Symfony ever saw the file, and the user would get a blank
-     * field rather than a message. A signature needs a fraction of it: at the 14 mm the
-     * CERFA box allows, even 600 px is over 1000 dpi.
+     * 16 MB, so a treasurer can drop a phone photo or a flatbed scan in without thinking
+     * about it. `upload_max_filesize` and `post_max_size` are raised to match in
+     * .infra/docker/php/conf.d — left at PHP's 2M default the browser field would just go
+     * blank with no message at all.
+     *
+     * **What is accepted is not what is stored.** See fromImage(): anything longer than
+     * STORED_MAX_EDGE_PX on its long side is scaled down before it goes anywhere near the
+     * database. A 16 MB signature stored as-is would be 21 MB of base64 in the row, the
+     * same again inside the receipt overlay, a receipt PDF per volunteer heavier than most
+     * relays accept as an attachment, and a request that outgrows PHP's memory limit.
      */
-    public const int MAX_FILE_SIZE = 1024 * 1024;
+    public const int MAX_FILE_SIZE = 16 * 1024 * 1024;
+
+    /**
+     * The long side of what gets stored, in pixels.
+     *
+     * The CERFA gives the signature a 14 mm box, so 1 000 px is over 1 800 dpi there —
+     * far past anything a printer or a reader can use. Scaling to it turns a 16 MB scan
+     * into tens of kilobytes.
+     */
+    public const int STORED_MAX_EDGE_PX = 1000;
+
+    /**
+     * The most pixels this will decode, as width × height.
+     *
+     * A guard on *dimensions*, which the byte cap does not give: PNG compresses flat
+     * artwork enormously, so a 2 MB file can be 12 000 × 12 000 — and GD holds a decoded
+     * image as 4 bytes per pixel, which is 576 MB before any scaling. Refusing here is a
+     * message; discovering it in GD is a fatal error mid-request.
+     *
+     * 16 megapixels is a 4 000 × 4 000 scan, and costs 64 MB decoded.
+     */
+    public const int MAX_PIXELS = 16_000_000;
 
     /** Raster only. An SVG is markup, and markup has no business in a stamped PDF. */
     public const array ALLOWED_MIME_TYPES = ['image/png', 'image/jpeg'];
@@ -83,6 +122,54 @@ class OrganizationSignature
         $this->base64 = $base64;
         $this->originalFilename = $originalFilename;
         $this->uploadedAt = new DateTimeImmutable();
+    }
+
+    /**
+     * Builds a signature from raw image bytes, **scaled down to what a receipt can use**.
+     *
+     * Here rather than in a service because there is exactly one way a signature may come
+     * into being, and a setter cannot reach a service — a second, optional step would be a
+     * step somebody forgets, and the thing they would forget is the one that keeps a 16 MB
+     * scan out of every receipt PDF and every email.
+     *
+     * An image already within STORED_MAX_EDGE_PX is kept **byte for byte**: re-encoding it
+     * would cost quality and alpha for nothing.
+     *
+     * @throws SignatureImageException when the bytes are not a usable PNG or JPEG, or are
+     *                                 too many pixels to decode safely
+     */
+    public static function fromImage(string $bytes, ?string $originalFilename = null): self
+    {
+        $size = getimagesizefromstring($bytes);
+
+        if (false === $size) {
+            throw SignatureImageException::notAnImage();
+        }
+
+        [$width, $height] = $size;
+        $mimeType = $size['mime'];
+
+        if (!in_array($mimeType, self::ALLOWED_MIME_TYPES, true)) {
+            throw SignatureImageException::unsupportedType($mimeType);
+        }
+
+        // Before decoding, not after: GD allocates 4 bytes per pixel the moment it reads
+        // the file, so a check afterwards would come too late to prevent anything.
+        if ($width * $height > self::MAX_PIXELS) {
+            throw SignatureImageException::tooManyPixels($width, $height);
+        }
+
+        $longestEdge = max($width, $height);
+
+        if ($longestEdge <= self::STORED_MAX_EDGE_PX) {
+            return new self($mimeType, base64_encode($bytes), $originalFilename);
+        }
+
+        return new self(
+            'image/png',
+            base64_encode(self::scaleDown($bytes, $width, $height, $longestEdge)),
+            $originalFilename,
+        );
     }
 
     public function getId(): Uuid
@@ -126,5 +213,54 @@ class OrganizationSignature
     public function getApproximateByteSize(): int
     {
         return intdiv(strlen($this->base64) * 3, 4);
+    }
+
+    /**
+     * Scales the image so its long side is STORED_MAX_EDGE_PX, and re-encodes it as PNG.
+     *
+     * PNG whatever came in: a signature is line art on a light background, which PNG stores
+     * losslessly and small, and it is the only one of the two formats that keeps
+     * transparency — a JPEG re-encode would paint the CERFA's own rules out behind a white
+     * rectangle.
+     *
+     * @throws SignatureImageException when GD cannot decode or re-encode the image
+     */
+    private static function scaleDown(string $bytes, int $width, int $height, int $longestEdge): string
+    {
+        $source = imagecreatefromstring($bytes);
+
+        if (false === $source) {
+            throw SignatureImageException::notAnImage();
+        }
+
+        $ratio = self::STORED_MAX_EDGE_PX / $longestEdge;
+        // At least one pixel each way: a 1 200 × 3 strip would otherwise scale to a height of
+        // zero, which imagescale refuses.
+        $scaled = imagescale(
+            $source,
+            max(1, (int) round($width * $ratio)),
+            max(1, (int) round($height * $ratio)),
+        );
+
+        if (false === $scaled) {
+            throw SignatureImageException::cannotResize();
+        }
+
+        // Keep the alpha channel through the encode; without these two, the transparent parts
+        // of a scan come out black on the receipt.
+        imagealphablending($scaled, false);
+        imagesavealpha($scaled, true);
+
+        ob_start();
+        $written = imagepng($scaled);
+        $png = (string) ob_get_clean();
+
+        if (!$written || '' === $png) {
+            throw SignatureImageException::cannotResize();
+        }
+
+        // No imagedestroy(): deprecated in PHP 8.5 and a no-op since 8.0 — a GD image is an
+        // object and the garbage collector frees it.
+        return $png;
     }
 }

@@ -81,7 +81,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ env.PHP_VERSION }}
-          extensions: apcu, ctype, iconv, intl, mbstring, pdo_pgsql, zip
+          extensions: apcu, ctype, gd, iconv, intl, mbstring, pdo_pgsql, zip
           coverage: none
           tools: composer:v2
 

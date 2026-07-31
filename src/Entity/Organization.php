@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Exception\SignatureImageException;
 use App\Repository\OrganizationRepository;
 use App\ValueObject\Address;
 use DateTimeImmutable;
@@ -16,14 +17,8 @@ use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
-use function base64_decode;
-use function base64_encode;
 use function file_get_contents;
-use function getimagesizefromstring;
-use function in_array;
-use function intdiv;
 use function mb_trim;
-use function strlen;
 
 /**
  * The tenant: one association loi 1901.
@@ -159,6 +154,15 @@ class Organization
      * The file is therefore converted on the way in and dropped, and what gets validated
      * is the stored signature — see validateSignature() below.
      */
+
+    /**
+     * Why the last uploaded signature was refused, in French, or null. Not a column.
+     *
+     * A string and not the exception, let alone the file: this entity is reachable from the
+     * security token, and ContextListener serialises that token into the session on every
+     * response — see the comment where $signatureUpload would have been.
+     */
+    private ?string $signatureUploadError = null;
 
     /**
      * The « supprimer la signature » checkbox. Not a column either.
@@ -401,27 +405,23 @@ class Organization
             return $this;
         }
 
-        // An upload PHP threw away — over `upload_max_filesize`, an unwritable temporary
-        // directory, a connection cut mid-transfer — arrives here with an EMPTY path, and
-        // getMimeType() on it throws `The "" file does not exist or is not readable.`: a 500
-        // where the user should simply be told their file was too big.
+        // Read, converted, and forgotten. The bytes go through
+        // OrganizationSignature::fromImage(), which scales anything longer than 1 000 px on
+        // its long side down before it is stored — a 16 MB scan is accepted from the browser
+        // and lands in the database as tens of kilobytes.
         //
-        // Symfony's FileType has already added the right error to the field by this point, but
-        // it deliberately does NOT null the data (it only clears values that are not file
-        // uploads at all), so the broken UploadedFile still reaches this setter. Guarding here
-        // is the only place that helps.
-        if (!$file->isValid()) {
-            return $this;
+        // The refusal is caught rather than thrown on: this runs while the form is binding,
+        // so an exception here would be a 500 on a wrong file. It becomes a violation on the
+        // file field instead, in validateSignature() below.
+        try {
+            $this->signature = OrganizationSignature::fromImage(
+                (string) file_get_contents($file->getPathname()),
+                $file->getClientOriginalName(),
+            );
+            $this->signatureUploadError = null;
+        } catch (SignatureImageException $e) {
+            $this->signatureUploadError = $e->userMessage;
         }
-
-        // Validation has already refused anything that is not a PNG or JPEG within the
-        // size limit; getMimeType() is guessed from the contents rather than trusted from
-        // the request, and falls back to the declared type only if guessing fails.
-        $this->signature = new OrganizationSignature(
-            $file->getMimeType() ?? $file->getClientMimeType(),
-            base64_encode((string) file_get_contents($file->getPathname())),
-            $file->getClientOriginalName(),
-        );
 
         return $this;
     }
@@ -446,48 +446,27 @@ class Organization
     }
 
     /**
-     * What #[Assert\Image] would have said about the uploaded file, said about the result.
+     * Reports an upload the conversion refused.
      *
-     * The constraint cannot live on the upload, because the upload is not kept (see above),
-     * so the same three facts are checked on the stored bytes instead: a declared type this
-     * application will stamp, a size PHP could actually have accepted, and contents that
-     * really are an image — a PDF renamed `.png` gets past a form and fails in Gotenberg,
-     * hours later, on a receipt already promised to a volunteer.
+     * The refusal happens while the form is binding, in setSignatureUpload(), where throwing
+     * would be a 500 over a wrong file. The reason is kept as a string and turned into a
+     * violation here, on the file field the person just used.
      *
-     * Violations are attached to `signatureUpload` so the message appears under the file
-     * field the person just used, rather than as a form-wide error about a column.
+     * There is nothing left to validate about the stored image itself: it only exists if
+     * OrganizationSignature::fromImage() decoded it, found a type this application stamps, and
+     * scaled it to something a receipt can carry. Checking that again would be checking the
+     * constructor.
      */
     #[Assert\Callback]
     public function validateSignature(ExecutionContextInterface $context): void
     {
-        if (null === $this->signature) {
+        if (null === $this->signatureUploadError) {
             return;
         }
 
-        if (!in_array($this->signature->getMimeType(), OrganizationSignature::ALLOWED_MIME_TYPES, true)) {
-            $context->buildViolation('Déposez une image PNG ou JPEG.')
-                ->atPath('signatureUpload')
-                ->addViolation();
-
-            return;
-        }
-
-        $bytes = base64_decode($this->signature->getBase64(), true);
-
-        if (false === $bytes || false === getimagesizefromstring($bytes)) {
-            $context->buildViolation('Ce fichier n\'est pas une image lisible.')
-                ->atPath('signatureUpload')
-                ->addViolation();
-
-            return;
-        }
-
-        if (strlen($bytes) > OrganizationSignature::MAX_FILE_SIZE) {
-            $context->buildViolation('L\'image ne doit pas dépasser {{ limit }} Ko.')
-                ->setParameter('{{ limit }}', (string) intdiv(OrganizationSignature::MAX_FILE_SIZE, 1024))
-                ->atPath('signatureUpload')
-                ->addViolation();
-        }
+        $context->buildViolation($this->signatureUploadError)
+            ->atPath('signatureUpload')
+            ->addViolation();
     }
 
     /**

@@ -125,7 +125,9 @@ final class MyOrganizationCrudController extends AbstractCrudController
         yield Field::new('signatureUpload', 'Déposer une signature')
             ->setFormType(FileType::class)
             ->setFormTypeOptions(['required' => false])
-            ->setHelp('Image PNG ou JPEG, 1 Mo maximum. Laissez vide pour conserver la signature actuelle.')
+            ->setHelp('Image PNG ou JPEG, 16 Mo maximum — déposez votre scan tel quel, il sera '
+                .'réduit automatiquement à la taille utile sur le reçu. Laissez vide pour '
+                .'conserver la signature actuelle.')
             ->onlyOnForms();
 
         // Declared after the upload on purpose: the fields are bound in this order, so if

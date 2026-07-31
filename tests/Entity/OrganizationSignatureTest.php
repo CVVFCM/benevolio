@@ -15,10 +15,18 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Zenstruck\Foundry\Test\Factories;
 use Zenstruck\Foundry\Test\ResetDatabase;
 
+use function base64_decode;
 use function copy;
 use function count;
 use function file_get_contents;
 use function file_put_contents;
+use function getimagesizefromstring;
+use function imagecolorallocate;
+use function imagecreatetruecolor;
+use function imagefill;
+use function imagepng;
+use function ob_get_clean;
+use function ob_start;
 use function str_repeat;
 use function strlen;
 use function sys_get_temp_dir;
@@ -99,22 +107,98 @@ final class OrganizationSignatureTest extends KernelTestCase
     }
 
     /**
-     * The size cap is enforced by validation, not by the column: 1 MB, because PHP's own
-     * upload_max_filesize is 2M by default and nothing raises it in the image.
+     * Something that is not an image is refused, with a message on the field.
+     *
+     * The refusal happens while the form binds, in the setter, so it must not throw: it is
+     * recorded and turned into a violation. A PDF renamed `.png` would otherwise reach
+     * Gotenberg hours later, on a receipt already promised to a volunteer.
      */
     #[Test]
-    public function an_oversized_file_is_refused(): void
+    public function something_that_is_not_an_image_is_refused(): void
     {
         $organization = new Organization();
         $organization->setName('Les Jardins');
         $organization->setSlug('les-jardins');
-        // Not an image at all, and over the cap: both constraints should have something
-        // to say, and either refusal is the right outcome.
-        $organization->setSignatureUpload($this->upload(contents: str_repeat('x', OrganizationSignature::MAX_FILE_SIZE + 1)));
+        $organization->setSignatureUpload($this->upload(contents: str_repeat('x', 2048)));
 
         $violations = self::getContainer()->get(ValidatorInterface::class)->validate($organization);
 
+        self::assertNull($organization->getSignature());
         self::assertGreaterThan(0, count($violations));
+        self::assertStringContainsString('image', (string) $violations->get(0)->getMessage());
+    }
+
+    /**
+     * A scan larger than the CERFA can use is **accepted and scaled down**, not refused.
+     *
+     * That is the whole point of accepting 16 MB: the treasurer drops in whatever their
+     * scanner produced, and what reaches the database is something a receipt and an email can
+     * carry. Stored as-is, a 16 MB signature would be 21 MB of base64 in the row, the same
+     * again in every overlay, and an attachment past what most relays accept.
+     */
+    #[Test]
+    public function a_large_image_is_scaled_down_before_it_is_stored(): void
+    {
+        $organization = new Organization();
+        $organization->setSignatureUpload($this->upload(contents: self::png(2400, 1200)));
+
+        $signature = $organization->getSignature();
+        self::assertInstanceOf(OrganizationSignature::class, $signature);
+
+        $stored = base64_decode($signature->getBase64(), true);
+        self::assertNotFalse($stored);
+        $size = getimagesizefromstring($stored);
+        self::assertNotFalse($size);
+
+        // Long side at the ceiling, aspect ratio kept, PNG so transparency survives.
+        //
+        // Dimensions and not bytes: for a real scan the file shrinks by orders of magnitude,
+        // but these fixtures are one flat colour, and PNG happens to compress 2400 × 1200 of it
+        // tighter than 1000 × 500. Asserting "smaller file" would be asserting a property of
+        // the fixture, not of the resizing.
+        self::assertSame(OrganizationSignature::STORED_MAX_EDGE_PX, $size[0]);
+        self::assertSame(500, $size[1]);
+        self::assertSame('image/png', $signature->getMimeType());
+    }
+
+    /**
+     * An image already small enough is kept byte for byte — re-encoding costs quality for
+     * nothing.
+     */
+    #[Test]
+    public function a_small_image_is_stored_untouched(): void
+    {
+        $bytes = self::png(600, 400);
+        $organization = new Organization();
+        $organization->setSignatureUpload($this->upload(contents: $bytes));
+
+        $signature = $organization->getSignature();
+        self::assertInstanceOf(OrganizationSignature::class, $signature);
+        self::assertSame($bytes, base64_decode($signature->getBase64(), true));
+    }
+
+    /**
+     * Refused on PIXELS, which the byte cap does not cover.
+     *
+     * PNG compresses flat artwork enormously, so a few-kilobyte file can hold an enormous
+     * canvas — and GD allocates four bytes per pixel the moment it decodes one. A check after
+     * the decode would come too late to prevent the fatal error it causes.
+     */
+    #[Test]
+    public function an_image_with_too_many_pixels_is_refused(): void
+    {
+        $organization = new Organization();
+        $organization->setName('Les Jardins');
+        $organization->setSlug('les-jardins');
+
+        // 5 000 × 4 000 = 20 megapixels, past the 16 this will decode.
+        $organization->setSignatureUpload($this->upload(contents: self::png(5000, 4000)));
+
+        $violations = self::getContainer()->get(ValidatorInterface::class)->validate($organization);
+
+        self::assertNull($organization->getSignature());
+        self::assertGreaterThan(0, count($violations));
+        self::assertStringContainsString('pixels', (string) $violations->get(0)->getMessage());
     }
 
     /**
@@ -172,6 +256,27 @@ final class OrganizationSignatureTest extends KernelTestCase
         self::assertNotFalse($contents);
         self::assertStringStartsWith("\x89PNG", $contents);
         self::assertLessThan(OrganizationSignature::MAX_FILE_SIZE, strlen($contents));
+    }
+
+    /**
+     * A real PNG of the given dimensions — GD is what reads these, so a hand-made header
+     * would prove nothing. One flat colour, so even 20 megapixels weighs a few kilobytes.
+     */
+    /**
+     * @param int<1, max> $width
+     * @param int<1, max> $height
+     */
+    private static function png(int $width, int $height): string
+    {
+        $image = imagecreatetruecolor($width, $height);
+        self::assertNotFalse($image);
+
+        imagefill($image, 0, 0, (int) imagecolorallocate($image, 240, 240, 240));
+
+        ob_start();
+        imagepng($image);
+
+        return (string) ob_get_clean();
     }
 
     private function upload(?string $contents = null): UploadedFile
