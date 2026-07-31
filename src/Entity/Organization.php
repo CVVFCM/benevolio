@@ -401,6 +401,19 @@ class Organization
             return $this;
         }
 
+        // An upload PHP threw away — over `upload_max_filesize`, an unwritable temporary
+        // directory, a connection cut mid-transfer — arrives here with an EMPTY path, and
+        // getMimeType() on it throws `The "" file does not exist or is not readable.`: a 500
+        // where the user should simply be told their file was too big.
+        //
+        // Symfony's FileType has already added the right error to the field by this point, but
+        // it deliberately does NOT null the data (it only clears values that are not file
+        // uploads at all), so the broken UploadedFile still reaches this setter. Guarding here
+        // is the only place that helps.
+        if (!$file->isValid()) {
+            return $this;
+        }
+
         // Validation has already refused anything that is not a PNG or JPEG within the
         // size limit; getMimeType() is guessed from the contents rather than trusted from
         // the request, and falls back to the declared type only if guessing fails.
