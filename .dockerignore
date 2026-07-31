@@ -8,6 +8,12 @@
 !config
 !migrations
 !public
+# NOT documentation: resources/cerfa holds the official form that qpdf stamps every receipt
+# onto, so it is a runtime asset. Left out, the image builds and deploys happily and then
+# fails at the last step of generating a receipt with "No such file or directory" — which is
+# exactly what happened. resources/fixtures rides along; it is 80 KB and only the dev
+# fixtures ever read it.
+!resources
 !src
 !templates
 !translations
