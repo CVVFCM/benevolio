@@ -6,9 +6,11 @@ namespace App\Entity;
 
 use App\Enum\FiscalPower;
 use App\Repository\FiscalYearRepository;
+use App\State\FiscalYearState;
 use App\Tenant\TenantAware;
 use App\Tenant\TenantAwareTrait;
 use App\Validator\FiscalYearDoesNotOverlap;
+use App\Validator\FiscalYearIsNotFrozen;
 use DateTimeImmutable;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -54,6 +56,7 @@ use function sprintf;
 // Overlap needs a repository lookup, so it cannot be an Assert\Callback on the
 // entity — see App\Validator\FiscalYearDoesNotOverlapValidator.
 #[FiscalYearDoesNotOverlap]
+#[FiscalYearIsNotFrozen]
 class FiscalYear implements TenantAware
 {
     use TenantAwareTrait;
@@ -143,6 +146,19 @@ class FiscalYear implements TenantAware
     /** @var Collection<int, FiscalYearMileageRate> */
     #[ORM\OneToMany(targetEntity: FiscalYearMileageRate::class, mappedBy: 'fiscalYear', cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $mileageRates;
+
+    /**
+     * Open or closed. **This is what makes a rate trustworthy** — see App\State\FiscalYearState.
+     *
+     * While it is open the rates can change and no receipt may be issued from them; closing
+     * freezes the rates, the dates and the name, and is what allows receipts. So the figure on a
+     * reçu fiscal was settled before the document existed.
+     *
+     * Moved by the state machine only: there is no setState(), for the same reason as
+     * App\Entity\Declaration.
+     */
+    #[ORM\Column(enumType: FiscalYearState::class)]
+    private FiscalYearState $state = FiscalYearState::OPEN;
 
     /*
      * The receipt counter used to live here. It moved to App\Entity\Organization when the
@@ -330,6 +346,22 @@ class FiscalYear implements TenantAware
     public function removeMileageRate(FiscalYearMileageRate $rate): void
     {
         $this->mileageRates->removeElement($rate);
+    }
+
+    public function getState(): FiscalYearState
+    {
+        return $this->state;
+    }
+
+    /**
+     * True while the name, the dates and the rates may still be changed.
+     *
+     * Asked by the CRUD (to render fields read-only) and by the validator (to refuse a change
+     * that got past the form anyway) — the two must not disagree, so both read this.
+     */
+    public function isEditable(): bool
+    {
+        return $this->state->isEditable();
     }
 
     public function getCreatedAt(): DateTimeImmutable

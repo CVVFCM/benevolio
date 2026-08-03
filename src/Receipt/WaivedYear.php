@@ -20,12 +20,6 @@ final class WaivedYear
 {
     public int $amountCents = 0;
 
-    /**
-     * Lines with no exercice to price them, which are therefore absent from the amount.
-     * Carried through to the report rather than silently dropped.
-     */
-    public int $unvaluedLineCount = 0;
-
     private ?DateTimeImmutable $lastWaivedDay = null;
 
     public function __construct(
@@ -34,17 +28,13 @@ final class WaivedYear
     }
 
     /**
-     * @param int|null $mileageCents what the line is worth, or null when no exercice covers
-     *                               its date and there is therefore no barème to price it
+     * @param int $mileageCents what the line is worth under the exercice pricing this civil
+     *                          year — never null: App\Receipt\YearlyReceiptRun refuses the whole
+     *                          run when no exercice covers the year, so there is no such thing
+     *                          here as a line nobody could price
      */
-    public function add(DeclarationAction $action, ?int $mileageCents): void
+    public function add(DeclarationAction $action, int $mileageCents): void
     {
-        if (null === $mileageCents) {
-            ++$this->unvaluedLineCount;
-
-            return;
-        }
-
         if (0 === $mileageCents) {
             // Declared, but nothing was waived — hours only, or travel in someone else's
             // vehicle. It belongs to the ledger, not to a receipt.

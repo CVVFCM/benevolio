@@ -12,6 +12,7 @@ use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\Uid\Uuid;
 
 use function assert;
+use function sprintf;
 
 /**
  * @extends ServiceEntityRepository<FiscalYear>
@@ -61,6 +62,69 @@ final class FiscalYearRepository extends ServiceEntityRepository
 
         /** @var list<FiscalYear> $years */
         $years = $builder->getQuery()->getResult();
+
+        return $years;
+    }
+
+    /**
+     * The exercice whose rates price a whole **civil year**: the FIRST one that intersects it.
+     *
+     * A receipt covers a calendar year, an exercice need not — so something has to decide which
+     * rates a January-to-December total is built from, and it is one exercice for the whole year
+     * rather than one per contribution. Civil 2026 is priced by 2025-2026, because that is the
+     * first exercice reaching into it.
+     *
+     * Ordered by `beginsOn` and limited to one, which is what makes "first" mean anything. Null
+     * when the association has created no exercice touching the year — an ordinary answer, and
+     * the run reports it rather than inventing a rate.
+     *
+     * Organization passed explicitly, for the same reason as findOverlapping().
+     */
+    public function findFirstForCivilYear(Organization $organization, int $year): ?FiscalYear
+    {
+        $fiscalYear = $this->createQueryBuilder('fiscal_year')
+            ->andWhere('fiscal_year.organization = :organization')
+            // Intersects the civil year: begins before it ends, and ends after it begins.
+            ->andWhere('fiscal_year.beginsOn <= :endOfYear')
+            ->andWhere('fiscal_year.endsOn >= :startOfYear')
+            ->setParameter('organization', $organization->getId(), 'uuid')
+            ->setParameter('startOfYear', new DateTimeImmutable(sprintf('%d-01-01', $year)))
+            ->setParameter('endOfYear', new DateTimeImmutable(sprintf('%d-12-31', $year)))
+            ->orderBy('fiscal_year.beginsOn', 'ASC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        assert(null === $fiscalYear || $fiscalYear instanceof FiscalYear);
+
+        return $fiscalYear;
+    }
+
+    /**
+     * The civil years this exercice is the first to intersect, and therefore prices.
+     *
+     * The inverse of findFirstForCivilYear(), and it exists for the reopen guard: an exercice
+     * running September 2025 to August 2026 touches civil 2025 and 2026, but only prices the ones
+     * where no earlier exercice got there first.
+     *
+     * @return list<int>
+     */
+    public function civilYearsPricedBy(FiscalYear $fiscalYear): array
+    {
+        $organization = $fiscalYear->getOrganization();
+        $years = [];
+
+        for (
+            $year = (int) $fiscalYear->getBeginsOn()->format('Y');
+            $year <= (int) $fiscalYear->getEndsOn()->format('Y');
+            ++$year
+        ) {
+            $first = $this->findFirstForCivilYear($organization, $year);
+
+            if (null !== $first && $first->getId()->equals($fiscalYear->getId())) {
+                $years[] = $year;
+            }
+        }
 
         return $years;
     }

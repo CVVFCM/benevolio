@@ -97,17 +97,23 @@ final class AppFixtures extends Fixture
      */
     private function loadFiscalYears(Organization $organization): void
     {
-        // 2025 — figures actually in force. CGI annexe IV art. 6 B, arrêté du
-        // 27 mars 2023.
+        // 2025 — figures actually in force (CGI annexe IV art. 6 B, arrêté du 27 mars 2023),
+        // and CLOSED, so a fresh database can issue that year's receipts straight away. An open
+        // exercice refuses the whole run, correctly, but that is not what you want to meet first.
         $closed = FiscalYearFactory::new()
             ->for($organization)
             ->calendarYear(2025)
             ->withPublishedBareme()
+            ->closed()
             ->create();
 
         // 2026 — PROVISIONAL. No arrêté has been published for revenus 2026, and
         // art. 6 B has not been revalorised since March 2023, so these are the 2025
         // figures held over. Check them against the arrêté when one appears.
+        //
+        // Left OPEN deliberately: it is the year in progress, its rates are still provisional,
+        // and it shows both sides of the state — including the refusal a treasurer meets if they
+        // try to issue receipts for a year they have not closed.
         $current = FiscalYearFactory::new()
             ->for($organization)
             ->calendarYear(2026)

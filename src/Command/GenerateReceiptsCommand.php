@@ -174,14 +174,6 @@ final class GenerateReceiptsCommand extends Command
             );
         }
 
-        if ($report->unvaluedLineCount() > 0) {
-            $io->warning(sprintf(
-                '%d action(s) ne sont couvertes par aucun exercice comptable et sont donc '
-                .'absentes des montants. Créez l\'exercice manquant puis relancez.',
-                $report->unvaluedLineCount(),
-            ));
-        }
-
         $io->success(sprintf(
             '%d reçu(s) émis pour un total de %s.',
             $report->issuedCount(),

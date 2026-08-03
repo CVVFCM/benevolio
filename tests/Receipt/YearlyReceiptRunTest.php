@@ -78,40 +78,82 @@ final class YearlyReceiptRunTest extends KernelTestCase
     }
 
     /**
-     * A civil year straddling two exercices is priced from both, which is the whole point of
-     * pricing each line by the exercice covering its own date.
+     * A civil year straddling two exercices is priced by the FIRST one, for the whole year.
+     *
+     * This is the rule that makes a receipt defensible: one rate set per civil year, not one per
+     * contribution. Otherwise a volunteer's January kilometres and their November kilometres
+     * would be worth different amounts on the same document, decided by where the association
+     * happens to close its books.
      */
     #[Test]
-    public function a_year_spanning_two_exercices_is_priced_from_both(): void
+    public function a_year_straddling_two_exercices_is_priced_by_the_first(): void
     {
         $organization = $this->association();
         $person = PersonFactory::createOne(['organization' => $organization]);
 
-        // September-to-August exercices, so 2025 falls across two of them — and they carry
-        // different rates, so the amount proves which one priced what.
-        FiscalYearFactory::new()->for($organization)->create([
-            'name' => '2024-2025',
-            'beginsOn' => new DateTimeImmutable('2024-09-01'),
-            'endsOn' => new DateTimeImmutable('2025-08-31'),
-            'defaultMilliEurosPerKm' => 500,
-        ]);
-        FiscalYearFactory::new()->for($organization)->create([
+        // September-to-August exercices, carrying different rates so the amount says which one
+        // priced the year. Civil 2026 is intersected by both; 2025-2026 comes first.
+        FiscalYearFactory::new()->for($organization)->closed()->create([
             'name' => '2025-2026',
             'beginsOn' => new DateTimeImmutable('2025-09-01'),
             'endsOn' => new DateTimeImmutable('2026-08-31'),
+            'defaultMilliEurosPerKm' => 500,
+        ]);
+        FiscalYearFactory::new()->for($organization)->closed()->create([
+            'name' => '2026-2027',
+            'beginsOn' => new DateTimeImmutable('2026-09-01'),
+            'endsOn' => new DateTimeImmutable('2027-08-31'),
             'defaultMilliEurosPerKm' => 700,
         ]);
 
-        // 68 km in each half: 68 × 0,500 = 34,00 €, then 68 × 0,700 = 47,60 €.
-        // No withPublishedBareme() above, so no per-power override exists and
-        // FiscalYear::milliEurosPerKmFor() falls back to each exercice's default rate.
-        $this->waivedLine($person, '2025-03-15');
-        $this->waivedLine($person, '2025-10-15');
+        // One line either side of the closing date, 68 km each. Both priced at 0,500 — the
+        // 2025-2026 rate — for 34,00 € twice, and NOT 34,00 + 47,60.
+        $this->waivedLine($person, '2026-03-15');
+        $this->waivedLine($person, '2026-10-15');
+
+        $report = $this->run->run($organization, 2026);
+
+        self::assertSame(1, $report->issuedCount());
+        self::assertSame(3400 + 3400, $report->totalCents());
+    }
+
+    /**
+     * The exercice pricing the year must be CLOSED, or nothing is issued.
+     *
+     * An open exercice still has editable rates, so a receipt built from it could be
+     * contradicted the next day. Refused for the whole batch, like a missing SIREN — a condition
+     * a human has to lift.
+     */
+    #[Test]
+    public function an_open_exercice_refuses_the_whole_run(): void
+    {
+        $organization = $this->association();
+        // Deliberately NOT ->closed().
+        FiscalYearFactory::new()->for($organization)->calendarYear(2025)
+            ->withPublishedBareme()->create();
+        $person = PersonFactory::createOne(['organization' => $organization]);
+        $this->waivedLine($person, '2025-06-21');
 
         $report = $this->run->run($organization, 2025);
 
-        self::assertSame(1, $report->issuedCount());
-        self::assertSame(3400 + 4760, $report->totalCents());
+        self::assertTrue($report->isRefused());
+        self::assertStringContainsString('clôturé', $report->refusalReason());
+        self::assertCount(0, $this->entityManager->getRepository(Receipt::class)->findAll());
+    }
+
+    #[Test]
+    public function a_year_with_no_exercice_at_all_refuses_the_run(): void
+    {
+        $organization = $this->association();
+        $this->exercice($organization, 2025);
+        $person = PersonFactory::createOne(['organization' => $organization]);
+        $this->waivedLine($person, '2025-06-21');
+
+        // 2026 has no exercice: no barème, so no figure to state.
+        $report = $this->run->run($organization, 2026);
+
+        self::assertTrue($report->isRefused());
+        self::assertStringContainsString('Aucun exercice', $report->refusalReason());
     }
 
     #[Test]
@@ -156,24 +198,6 @@ final class YearlyReceiptRunTest extends KernelTestCase
         $skipped = $report->skipped();
         self::assertArrayHasKey(0, $skipped);
         self::assertStringContainsString('Aucun frais abandonné', $skipped[0]->skipReason());
-    }
-
-    #[Test]
-    public function a_line_no_exercice_covers_is_left_out_and_reported(): void
-    {
-        $organization = $this->association();
-        $this->exercice($organization, 2025);
-        $person = PersonFactory::createOne(['organization' => $organization]);
-
-        $this->waivedLine($person, '2025-06-21');
-        // 2026 has no exercice, but this is the 2026 run — so the only line it has cannot be
-        // priced, and the volunteer is skipped rather than receipted for zero.
-        $this->waivedLine($person, '2026-06-21');
-
-        $report = $this->run->run($organization, 2026);
-
-        self::assertSame(0, $report->issuedCount());
-        self::assertSame(1, $report->unvaluedLineCount());
     }
 
     /**
@@ -274,7 +298,7 @@ final class YearlyReceiptRunTest extends KernelTestCase
     private function exercice(Organization $organization, int $year): void
     {
         FiscalYearFactory::new()->for($organization)->calendarYear($year)
-            ->withPublishedBareme()->create();
+            ->withPublishedBareme()->closed()->create();
     }
 
     /**
