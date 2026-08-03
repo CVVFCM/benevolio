@@ -10,6 +10,10 @@ use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Constraints as Assert;
 
+use function abs;
+use function intdiv;
+use function sprintf;
+
 /**
  * An hourly rate that applies to one task for one exercice.
  *
@@ -63,6 +67,23 @@ class FiscalYearTaskRate
         $this->task = $task;
 
         $fiscalYear->addTaskRate($this);
+    }
+
+    /**
+     * "Arbitrage : 15,50 €/h".
+     *
+     * Not decoration: EasyAdmin labels each row of a CollectionField with this, and without it
+     * every existing rate reads as "App\\Entity\\FiscalYearTaskRate #019fb875-…" on the form —
+     * which tells a treasurer nothing about which rate they are about to change.
+     */
+    public function __toString(): string
+    {
+        return sprintf(
+            "%s : %d,%02d\u{a0}€/h",
+            $this->task->getName(),
+            intdiv($this->hourlyRateCents, 100),
+            abs($this->hourlyRateCents % 100),
+        );
     }
 
     public function getId(): Uuid
