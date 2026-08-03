@@ -158,6 +158,10 @@ final class GenerateReceiptsCommandTest extends KernelTestCase
     {
         $mine = $this->association('les-jardins');
         $theirs = $this->association('les-voiles');
+        // Mine needs its own closed exercice, or the run is refused for want of one and never
+        // reaches the question this test is about.
+        FiscalYearFactory::new()->for($mine)->calendarYear(2025)
+            ->withPublishedBareme()->closed()->create();
         $this->volunteerWithWaivedTravel($theirs, '2025-06-21');
 
         $this->command->setInputs(['yes']);
@@ -194,6 +198,7 @@ final class GenerateReceiptsCommandTest extends KernelTestCase
         FiscalYearFactory::new()->for($organization)
             ->calendarYear((int) new DateTimeImmutable($date)->format('Y'))
             ->withPublishedBareme()
+            ->closed()
             ->create();
 
         $person = PersonFactory::createOne(['organization' => $organization]);

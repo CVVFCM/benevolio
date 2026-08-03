@@ -22,24 +22,17 @@ final readonly class ReceiptRunOutcome
         public Person $person,
         private ?Receipt $receipt,
         private ?string $skipReason,
-        /**
-         * Lines of this volunteer's year that no exercice covers, and which are therefore
-         * **not in the amount**. Reported rather than swallowed: without a barème for the
-         * period there is no figure to state, and a treasurer needs to know their receipt
-         * is short before the volunteer files a tax return with it.
-         */
-        public int $unvaluedLineCount,
     ) {
     }
 
-    public static function issued(Receipt $receipt, int $unvaluedLineCount = 0): self
+    public static function issued(Receipt $receipt): self
     {
-        return new self($receipt->getPerson(), $receipt, null, $unvaluedLineCount);
+        return new self($receipt->getPerson(), $receipt, null);
     }
 
-    public static function skipped(Person $person, string $reason, int $unvaluedLineCount = 0): self
+    public static function skipped(Person $person, string $reason): self
     {
-        return new self($person, null, $reason, $unvaluedLineCount);
+        return new self($person, null, $reason);
     }
 
     public function isIssued(): bool

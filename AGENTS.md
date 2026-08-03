@@ -126,6 +126,35 @@ stays sparse and adding a `FiscalPower` bracket needs no migration.
 the fallback lives** — reaching for the raw override gets the default when one exists,
 which is a wrong figure rather than a missing one.
 
+### Closing an exercice is what makes a rate trustworthy
+
+`App\State\FiscalYearState`: **open** → rates editable, **no receipt may be issued**;
+**closed** → the name, the dates *and* the rates are frozen, and receipts can be issued. So the
+figure printed on a reçu fiscal was settled before the document existed, and nothing can move it
+afterwards. Dates are frozen along with the rates because moving an exercice's bounds changes
+*which* contributions it prices — and therefore an amount — as surely as editing a rate.
+
+`reopen` exists because closing too early is ordinary, and is **refused once a receipt has been
+issued from those rates** (`App\State\Listener\FiscalYearReopenGuard`). A guard rather than a
+controller check, so `can()` hides the action instead of failing on click.
+
+**A civil year is priced by ONE exercice: the first that intersects it.** Civil 2026 →
+`2025-2026`. `FiscalYearRepository::findFirstForCivilYear()`. Not one exercice per contribution,
+which is what this did first: a volunteer's January and November kilometres would then be worth
+different amounts on the same document, decided by where the association happens to close its
+books. `civilYearsPricedBy()` is the inverse, and is what the reopen guard asks.
+
+**An open exercice refuses the whole run**, like a missing SIREN — a condition a human lifts,
+decided once for the batch, not per volunteer. And because a year either has an exercice or the
+run is refused, there is no longer any such thing as an "unvalued line": that reporting is gone.
+
+**Two layers hold "closed means frozen", and both are needed.** The CRUD renders the fields
+disabled; `App\Validator\FiscalYearIsNotFrozen` refuses the change server-side, because a
+disabled input is a courtesy and a hand-built POST reaches the entity anyway. The validator reads
+Doctrine's change set — it has to call `computeChangeSet()` first, since outside a flush
+`getEntityChangeSet()` answers an empty array and every change would slip through — and it
+**exempts `state` itself**, or a closed exercice could never be reopened.
+
 **Overrides are entered on the exercice's own form**, as editable `CollectionField`s
 (`App\Form\FiscalYearTaskRateType`, `FiscalYearMileageRateType`). There is deliberately no
 CRUD for either: a rate means nothing apart from the exercice it belongs to. Two things that

@@ -8,19 +8,24 @@ use App\Accounting\LedgerBuilder;
 use App\Entity\FiscalYear;
 use App\Form\FiscalYearMileageRateType;
 use App\Form\FiscalYearTaskRateType;
+use App\State\FiscalYearState;
 use App\Tenant\TenantContext;
+use Doctrine\ORM\EntityManagerInterface;
 use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminRoute;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
 use EasyCorp\Bundle\EasyAdminBundle\Context\AdminContext;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
+use EasyCorp\Bundle\EasyAdminBundle\Field\ChoiceField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\CollectionField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\DateField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IntegerField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\MoneyField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use EasyCorp\Bundle\EasyAdminBundle\Router\AdminUrlGeneratorInterface;
+use Finite\StateMachine;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -48,6 +53,8 @@ use function sprintf;
 final class FiscalYearCrudController extends AbstractCrudController
 {
     private const string ACTION_LEDGER = 'ledger';
+    private const string ACTION_CLOSE = 'close';
+    private const string ACTION_REOPEN = 'reopen';
     private const string ACTION_LEDGER_DETAIL = 'ledgerDetail';
 
     public function __construct(
@@ -55,6 +62,8 @@ final class FiscalYearCrudController extends AbstractCrudController
         private readonly LedgerBuilder $ledgerBuilder,
         private readonly Environment $twig,
         private readonly AdminUrlGeneratorInterface $adminUrlGenerator,
+        private readonly StateMachine $stateMachine,
+        private readonly EntityManagerInterface $entityManager,
     ) {
     }
 
@@ -106,23 +115,59 @@ final class FiscalYearCrudController extends AbstractCrudController
         $ledgerDetail = Action::new(self::ACTION_LEDGER_DETAIL, 'Détail par bénévole', 'fa fa-users')
             ->linkToCrudAction(self::ACTION_LEDGER_DETAIL);
 
+        // displayIf on the state machine itself, not on the state: `can()` runs the guards, so
+        // "reopen" disappears the moment a receipt has been issued from this exercice's rates —
+        // see App\State\Listener\FiscalYearReopenGuard. Asking the enum would offer an action
+        // that then refused.
+        $close = Action::new(self::ACTION_CLOSE, 'Clôturer l\'exercice', 'fa fa-lock')
+            ->linkToCrudAction(self::ACTION_CLOSE)
+            ->displayIf(fn (FiscalYear $year): bool => $this->stateMachine->can($year, FiscalYearState::TRANSITION_CLOSE));
+
+        $reopen = Action::new(self::ACTION_REOPEN, 'Réouvrir l\'exercice', 'fa fa-lock-open')
+            ->linkToCrudAction(self::ACTION_REOPEN)
+            ->displayIf(fn (FiscalYear $year): bool => $this->stateMachine->can($year, FiscalYearState::TRANSITION_REOPEN));
+
         return $actions
             ->add(Crud::PAGE_INDEX, Action::DETAIL)
             ->add(Crud::PAGE_INDEX, $ledger)
+            ->add(Crud::PAGE_INDEX, $close)
             ->add(Crud::PAGE_DETAIL, $ledger)
-            ->add(Crud::PAGE_DETAIL, $ledgerDetail);
+            ->add(Crud::PAGE_DETAIL, $ledgerDetail)
+            ->add(Crud::PAGE_DETAIL, $close)
+            ->add(Crud::PAGE_DETAIL, $reopen);
     }
 
     public function configureFields(string $pageName): iterable
     {
+        // Closing freezes the name, the dates AND the rates — moving an exercice's bounds
+        // changes which contributions it prices, and therefore the amount on a receipt, as
+        // surely as editing a rate would. Rendered disabled here; App\Validator refuses the
+        // change server-side too, because a disabled input is a courtesy, not a control.
+        $editable = $this->fiscalYearOfForm()->isEditable();
+
+        yield ChoiceField::new('state', 'État')
+            ->setChoices(array_combine(
+                array_map(static fn (FiscalYearState $state): string => $state->label(), FiscalYearState::cases()),
+                array_map(static fn (FiscalYearState $state): string => $state->value, FiscalYearState::cases()),
+            ))
+            ->formatValue(static fn (mixed $value, FiscalYear $year): string => $year->getState()->label())
+            ->renderAsBadges(array_combine(
+                array_map(static fn (FiscalYearState $state): string => $state->value, FiscalYearState::cases()),
+                array_map(static fn (FiscalYearState $state): string => $state->badgeStyle(), FiscalYearState::cases()),
+            ))
+            // Moved by the transitions below, never by a form: there is no setState().
+            ->hideOnForm();
+
         yield TextField::new('name', 'Nom')
+            ->setFormTypeOption('disabled', !$editable)
             ->setHelp('« 2026 », ou « 2025-2026 » si l\'exercice ne suit pas l\'année civile.');
 
-        yield DateField::new('beginsOn', 'Début');
-        yield DateField::new('endsOn', 'Fin');
+        yield DateField::new('beginsOn', 'Début')->setFormTypeOption('disabled', !$editable);
+        yield DateField::new('endsOn', 'Fin')->setFormTypeOption('disabled', !$editable);
 
         // Cents, which is what MoneyField stores natively.
         yield MoneyField::new('defaultHourlyRateCents', 'Taux horaire par défaut')
+            ->setFormTypeOption('disabled', !$editable)
             ->setCurrency('EUR')
             ->setNumDecimals(2)
             ->setHelp('Valorisation d\'une heure de bénévolat, pour les tâches sans taux propre.');
@@ -141,6 +186,7 @@ final class FiscalYearCrudController extends AbstractCrudController
 
         yield IntegerField::new('defaultMilliEurosPerKm', 'Barème kilométrique par défaut (millièmes d\'euro / km)')
             ->onlyOnForms()
+            ->setFormTypeOption('disabled', !$editable)
             ->setHelp(
                 'En millièmes d\'euro par kilomètre : saisissez 529 pour 0,529 €/km. '
                 .'Barème automobile 2025 (arrêté du 27 mars 2023) : 3 CV et moins 529, '
@@ -156,8 +202,9 @@ final class FiscalYearCrudController extends AbstractCrudController
         // is a fresh FiscalYear that has not been persisted, which is fine: the rows are
         // cascade-persisted with it.
         yield CollectionField::new('mileageRates', 'Barème par puissance fiscale')
-            ->allowAdd()
-            ->allowDelete()
+            ->allowAdd($editable)
+            ->allowDelete($editable)
+            ->setFormTypeOption('disabled', !$editable)
             ->setEntryType(FiscalYearMileageRateType::class)
             ->setFormTypeOption('entry_options', ['fiscal_year' => $this->fiscalYearOfForm()])
             ->setHelp('Facultatif. Sans ligne ici, le barème par défaut ci-dessus s\'applique à '
@@ -165,8 +212,9 @@ final class FiscalYearCrudController extends AbstractCrudController
             ->onlyOnForms();
 
         yield CollectionField::new('taskRates', 'Taux horaires par tâche')
-            ->allowAdd()
-            ->allowDelete()
+            ->allowAdd($editable)
+            ->allowDelete($editable)
+            ->setFormTypeOption('disabled', !$editable)
             ->setEntryType(FiscalYearTaskRateType::class)
             ->setFormTypeOption('entry_options', ['fiscal_year' => $this->fiscalYearOfForm()])
             ->setHelp('Facultatif. Sans ligne ici, le taux horaire par défaut ci-dessus '
@@ -194,6 +242,31 @@ final class FiscalYearCrudController extends AbstractCrudController
 
                 return [] === $parts ? 'Aucun — le taux par défaut s\'applique' : implode(' · ', $parts);
             });
+    }
+
+    /**
+     * Freezes the exercice, which is what allows receipts to be issued from its rates.
+     *
+     * #[AdminRoute] is required or linkToCrudAction() points nowhere — see
+     * App\Controller\Admin\DeclarationCrudController.
+     *
+     * @param AdminContext<FiscalYear> $context
+     */
+    #[AdminRoute(path: '/{entityId}/close', name: 'close', options: ['methods' => ['GET']])]
+    public function close(AdminContext $context): Response
+    {
+        return $this->transition($context, FiscalYearState::TRANSITION_CLOSE);
+    }
+
+    /**
+     * Unfreezes it, while no receipt has been issued from its rates.
+     *
+     * @param AdminContext<FiscalYear> $context
+     */
+    #[AdminRoute(path: '/{entityId}/reopen', name: 'reopen', options: ['methods' => ['GET']])]
+    public function reopen(AdminContext $context): Response
+    {
+        return $this->transition($context, FiscalYearState::TRANSITION_REOPEN);
     }
 
     /**
@@ -238,6 +311,40 @@ final class FiscalYearCrudController extends AbstractCrudController
             'ledger' => $this->ledgerBuilder->build($fiscalYear),
             'summary_url' => $this->urlFor(self::ACTION_LEDGER, $fiscalYear),
         ]));
+    }
+
+    /**
+     * @param AdminContext<FiscalYear> $context
+     */
+    private function transition(AdminContext $context, string $transition): Response
+    {
+        $fiscalYear = $this->fiscalYearOf($context);
+
+        // can() before apply(), so a guard's refusal is a message rather than an exception. The
+        // action is hidden in that case, but a URL typed by hand still reaches here.
+        if (!$this->stateMachine->can($fiscalYear, $transition)) {
+            $this->addFlash('danger', sprintf(
+                'L\'exercice « %s » ne peut pas être %s : un reçu fiscal a déjà été émis à partir '
+                .'de ses taux, qui ne peuvent plus changer.',
+                $fiscalYear->getName(),
+                FiscalYearState::TRANSITION_REOPEN === $transition ? 'réouvert' : 'clôturé',
+            ));
+        } else {
+            $this->stateMachine->apply($fiscalYear, $transition);
+            $this->entityManager->flush();
+
+            $this->addFlash('success', sprintf(
+                'Exercice « %s » : %s.',
+                $fiscalYear->getName(),
+                $fiscalYear->getState()->label(),
+            ));
+        }
+
+        return new RedirectResponse(
+            $this->adminUrlGenerator->setAction(Action::DETAIL)
+                ->setEntityId($fiscalYear->getId()->toRfc4122())
+                ->generateUrl(),
+        );
     }
 
     /**

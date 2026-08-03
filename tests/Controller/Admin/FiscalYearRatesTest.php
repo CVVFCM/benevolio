@@ -18,6 +18,8 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Zenstruck\Foundry\Test\Factories;
 use Zenstruck\Foundry\Test\ResetDatabase;
 
+use function sprintf;
+
 /**
  * Entering the per-task and per-bracket rates of an exercice.
  *
@@ -113,6 +115,81 @@ final class FiscalYearRatesTest extends WebTestCase
 
         self::assertResponseIsSuccessful();
         self::assertStringContainsString('18,50', $this->client->getCrawler()->filter('body')->text());
+    }
+
+    /**
+     * The two transition actions, and which one each state offers.
+     *
+     * Asserted here because `displayIf` closures are invisible to a unit test: they run inside
+     * EasyAdmin while the page renders, and getting them the wrong way round would put "réouvrir"
+     * on an open exercice — which is exactly what a browser pass caught before this existed.
+     */
+    #[Test]
+    public function an_open_exercice_offers_closing_and_not_reopening(): void
+    {
+        $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
+        $fiscalYear = $this->exercice($organization);
+        $this->loginAdminOf($organization);
+
+        $crawler = $this->client->request('GET', '/admin/fiscal-year/'.$fiscalYear->getId()->toRfc4122());
+
+        self::assertResponseIsSuccessful();
+        self::assertGreaterThan(0, $crawler->filter('a[data-action-name="close"]')->count());
+        self::assertCount(0, $crawler->filter('a[data-action-name="reopen"]'));
+    }
+
+    #[Test]
+    public function a_closed_exercice_offers_reopening_and_not_closing(): void
+    {
+        $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
+        $fiscalYear = FiscalYearFactory::new()->for($organization)->calendarYear(2026)
+            ->closed()->create();
+        $this->loginAdminOf($organization);
+
+        $crawler = $this->client->request('GET', '/admin/fiscal-year/'.$fiscalYear->getId()->toRfc4122());
+
+        self::assertResponseIsSuccessful();
+        self::assertGreaterThan(0, $crawler->filter('a[data-action-name="reopen"]')->count());
+        self::assertCount(0, $crawler->filter('a[data-action-name="close"]'));
+    }
+
+    /**
+     * Closing freezes the name, the dates and the rates on the form. The validator is the real
+     * control (see FiscalYearStateTest) — this is the courtesy that stops a treasurer typing into
+     * a field that will be refused.
+     */
+    #[Test]
+    public function the_form_of_a_closed_exercice_is_read_only(): void
+    {
+        $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
+        $fiscalYear = FiscalYearFactory::new()->for($organization)->calendarYear(2026)
+            ->closed()->create();
+        $this->loginAdminOf($organization);
+
+        $crawler = $this->client->request('GET', $this->editUrl($fiscalYear));
+
+        self::assertResponseIsSuccessful();
+        foreach (['[name]', '[beginsOn]', '[defaultHourlyRateCents]', '[defaultMilliEurosPerKm]'] as $field) {
+            $input = $crawler->filter(sprintf('[name*="%s"]', $field));
+            self::assertGreaterThan(0, $input->count(), sprintf('No field matching %s.', $field));
+            self::assertNotNull($input->first()->attr('disabled'), sprintf('%s is not disabled.', $field));
+        }
+    }
+
+    /**
+     * And a closed exercice cannot gain a rate either: the collection loses its add button.
+     */
+    #[Test]
+    public function a_closed_exercice_cannot_gain_a_rate(): void
+    {
+        $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
+        $fiscalYear = FiscalYearFactory::new()->for($organization)->calendarYear(2026)
+            ->closed()->create();
+        $this->loginAdminOf($organization);
+
+        $crawler = $this->client->request('GET', $this->editUrl($fiscalYear));
+
+        self::assertCount(0, $crawler->filter('.field-collection-add-button'));
     }
 
     private function exercice(Organization $organization): FiscalYear

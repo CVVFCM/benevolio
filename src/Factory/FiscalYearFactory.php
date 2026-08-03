@@ -8,7 +8,9 @@ use App\Entity\FiscalYear;
 use App\Entity\FiscalYearMileageRate;
 use App\Entity\Organization;
 use App\Enum\FiscalPower;
+use App\State\FiscalYearState;
 use DateTimeImmutable;
+use Finite\StateMachine;
 use Zenstruck\Foundry\Persistence\PersistentObjectFactory;
 
 use function sprintf;
@@ -46,6 +48,12 @@ final class FiscalYearFactory extends PersistentObjectFactory
         FiscalPower::SEVEN_CV_OR_MORE->value => 697,
     ];
 
+    public function __construct(
+        private readonly StateMachine $stateMachine,
+    ) {
+        parent::__construct();
+    }
+
     public static function class(): string
     {
         return FiscalYear::class;
@@ -72,6 +80,22 @@ final class FiscalYearFactory extends PersistentObjectFactory
      * Gives the exercice the published per-bracket barème rather than one flat
      * default, so a fixture behaves like a real association's books.
      */
+    /**
+     * A closed exercice — which is what a receipt needs.
+     *
+     * Through the state machine rather than by writing the column, so the transition rules are
+     * exercised exactly as they are in production. See App\State\FiscalYearState: an open
+     * exercice still has editable rates, so nothing may be issued from it.
+     */
+    public function closed(): self
+    {
+        return $this->afterPersist(
+            function (FiscalYear $fiscalYear): void {
+                $this->stateMachine->apply($fiscalYear, FiscalYearState::TRANSITION_CLOSE);
+            },
+        );
+    }
+
     public function withPublishedBareme(): self
     {
         return $this->afterInstantiate(static function (FiscalYear $fiscalYear): void {
