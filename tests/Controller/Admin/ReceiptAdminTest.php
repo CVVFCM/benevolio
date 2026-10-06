@@ -243,6 +243,7 @@ final class ReceiptAdminTest extends WebTestCase
         FiscalYearFactory::new()->for($organization)
             ->calendarYear((int) new DateTimeImmutable($date)->format('Y'))
             ->withPublishedBareme()
+            ->closed()
             ->create();
 
         $person = PersonFactory::createOne(['organization' => $organization]);

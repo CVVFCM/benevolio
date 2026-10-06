@@ -102,16 +102,4 @@ final readonly class ReceiptRunReport
 
         return $total;
     }
-
-    /** How many lines were left out of the amounts for want of an exercice. */
-    public function unvaluedLineCount(): int
-    {
-        $total = 0;
-
-        foreach ($this->outcomes as $outcome) {
-            $total += $outcome->unvaluedLineCount;
-        }
-
-        return $total;
-    }
 }

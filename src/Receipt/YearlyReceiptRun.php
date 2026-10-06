@@ -5,15 +5,18 @@ declare(strict_types=1);
 namespace App\Receipt;
 
 use App\Accounting\ContributionValuator;
+use App\Entity\FiscalYear;
 use App\Entity\Organization;
 use App\Entity\Receipt;
 use App\Repository\DeclarationActionRepository;
+use App\Repository\FiscalYearRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
 use function array_values;
+use function sprintf;
 
 /**
  * Issues every reçu fiscal of one civil year, one per volunteer.
@@ -40,6 +43,7 @@ final readonly class YearlyReceiptRun
 {
     public function __construct(
         private DeclarationActionRepository $actions,
+        private FiscalYearRepository $fiscalYears,
         private ReceiptEligibility $eligibility,
         private ContributionValuator $valuator,
         private ReceiptNumberAllocator $numbers,
@@ -60,16 +64,36 @@ final readonly class YearlyReceiptRun
             return ReceiptRunReport::refused($year, $refusal);
         }
 
+        $fiscalYear = $this->fiscalYears->findFirstForCivilYear($organization, $year);
+
+        if (null === $fiscalYear) {
+            return ReceiptRunReport::refused($year, sprintf(
+                'Aucun exercice comptable ne couvre l\'année %d : sans barème pour la période, '
+                .'aucun montant ne peut être établi.',
+                $year,
+            ));
+        }
+
+        // The rates have to be frozen before a document quotes them. See the class docblock.
+        if (!$fiscalYear->getState()->allowsReceipts()) {
+            return ReceiptRunReport::refused($year, sprintf(
+                'L\'exercice « %s » n\'est pas clôturé. Ses taux peuvent encore changer, donc '
+                .'aucun reçu ne peut être émis pour %d : clôturez-le d\'abord depuis '
+                .'« Exercices comptables ».',
+                $fiscalYear->getName(),
+                $year,
+            ));
+        }
+
         $outcomes = [];
 
-        foreach ($this->waivedByVolunteer($organization, $year) as $waived) {
+        foreach ($this->waivedByVolunteer($organization, $year, $fiscalYear) as $waived) {
             $outcomes[] = $waived->amountCents > 0
                 ? $this->issue($organization, $year, $waived)
                 : ReceiptRunOutcome::skipped(
                     $waived->person,
                     'Aucun frais abandonné sur l\'année : le temps donné n\'ouvre pas droit '
                     .'à un reçu fiscal.',
-                    $waived->unvaluedLineCount,
                 );
         }
 
@@ -81,7 +105,7 @@ final readonly class YearlyReceiptRun
      *
      * @return list<WaivedYear>
      */
-    private function waivedByVolunteer(Organization $organization, int $year): array
+    private function waivedByVolunteer(Organization $organization, int $year, FiscalYear $fiscalYear): array
     {
         /** @var array<string, WaivedYear> $totals */
         $totals = [];
@@ -91,7 +115,11 @@ final readonly class YearlyReceiptRun
             $key = $person->getId()->toRfc4122();
 
             $totals[$key] ??= new WaivedYear($person);
-            $totals[$key]->add($action, $this->valuator->value($action)?->mileageCents);
+            // valueWithin(), not value(): every line of the year is priced by the one exercice
+            // decided above, whatever exercice happens to cover its own date. There is no
+            // "unvalued" line left on this path — the year either has an exercice or the whole
+            // run was refused.
+            $totals[$key]->add($action, $this->valuator->valueWithin($action, $fiscalYear)->mileageCents);
         }
 
         return array_values($totals);
@@ -148,6 +176,6 @@ final readonly class YearlyReceiptRun
             ]);
         }
 
-        return ReceiptRunOutcome::issued($receipt, $waived->unvaluedLineCount);
+        return ReceiptRunOutcome::issued($receipt);
     }
 }

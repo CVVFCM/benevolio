@@ -32,18 +32,6 @@
             {%- endif %}.
         </p>
 
-        {% if report.unvaluedLineCount > 0 %}
-            <p class="admin-warning" role="note">
-                <strong>{{ report.unvaluedLineCount }}</strong>
-                {{ report.unvaluedLineCount > 1 ? 'actions ne sont' : 'action n\'est' }}
-                couverte{{ report.unvaluedLineCount > 1 ? 's' : '' }} par aucun exercice
-                comptable : sans barème pour la période, aucun montant ne peut être établi,
-                {{ report.unvaluedLineCount > 1 ? 'elles sont' : 'elle est' }} donc
-                <strong>absente{{ report.unvaluedLineCount > 1 ? 's' : '' }} des reçus</strong>.
-                Créez l'exercice manquant puis relancez si nécessaire.
-            </p>
-        {% endif %}
-
         {% if report.issued is not empty %}
             <section class="receipt-run__section">
                 <h2>Reçus émis</h2>
