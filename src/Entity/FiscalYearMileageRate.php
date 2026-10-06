@@ -11,6 +11,10 @@ use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Constraints as Assert;
 
+use function abs;
+use function intdiv;
+use function sprintf;
+
 /**
  * The barème figure for one puissance fiscale in one exercice.
  *
@@ -57,6 +61,22 @@ class FiscalYearMileageRate
         $this->fiscalPower = $fiscalPower;
 
         $fiscalYear->addMileageRate($this);
+    }
+
+    /**
+     * "5 CV : 0,636 €/km" — see FiscalYearTaskRate::__toString() for why this exists.
+     *
+     * Three decimals, because that is the unit: millièmes d'euro per kilometre, which is what
+     * the published barème uses and what cents would round away.
+     */
+    public function __toString(): string
+    {
+        return sprintf(
+            "%s : %d,%03d\u{a0}€/km",
+            $this->fiscalPower->label(),
+            intdiv($this->milliEurosPerKm, 1000),
+            abs($this->milliEurosPerKm % 1000),
+        );
     }
 
     public function getId(): Uuid

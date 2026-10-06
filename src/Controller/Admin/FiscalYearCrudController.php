@@ -6,6 +6,8 @@ namespace App\Controller\Admin;
 
 use App\Accounting\LedgerBuilder;
 use App\Entity\FiscalYear;
+use App\Form\FiscalYearMileageRateType;
+use App\Form\FiscalYearTaskRateType;
 use App\Tenant\TenantContext;
 use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminRoute;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
@@ -73,6 +75,16 @@ final class FiscalYearCrudController extends AbstractCrudController
                 Crud::PAGE_INDEX,
                 'Les taux de valorisation appartiennent à l\'exercice : les modifier ici '
                 .'ne touche pas aux exercices déjà clos.',
+            )
+            // Editing a rate is allowed on any exercice, closed or not — correcting a mistyped
+            // rate is the common case and must stay possible. What it changes is worth saying
+            // out loud, because two of the three consequences are invisible from this page.
+            ->setHelp(
+                Crud::PAGE_EDIT,
+                'Modifier un taux recalcule les écritures comptables et les montants affichés '
+                .'pour cet exercice. Les reçus fiscaux déjà émis ne changent pas : leur montant '
+                .'est figé au moment de l\'émission. Si un taux était faux, régénérez l\'année '
+                .'concernée depuis « Reçus fiscaux ».',
             );
     }
 
@@ -134,6 +146,32 @@ final class FiscalYearCrudController extends AbstractCrudController
                 .'Barème automobile 2025 (arrêté du 27 mars 2023) : 3 CV et moins 529, '
                 .'4 CV 606, 5 CV 636, 6 CV 665, 7 CV et plus 697.',
             );
+
+        // Editable, and this is the ONLY way either kind of rate can be created: there is no
+        // CRUD for them and there should not be — a rate has no meaning apart from the exercice
+        // it belongs to, so it is edited where it lives.
+        //
+        // The exercice has to be handed to the entry types because both rate entities require it
+        // in their constructor; see their `empty_data`. On the "new exercice" form the instance
+        // is a fresh FiscalYear that has not been persisted, which is fine: the rows are
+        // cascade-persisted with it.
+        yield CollectionField::new('mileageRates', 'Barème par puissance fiscale')
+            ->allowAdd()
+            ->allowDelete()
+            ->setEntryType(FiscalYearMileageRateType::class)
+            ->setFormTypeOption('entry_options', ['fiscal_year' => $this->fiscalYearOfForm()])
+            ->setHelp('Facultatif. Sans ligne ici, le barème par défaut ci-dessus s\'applique à '
+                .'toutes les puissances fiscales.')
+            ->onlyOnForms();
+
+        yield CollectionField::new('taskRates', 'Taux horaires par tâche')
+            ->allowAdd()
+            ->allowDelete()
+            ->setEntryType(FiscalYearTaskRateType::class)
+            ->setFormTypeOption('entry_options', ['fiscal_year' => $this->fiscalYearOfForm()])
+            ->setHelp('Facultatif. Sans ligne ici, le taux horaire par défaut ci-dessus '
+                .'s\'applique à toutes les tâches.')
+            ->onlyOnForms();
 
         yield CollectionField::new('mileageRates', 'Barème par puissance fiscale')
             ->onlyOnDetail()
@@ -200,6 +238,22 @@ final class FiscalYearCrudController extends AbstractCrudController
             'ledger' => $this->ledgerBuilder->build($fiscalYear),
             'summary_url' => $this->urlFor(self::ACTION_LEDGER, $fiscalYear),
         ]));
+    }
+
+    /**
+     * The exercice the form being built is about.
+     *
+     * The entry types need it to construct a rate for a row the user has just added, and
+     * configureFields() has no argument carrying it — so it comes off the AdminContext, or is a
+     * fresh one on the "new exercice" page.
+     */
+    private function fiscalYearOfForm(): FiscalYear
+    {
+        $instance = $this->getContext()?->getEntity()->getInstance();
+
+        return $instance instanceof FiscalYear
+            ? $instance
+            : new FiscalYear($this->tenantContext->getOrganization());
     }
 
     /**

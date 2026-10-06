@@ -126,6 +126,28 @@ stays sparse and adding a `FiscalPower` bracket needs no migration.
 the fallback lives** — reaching for the raw override gets the default when one exists,
 which is a wrong figure rather than a missing one.
 
+**Overrides are entered on the exercice's own form**, as editable `CollectionField`s
+(`App\Form\FiscalYearTaskRateType`, `FiscalYearMileageRateType`). There is deliberately no
+CRUD for either: a rate means nothing apart from the exercice it belongs to. Two things that
+are not obvious:
+
+- Both rate entities **require their exercice in the constructor**, which a CollectionType
+  cannot supply — so each entry type takes a `fiscal_year` option and builds the entity in
+  `empty_data`. The controller reads that off the `AdminContext`, or makes a fresh one on the
+  "new exercice" page.
+- The task list is **scoped explicitly**, not left to `OrganizationFilter`. `EntityType` builds
+  its own query, and `FiscalYearTaskRate` is not `TenantAware`; an unscoped list would offer
+  another association's tasks as choices, and picking one would file a rate against a foreign
+  row.
+- Both entities have a `__toString()`, and it is load-bearing: EasyAdmin labels each collection
+  row with it, and without one every existing rate reads as
+  `App\Entity\FiscalYearMileageRate #019fb875-…` on the form.
+
+Editing a rate on an exercice already in use is **allowed** — correcting a mistyped rate is the
+common case. `Crud::PAGE_EDIT`'s help says what it changes: the écritures and the displayed
+amounts are recomputed, and **receipts already issued are not**, because their amount is frozen
+in the database at issuance. Regenerating the year from « Reçus fiscaux » is what re-aligns them.
+
 **Two exercices of one association must not overlap**, or a contribution would fall in
 both and be counted twice. That needs a repository lookup, so it is
 `App\Validator\FiscalYearDoesNotOverlapValidator` and not an `Assert\Callback` — an
