@@ -202,6 +202,17 @@ to.
 - `Declaration` is `TenantAware`, so a token cannot be redeemed through another
   association's URL — the filter refuses to find it. Tested.
 - There is **no resend** yet. A mistyped address means refilling the form.
+- **An admin can confirm in the volunteer's stead** — « Confirmer à la place du
+  bénévole », detail page only, for a mail that never arrived. Not a normal path, and
+  the modal says so: it skips what the click proves. So it records **who**
+  (`Declaration::$confirmedBy`, null = the volunteer clicked) and the detail page shows
+  it. `DeclarationConfirmer::confirmManually()` uses the same `confirm` transition, so
+  the lines cascade as usual; it **ignores token expiry**, since an expired link is
+  the usual way the problem gets noticed. It is a **POST with its own CSRF token**
+  (`admin/action/confirm_manually.html.twig`): `renderAsForm()` emits no token, and
+  this must not be reachable from a pasted or prefetched link. The modal body is set
+  through `data-action-confirmation-content`, which EasyAdmin's script reads for any
+  action although only DELETE sets it natively.
 - `DeclarationState::isDecided()` means validated-or-refused. Awaiting confirmation
   is *undecided but not actionable*, so anything asking "can a verdict be applied"
   must check `isAwaitingConfirmation()` too — `DeclarationDecider` does.

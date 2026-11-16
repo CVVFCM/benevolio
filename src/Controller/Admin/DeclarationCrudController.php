@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
+use App\Declaration\DeclarationConfirmer;
 use App\Declaration\DeclarationDecider;
+use App\Declaration\Exception\DeclarationNotConfirmableException;
 use App\Declaration\Exception\DeclarationNotDecidableException;
 use App\Entity\Declaration;
+use App\Entity\User;
 use App\State\DeclarationState;
 use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminRoute;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
@@ -21,6 +24,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\DateTimeField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IntegerField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use EasyCorp\Bundle\EasyAdminBundle\Router\AdminUrlGeneratorInterface;
+use LogicException;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -38,6 +42,13 @@ use function sprintf;
  * outcome, which is the accepted consequence of Declaration having its own state
  * machine (see App\State\DeclarationState).
  *
+ * "Confirmer à la place du bénévole" is the escape hatch for a confirmation mail
+ * that never arrived. Detail page only, behind a modal that says it is not a
+ * normal operation, and a POST with its own CSRF token rather than a link like its
+ * siblings: a state change that skips the double opt-in must not be reachable
+ * from a prefetched or pasted URL. EasyAdmin's renderAsForm() emits no token, so
+ * the button has its own template (admin/action/confirm_manually.html.twig).
+ *
  * CONVENTION EXCEPTION: see App\Controller\Admin\DashboardController.
  *
  * @extends AbstractCrudController<Declaration>
@@ -45,11 +56,15 @@ use function sprintf;
 #[IsGranted('ROLE_ADMIN')]
 final class DeclarationCrudController extends AbstractCrudController
 {
+    /** Suffixed with the declaration id, so a token minted for one cannot confirm another. */
+    public const string CSRF_CONFIRM_MANUALLY = 'declaration-confirm-manually-';
     private const string ACTION_VALIDATE_ALL = 'validateAll';
     private const string ACTION_REFUSE_ALL = 'refuseAll';
+    private const string ACTION_CONFIRM_MANUALLY = 'confirmManually';
 
     public function __construct(
         private readonly DeclarationDecider $decider,
+        private readonly DeclarationConfirmer $confirmer,
         private readonly AdminUrlGeneratorInterface $adminUrlGenerator,
     ) {
     }
@@ -78,6 +93,23 @@ final class DeclarationCrudController extends AbstractCrudController
             ->linkToCrudAction(self::ACTION_REFUSE_ALL)
             ->displayIf(fn (Declaration $declaration): bool => $this->decider->canRefuseAll($declaration));
 
+        $confirmManually = Action::new(self::ACTION_CONFIRM_MANUALLY, 'Confirmer à la place du bénévole', 'fa fa-user-check')
+            ->linkToCrudAction(self::ACTION_CONFIRM_MANUALLY)
+            ->renderAsForm()
+            ->setTemplatePath('admin/action/confirm_manually.html.twig')
+            ->asWarningAction()
+            ->askConfirmation('Confirmer cette déclaration à la place du bénévole ?', 'Confirmer quand même')
+            // EasyAdmin's modal script shows this under the title for any action,
+            // although only DELETE sets it natively.
+            ->setHtmlAttributes([
+                'data-action-confirmation-content' => 'Ce n\'est pas une opération normale. D\'ordinaire, le bénévole '
+                    .'confirme lui-même en cliquant sur le lien reçu par courriel : ce clic prouve que son adresse '
+                    .'fonctionne — c\'est à elle que sera envoyé le reçu fiscal — et qu\'il a bien voulu envoyer '
+                    .'cette déclaration. Ne le faites que si ce courriel ne lui est jamais parvenu et que vous avez '
+                    .'vérifié avec lui. Votre compte sera enregistré sur la déclaration comme l\'ayant confirmée.',
+            ])
+            ->displayIf(fn (Declaration $declaration): bool => $this->confirmer->canConfirmManually($declaration));
+
         return $actions
             // Declarations arrive from the public form; one typed here by hand
             // would have no volunteer behind it.
@@ -86,7 +118,8 @@ final class DeclarationCrudController extends AbstractCrudController
             ->add(Crud::PAGE_INDEX, $validateAll)
             ->add(Crud::PAGE_INDEX, $refuseAll)
             ->add(Crud::PAGE_DETAIL, $validateAll)
-            ->add(Crud::PAGE_DETAIL, $refuseAll);
+            ->add(Crud::PAGE_DETAIL, $refuseAll)
+            ->add(Crud::PAGE_DETAIL, $confirmManually);
     }
 
     public function configureFields(string $pageName): iterable
@@ -119,6 +152,30 @@ final class DeclarationCrudController extends AbstractCrudController
                 array_map(static fn (DeclarationState $state): string => $state->value, DeclarationState::cases()),
                 array_map(static fn (DeclarationState $state): string => $state->badgeStyle(), DeclarationState::cases()),
             ));
+
+        // Who confirmed matters as much as when: a manual confirmation proves less
+        // than the volunteer's own click, and the reader has to be able to tell.
+        // One line rather than a date field beside it, which would read « Aucun(e) »
+        // on every declaration still waiting.
+        yield TextField::new('confirmedBy', 'Confirmation')
+            ->formatValue(static function (mixed $value, Declaration $declaration): string {
+                $confirmedAt = $declaration->getConfirmedAt();
+
+                if (null === $confirmedAt) {
+                    return 'En attente du bénévole';
+                }
+
+                $by = $declaration->getConfirmedBy();
+
+                return null === $by
+                    ? sprintf('Le %s, par le bénévole, via le lien reçu par courriel', $confirmedAt->format('d/m/Y à H:i'))
+                    : sprintf(
+                        'Le %s, par %s, à la place du bénévole (confirmation manuelle)',
+                        $confirmedAt->format('d/m/Y à H:i'),
+                        $by->getEmail(),
+                    );
+            })
+            ->onlyOnDetail();
 
         yield IntegerField::new('actions.count', 'Actions')
             ->onlyOnIndex();
@@ -173,6 +230,50 @@ final class DeclarationCrudController extends AbstractCrudController
     /**
      * @param AdminContext<Declaration> $context
      */
+    #[AdminRoute(path: '/{entityId}/confirm-manually', name: 'confirm_manually', options: ['methods' => ['POST']])]
+    public function confirmManually(AdminContext $context): Response
+    {
+        // See decide(): another tenant's declaration comes back null, hence a 404.
+        $declaration = $context->getEntity()->getInstance();
+
+        if (!$declaration instanceof Declaration) {
+            throw new NotFoundHttpException('Declaration not found.');
+        }
+
+        $token = $context->getRequest()->request->getString('token');
+
+        if (!$this->isCsrfTokenValid(self::CSRF_CONFIRM_MANUALLY.$declaration->getId()->toRfc4122(), $token)) {
+            // Most likely a page left open past the session; nothing has changed.
+            $this->addFlash('danger', 'La page a expiré. Rechargez-la et recommencez.');
+
+            return $this->redirectToDetail($declaration);
+        }
+
+        $user = $this->getUser();
+
+        if (!$user instanceof User) {
+            // #[IsGranted('ROLE_ADMIN')] already guarantees an App\Entity\User.
+            throw new LogicException('A back-office request without an App\Entity\User.');
+        }
+
+        try {
+            $this->confirmer->confirmManually($declaration, $user);
+
+            $this->addFlash('warning', sprintf(
+                'Déclaration de %s confirmée manuellement, à la place du bénévole. Elle peut maintenant être traitée.',
+                $declaration->getPerson()->getFullName(),
+            ));
+        } catch (DeclarationNotConfirmableException $e) {
+            // The volunteer clicked in the meantime, or a second admin got there first.
+            $this->addFlash('danger', $e->getUserMessage());
+        }
+
+        return $this->redirectToDetail($declaration);
+    }
+
+    /**
+     * @param AdminContext<Declaration> $context
+     */
     private function decide(AdminContext $context, bool $decide): Response
     {
         // Declaration IS TenantAware, so OrganizationFilter already makes another
@@ -207,6 +308,11 @@ final class DeclarationCrudController extends AbstractCrudController
             $this->addFlash('danger', $e->getUserMessage());
         }
 
+        return $this->redirectToDetail($declaration);
+    }
+
+    private function redirectToDetail(Declaration $declaration): RedirectResponse
+    {
         return new RedirectResponse(
             $this->adminUrlGenerator->setAction(Action::DETAIL)
                 ->setEntityId($declaration->getId()->toRfc4122())

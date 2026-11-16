@@ -1,0 +1,22 @@
+{#
+    EasyAdmin's own action template, as a POST form that carries a CSRF token —
+    renderAsForm() emits the form but no token, and this action skips the
+    volunteer's double opt-in, so it is not left to SameSite cookies alone.
+
+    The modal still works: EasyAdmin's script intercepts the click on the button
+    (data-action-confirmation) and, once confirmed, submits the enclosing form.
+#}
+{# @var action \EasyCorp\Bundle\EasyAdminBundle\Dto\ActionDto #}
+{# @var entity \EasyCorp\Bundle\EasyAdminBundle\Dto\EntityDto #}
+<form method="post" action="{{ action.linkUrl }}" class="d-inline">
+    <input type="hidden" name="token" value="{{ csrf_token(constant('App\\Controller\\Admin\\DeclarationCrudController::CSRF_CONFIRM_MANUALLY') ~ entity.primaryKeyValue) }}">
+    <twig:ea:Button
+        variant="{{ action.variant }}"
+        class="{{ action.cssClass }}"
+        {{ ...action.htmlAttributes|ea_html_attrs|filter(v => v is not null) }}
+        type="submit"
+        icon="{{ action.icon }}"
+    >
+        <span class="action-label">{{ action.label|trans }}</span>
+    </twig:ea:Button>
+</form>
