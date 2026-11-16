@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Declaration;
 
+use App\Declaration\Exception\DeclarationNotConfirmableException;
 use App\Entity\Declaration;
+use App\Entity\User;
 use App\Repository\DeclarationRepository;
 use App\State\DeclarationState;
 use Doctrine\ORM\EntityManagerInterface;
@@ -62,5 +64,39 @@ final readonly class DeclarationConfirmer
         });
 
         return [$declaration, DeclarationConfirmationResult::CONFIRMED];
+    }
+
+    /**
+     * Confirms on the volunteer's behalf, from the back office, when the mail
+     * carrying their link never arrived.
+     *
+     * Not a normal path. It skips the one thing the double opt-in proves — that
+     * the address works and that the volunteer meant to send this — so it records
+     * who vouched instead (Declaration::$confirmedBy). The token's expiry is
+     * deliberately ignored: a mail that never arrived is exactly the case where
+     * the link runs out before anyone notices.
+     *
+     * Goes through the same `confirm` transition as the link, so the lines move
+     * with it (DeclarationConfirmationCascade) exactly as they would on a click.
+     *
+     * @throws DeclarationNotConfirmableException when the declaration is not awaiting confirmation
+     */
+    public function confirmManually(Declaration $declaration, User $by): void
+    {
+        if (!$this->canConfirmManually($declaration)) {
+            throw DeclarationNotConfirmableException::notAwaitingConfirmation($declaration);
+        }
+
+        $now = $this->clock->now();
+
+        $this->entityManager->wrapInTransaction(function () use ($declaration, $by, $now): void {
+            $this->stateMachine->apply($declaration, DeclarationState::TRANSITION_CONFIRM);
+            $declaration->markConfirmedManually($by, $now);
+        });
+    }
+
+    public function canConfirmManually(Declaration $declaration): bool
+    {
+        return $declaration->getState()->isAwaitingConfirmation();
     }
 }

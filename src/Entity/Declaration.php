@@ -103,6 +103,21 @@ class Declaration implements TenantAware
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $confirmedAt = null;
 
+    /**
+     * The back-office account that confirmed in the volunteer's stead, when the
+     * confirmation mail never reached them. Null on an ordinary confirmation: the
+     * volunteer clicked the link themselves.
+     *
+     * Kept because a manual confirmation proves less — nobody showed the address
+     * works, or that the volunteer meant to send this — and whoever reads the
+     * declaration later has to be able to tell the two apart, and ask the right
+     * person. No ON DELETE: an account that vouched for a declaration cannot
+     * silently stop having done so.
+     */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?User $confirmedBy = null;
+
     public function __construct(
         Organization $organization,
         Person $person,
@@ -169,6 +184,26 @@ class Declaration implements TenantAware
     {
         $this->confirmedAt = $now;
         $this->confirmationTokenExpiresAt = null;
+    }
+
+    /**
+     * Records a confirmation made from the back office, on the volunteer's behalf.
+     * See DeclarationConfirmer::confirmManually().
+     */
+    public function markConfirmedManually(User $by, DateTimeImmutable $now): void
+    {
+        $this->markConfirmed($now);
+        $this->confirmedBy = $by;
+    }
+
+    public function getConfirmedBy(): ?User
+    {
+        return $this->confirmedBy;
+    }
+
+    public function isConfirmedManually(): bool
+    {
+        return null !== $this->confirmedBy;
     }
 
     public function getId(): Uuid
