@@ -101,14 +101,58 @@ gotenberg:
   nodeSelector: {}
   tolerations: []
 
-# PostgreSQL, always external. The chart used to be able to run its own via the
-# Bitnami subchart; that is gone, so there is exactly one way to point this at a
-# database and no second path to keep working.
+# PostgreSQL, run in-cluster by the CloudNativePG operator (installed separately, in
+# cnpg-system; this chart only declares the Cluster). DATABASE_URL is built from the
+# credentials Secret the operator generates, so CD passes no database secret at all.
 database:
-  # Full Doctrine DSN, supplied by CD from the DATABASE_URL secret, e.g.
-  #   postgresql://benevolio:secret@db.internal:5432/benevolio?serverVersion=18&charset=utf8
-  # Required — the chart refuses to render without it.
-  url: ""
+  # One instance. The longhorn-cnpg storage class keeps a single replica, local to the
+  # node, so the daily dump below is what protects the data — not a standby.
+  instances: 1
+  # Also the serverVersion Doctrine is told, and the pg_dump the backup runs: all three
+  # must move together.
+  postgresMajor: 18
+  image:
+    repository: ghcr.io/cloudnative-pg/postgresql
+  name: benevolio
+  owner: benevolio
+  # Sized for ~1 000 declarations and ~100 accounts. The production database was 8.7 MB
+  # when this was written (catalogs included), and a declaration with its lines is a
+  # few kilobytes, so the data itself stays in the tens of megabytes. What fills a small
+  # volume is WAL, which `parameters` caps below. The class allows expansion: raising
+  # `size` grows the volume in place.
+  storage:
+    storageClass: longhorn-cnpg
+    size: 1Gi
+  # PostgreSQL's defaults assume a real disk: max_wal_size 1GB alone would fill the
+  # volume, and CNPG sets wal_keep_size to 512MB for standbys this cluster does not have.
+  parameters:
+    max_wal_size: 256MB
+    min_wal_size: 64MB
+    wal_keep_size: 64MB
+    shared_buffers: 64MB
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      memory: 256Mi
+  # Daily pg_dump to Object Storage, under <s3Bucket>/<prefix>, pruned after
+  # `retention` (an rclone duration).
+  backup:
+    enabled: true
+    schedule: "0 3 * * *"
+    timeZone: Europe/Paris
+    prefix: backups
+    retention: 7d
+    rclone:
+      repository: docker.io/rclone/rclone
+      tag: 1.71.2
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+      limits:
+        memory: 256Mi
 
 # Secret values. Supply via --set, a values.local.yaml, or a sealed-secret.
 secrets:

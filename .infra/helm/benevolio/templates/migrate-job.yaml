@@ -6,8 +6,10 @@ metadata:
   labels:
     {{- include "benevolio.labels" . | nindent 4 }}
   annotations:
-    # post-install/post-upgrade: runs after the bundled Postgres (a normal resource)
-    # exists. The entrypoint waits for the DB to be reachable before migrating.
+    # post-install/post-upgrade: runs after the CNPG Cluster (a normal resource) has
+    # been created. On a first install the -app Secret may not exist yet; the kubelet
+    # retries until the operator writes it, and the entrypoint then waits for the
+    # database to accept connections before migrating.
     helm.sh/hook: post-install,post-upgrade
     helm.sh/hook-weight: "-5"
     helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
@@ -36,6 +38,9 @@ spec:
             - doctrine:migrations:migrate
             - --no-interaction
             - --all-or-nothing
+          # DATABASE_URL, from the Secret CNPG generates. See _helpers.tpl.
+          env:
+            {{- include "benevolio.database.env" . | nindent 12 }}
           envFrom:
             - configMapRef:
                 name: {{ include "benevolio.fullname" . }}-config

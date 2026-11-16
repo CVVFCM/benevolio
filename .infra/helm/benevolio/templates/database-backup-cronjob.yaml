@@ -1,0 +1,110 @@
+{{- if .Values.database.backup.enabled }}
+# A daily logical dump to Object Storage, beside the receipts. Deliberately not
+# CNPG's own physical backup: the database is a few megabytes, a pg_dump restores into
+# any PostgreSQL anywhere, and there is no point-in-time recovery to lose because none
+# was asked for. The storage class keeps a single replica on one node, so this is the
+# ONLY copy of the data that survives losing that disk.
+#
+# Two containers sharing an emptyDir: pg_dump in the PostgreSQL image (same major as
+# the server, which pg_dump requires), then rclone, which needs no config file — the
+# `:s3:` remote is configured entirely from RCLONE_S3_* variables.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "benevolio.fullname" . }}-db-backup
+  labels:
+    {{- include "benevolio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: db-backup
+spec:
+  schedule: {{ .Values.database.backup.schedule | quote }}
+  timeZone: {{ .Values.database.backup.timeZone | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            {{- include "benevolio.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: db-backup
+        spec:
+          restartPolicy: Never
+          volumes:
+            - name: dump
+              emptyDir:
+                sizeLimit: 512Mi
+          initContainers:
+            - name: pg-dump
+              image: {{ printf "%s:%v" .Values.database.image.repository .Values.database.postgresMajor | quote }}
+              command:
+                - sh
+                - -c
+                # Custom format: compressed, and restorable table by table with pg_restore.
+                - pg_dump "$CNPG_APP_URI" --format=custom --no-owner --no-acl --file="/dump/benevolio-$(date -u +%Y%m%dT%H%M%SZ).dump"
+              env:
+                - name: CNPG_APP_URI
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "benevolio.database.clusterName" . }}-app
+                      key: uri
+              volumeMounts:
+                - name: dump
+                  mountPath: /dump
+              resources:
+                {{- toYaml .Values.database.backup.resources | nindent 16 }}
+          containers:
+            - name: upload
+              image: {{ printf "%s:%s" .Values.database.backup.rclone.repository .Values.database.backup.rclone.tag | quote }}
+              command:
+                - sh
+                - -c
+                # Upload, then prune what is past retention. Pruning is scoped to the
+                # backups prefix: the receipts share this bucket and must never match.
+                - >-
+                  rclone copy /dump ":s3:$S3_BUCKET/$BACKUP_PREFIX" &&
+                  rclone delete ":s3:$S3_BUCKET/$BACKUP_PREFIX" --min-age "$BACKUP_RETENTION"
+              env:
+                - name: BACKUP_PREFIX
+                  value: {{ required "database.backup.prefix is required — pruning runs inside it, and an empty one would prune the receipts" .Values.database.backup.prefix | quote }}
+                - name: BACKUP_RETENTION
+                  value: {{ .Values.database.backup.retention | quote }}
+                - name: S3_BUCKET
+                  valueFrom:
+                    configMapKeyRef:
+                      name: {{ include "benevolio.fullname" . }}-config
+                      key: S3_BUCKET
+                - name: RCLONE_S3_PROVIDER
+                  value: Scaleway
+                - name: RCLONE_S3_ENDPOINT
+                  valueFrom:
+                    configMapKeyRef:
+                      name: {{ include "benevolio.fullname" . }}-config
+                      key: S3_ENDPOINT
+                - name: RCLONE_S3_REGION
+                  valueFrom:
+                    configMapKeyRef:
+                      name: {{ include "benevolio.fullname" . }}-config
+                      key: S3_REGION
+                - name: RCLONE_S3_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "benevolio.fullname" . }}-secret
+                      key: S3_KEY
+                - name: RCLONE_S3_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "benevolio.fullname" . }}-secret
+                      key: S3_SECRET
+                # The bucket exists already; without this rclone tries to create it and
+                # the key may not be allowed to.
+                - name: RCLONE_S3_NO_CHECK_BUCKET
+                  value: "true"
+              volumeMounts:
+                - name: dump
+                  mountPath: /dump
+                  readOnly: true
+              resources:
+                {{- toYaml .Values.database.backup.resources | nindent 16 }}
+{{- end }}
