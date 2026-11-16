@@ -206,5 +206,317 @@
                 <target>Se déconnecter</target>
             </segment>
         </unit>
+        <unit id="home.title">
+            <segment>
+                <source>home.title</source>
+                <target>Benevolio — le bénévolat de votre association, compté et reconnu</target>
+            </segment>
+        </unit>
+        <unit id="home.meta_description">
+            <segment>
+                <source>home.meta_description</source>
+                <target>Benevolio recueille les heures et les frais des bénévoles d'une association loi 1901, les valorise en comptabilité et émet les reçus fiscaux CERFA 2041-RD.</target>
+            </segment>
+        </unit>
+        <unit id="home.nav.features">
+            <segment>
+                <source>home.nav.features</source>
+                <target>Fonctionnalités</target>
+            </segment>
+        </unit>
+        <unit id="home.nav.organizations">
+            <segment>
+                <source>home.nav.organizations</source>
+                <target>Associations</target>
+            </segment>
+        </unit>
+        <unit id="home.nav.backoffice">
+            <segment>
+                <source>home.nav.backoffice</source>
+                <target>Espace administrateur</target>
+            </segment>
+        </unit>
+        <unit id="home.hero.eyebrow">
+            <segment>
+                <source>home.hero.eyebrow</source>
+                <target>Pour les associations loi 1901</target>
+            </segment>
+        </unit>
+        <unit id="home.hero.title">
+            <segment>
+                <source>home.hero.title</source>
+                <target>Le bénévolat de votre association, enfin compté — et reconnu.</target>
+            </segment>
+        </unit>
+        <unit id="home.hero.lede">
+            <segment>
+                <source>home.hero.lede</source>
+                <target>Benevolio recueille les heures et les frais de vos bénévoles, les valorise selon les règles comptables, et émet les reçus fiscaux qui leur reviennent. Sans tableur, sans ressaisie, sans courir après les justificatifs.</target>
+            </segment>
+        </unit>
+        <unit id="home.hero.contact">
+            <segment>
+                <source>home.hero.contact</source>
+                <target>Votre association est intéressée ?</target>
+            </segment>
+        </unit>
+        <unit id="home.hero.discover">
+            <segment>
+                <source>home.hero.discover</source>
+                <target>En savoir plus</target>
+            </segment>
+        </unit>
+        <unit id="home.hero.screenshot_alt">
+            <segment>
+                <source>home.hero.screenshot_alt</source>
+                <target>Le formulaire de déclaration, à l'étape où le bénévole décrit son action : tâche, date, heures et trajet.</target>
+            </segment>
+        </unit>
+        <unit id="home.steps.title">
+            <segment>
+                <source>home.steps.title</source>
+                <target>Comment ça marche</target>
+            </segment>
+        </unit>
+        <unit id="home.steps.declare.title">
+            <segment>
+                <source>home.steps.declare.title</source>
+                <target>Le bénévole déclare</target>
+            </segment>
+        </unit>
+        <unit id="home.steps.declare.text">
+            <segment>
+                <source>home.steps.declare.text</source>
+                <target>Un formulaire public, sans compte à créer, utilisable sur téléphone : ses actions, ses heures, ses trajets. Il confirme sa déclaration par un lien reçu par courriel.</target>
+            </segment>
+        </unit>
+        <unit id="home.steps.review.title">
+            <segment>
+                <source>home.steps.review.title</source>
+                <target>L'association valide</target>
+            </segment>
+        </unit>
+        <unit id="home.steps.review.text">
+            <segment>
+                <source>home.steps.review.text</source>
+                <target>Chaque ligne est relue dans l'espace d'administration, puis validée ou refusée. Rien n'entre en comptabilité sans décision.</target>
+            </segment>
+        </unit>
+        <unit id="home.steps.books.title">
+            <segment>
+                <source>home.steps.books.title</source>
+                <target>Les comptes et les reçus suivent</target>
+            </segment>
+        </unit>
+        <unit id="home.steps.books.text">
+            <segment>
+                <source>home.steps.books.text</source>
+                <target>Les écritures de l'exercice sont prêtes à recopier, et les reçus fiscaux partent par courriel à chaque bénévole, une fois l'année civile close.</target>
+            </segment>
+        </unit>
+        <unit id="home.features.title">
+            <segment>
+                <source>home.features.title</source>
+                <target>Tout ce qu'il faut, rien de plus</target>
+            </segment>
+        </unit>
+        <unit id="home.features.lede">
+            <segment>
+                <source>home.features.lede</source>
+                <target>Pensé pour les trésoriers et les secrétaires d'associations, pas pour des services comptables.</target>
+            </segment>
+        </unit>
+        <unit id="home.features.form.title">
+            <segment>
+                <source>home.features.form.title</source>
+                <target>Déclaration en ligne, sans compte</target>
+            </segment>
+        </unit>
+        <unit id="home.features.form.text">
+            <segment>
+                <source>home.features.form.text</source>
+                <target>Trois étapes, des messages d'erreur en français, et une double confirmation par courriel qui garantit que l'adresse du bénévole fonctionne.</target>
+            </segment>
+        </unit>
+        <unit id="home.features.valuation.title">
+            <segment>
+                <source>home.features.valuation.title</source>
+                <target>Bénévolat valorisé</target>
+            </segment>
+        </unit>
+        <unit id="home.features.valuation.text">
+            <segment>
+                <source>home.features.valuation.text</source>
+                <target>Les heures données sont valorisées au taux de chaque exercice et inscrites aux comptes 864 et 875, selon le règlement ANC 2018-06.</target>
+            </segment>
+        </unit>
+        <unit id="home.features.expenses.title">
+            <segment>
+                <source>home.features.expenses.title</source>
+                <target>Abandons de frais</target>
+            </segment>
+        </unit>
+        <unit id="home.features.expenses.text">
+            <segment>
+                <source>home.features.expenses.text</source>
+                <target>Kilomètres au barème fiscal en vigueur selon la puissance du véhicule : l'écriture 6251 / 4681 / 75412 est prête à passer.</target>
+            </segment>
+        </unit>
+        <unit id="home.features.receipts.title">
+            <segment>
+                <source>home.features.receipts.title</source>
+                <target>Reçus fiscaux CERFA 2041-RD</target>
+            </segment>
+        </unit>
+        <unit id="home.features.receipts.text">
+            <segment>
+                <source>home.features.receipts.text</source>
+                <target>Un reçu par bénévole et par année civile, numérotation continue, signature apposée, envoyé directement par courriel.</target>
+            </segment>
+        </unit>
+        <unit id="home.features.fiscal_years.title">
+            <segment>
+                <source>home.features.fiscal_years.title</source>
+                <target>Exercices comptables</target>
+            </segment>
+        </unit>
+        <unit id="home.features.fiscal_years.text">
+            <segment>
+                <source>home.features.fiscal_years.text</source>
+                <target>Taux horaires et barèmes propres à chaque exercice, même décalé sur l'année civile, et écriture centralisatrice datée de la clôture.</target>
+            </segment>
+        </unit>
+        <unit id="home.features.admins.title">
+            <segment>
+                <source>home.features.admins.title</source>
+                <target>Plusieurs administrateurs</target>
+            </segment>
+        </unit>
+        <unit id="home.features.admins.text">
+            <segment>
+                <source>home.features.admins.text</source>
+                <target>Invitez trésorier et secrétaire par courriel : chacun choisit son propre mot de passe, personne n'a à en transmettre.</target>
+            </segment>
+        </unit>
+        <unit id="home.split.title">
+            <segment>
+                <source>home.split.title</source>
+                <target>Deux contributions, deux traitements</target>
+            </segment>
+        </unit>
+        <unit id="home.split.lede">
+            <segment>
+                <source>home.split.lede</source>
+                <target>C'est là que les tableurs se trompent. Benevolio ne les additionne jamais.</target>
+            </segment>
+        </unit>
+        <unit id="home.split.time.title">
+            <segment>
+                <source>home.split.time.title</source>
+                <target>Le temps donné</target>
+            </segment>
+        </unit>
+        <unit id="home.split.time.text">
+            <segment>
+                <source>home.split.time.text</source>
+                <target>Valorisé en comptabilité, hors bilan, pour montrer ce que l'association doit à ses bénévoles. Il n'ouvre aucun droit à réduction d'impôt.</target>
+            </segment>
+        </unit>
+        <unit id="home.split.time.tag">
+            <segment>
+                <source>home.split.time.tag</source>
+                <target>Comptes 864 / 875 — jamais de reçu</target>
+            </segment>
+        </unit>
+        <unit id="home.split.expenses.title">
+            <segment>
+                <source>home.split.expenses.title</source>
+                <target>Les frais abandonnés</target>
+            </segment>
+        </unit>
+        <unit id="home.split.expenses.text">
+            <segment>
+                <source>home.split.expenses.text</source>
+                <target>Kilomètres, péages, fournitures : ce que le bénévole a payé et renonce à se faire rembourser devient un don à l'association.</target>
+            </segment>
+        </unit>
+        <unit id="home.split.expenses.tag">
+            <segment>
+                <source>home.split.expenses.tag</source>
+                <target>Comptes 4681 / 75412 — reçu fiscal</target>
+            </segment>
+        </unit>
+        <unit id="home.gallery.title">
+            <segment>
+                <source>home.gallery.title</source>
+                <target>En images</target>
+            </segment>
+        </unit>
+        <unit id="home.gallery.declarations.caption">
+            <segment>
+                <source>home.gallery.declarations.caption</source>
+                <target>Les déclarations reçues, avec leurs heures et leurs kilomètres, à valider ou refuser.</target>
+            </segment>
+        </unit>
+        <unit id="home.gallery.declarations.alt">
+            <segment>
+                <source>home.gallery.declarations.alt</source>
+                <target>La liste des déclarations dans l'espace d'administration : bénévole, date de dépôt, état, heures et kilomètres déclarés.</target>
+            </segment>
+        </unit>
+        <unit id="home.gallery.ledger.caption">
+            <segment>
+                <source>home.gallery.ledger.caption</source>
+                <target>L'écriture de l'exercice, présentée comme un trésorier la recopie dans son journal.</target>
+            </segment>
+        </unit>
+        <unit id="home.gallery.ledger.alt">
+            <segment>
+                <source>home.gallery.ledger.alt</source>
+                <target>Les écritures comptables d'un exercice : bénévolat valorisé aux comptes 864 et 875, abandon de frais aux comptes 6251, 4681 et 75412.</target>
+            </segment>
+        </unit>
+        <unit id="home.organizations.title">
+            <segment>
+                <source>home.organizations.title</source>
+                <target>Ils utilisent Benevolio</target>
+            </segment>
+        </unit>
+        <unit id="home.organizations.lede">
+            <segment>
+                <source>home.organizations.lede</source>
+                <target>Bénévole de l'une de ces associations ? Déclarez vos actions directement.</target>
+            </segment>
+        </unit>
+        <unit id="home.organizations.declare">
+            <segment>
+                <source>home.organizations.declare</source>
+                <target>Déclarer mes actions</target>
+            </segment>
+        </unit>
+        <unit id="home.contact.title">
+            <segment>
+                <source>home.contact.title</source>
+                <target>Votre association est intéressée ?</target>
+            </segment>
+        </unit>
+        <unit id="home.contact.text">
+            <segment>
+                <source>home.contact.text</source>
+                <target>Écrivez-nous : nous vous expliquerons comment l'ouvrir pour votre association, et ce qu'il faut pour émettre vos premiers reçus fiscaux.</target>
+            </segment>
+        </unit>
+        <unit id="home.contact.button">
+            <segment>
+                <source>home.contact.button</source>
+                <target>Nous écrire</target>
+            </segment>
+        </unit>
+        <unit id="home.contact.subject">
+            <segment>
+                <source>home.contact.subject</source>
+                <target>Benevolio pour notre association</target>
+            </segment>
+        </unit>
     </file>
 </xliff>

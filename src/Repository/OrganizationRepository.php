@@ -28,4 +28,15 @@ final class OrganizationRepository extends ServiceEntityRepository
     {
         return $this->findOneBy(['slug' => $slug, 'active' => true]);
     }
+
+    /**
+     * The associations named on the public home page: the ones that opted in, and
+     * only while active — a closed association's form would 404.
+     *
+     * @return list<Organization>
+     */
+    public function findListedOnHomepage(): array
+    {
+        return $this->findBy(['active' => true, 'listedOnHomepage' => true], ['name' => 'ASC']);
+    }
 }

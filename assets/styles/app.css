@@ -894,3 +894,345 @@ body {
     color: var(--accent);
     font-weight: 600;
 }
+
+/* ------------------------------------------------------------- home page -- */
+
+/*
+ * The public home page (templates/home.html.twig). Same paper, ink and deep-sea
+ * accent as the volunteer form, at a larger scale: it is read by someone deciding
+ * whether to trust their association's paperwork to this, so it should look like
+ * the same careful document, not like a different product's marketing site.
+ */
+
+.home {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.home__wrap {
+    width: min(100% - 2 * var(--space-4), 68rem);
+    margin-inline: auto;
+}
+
+.home__bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3) var(--space-5);
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3) var(--space-5);
+    border-bottom: 1px solid var(--rule);
+    background-color: var(--surface-raised);
+}
+
+.home__brand {
+    color: var(--ink);
+    font-size: 1.125rem;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    text-decoration: none;
+}
+
+.home__nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-5);
+    align-items: center;
+    font-size: 0.9375rem;
+}
+
+.home__nav a {
+    color: var(--ink-muted);
+    text-decoration: none;
+}
+
+.home__nav a:hover {
+    color: var(--ink);
+}
+
+.home__nav .home__nav-cta {
+    padding: var(--space-1) var(--space-3);
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--radius);
+    color: var(--ink);
+}
+
+.eyebrow {
+    margin: 0 0 var(--space-3);
+    color: var(--marker);
+    font-size: 0.8125rem;
+    font-weight: 650;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+/* ------------------------------------------------------------------ hero -- */
+
+.hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-7);
+    align-items: center;
+    padding-block: var(--space-8) var(--space-7);
+}
+
+@media (width >= 60rem) {
+    .hero {
+        grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    }
+}
+
+.hero__title {
+    margin: 0 0 var(--space-5);
+    font-size: clamp(2rem, 1.4rem + 2.6vw, 3.25rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.08;
+    text-wrap: balance;
+}
+
+.hero__lede {
+    max-width: 52ch;
+    margin: 0 0 var(--space-6);
+    color: var(--ink-muted);
+    font-size: 1.125rem;
+}
+
+.hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+}
+
+/* A screenshot, framed like a window so it reads as the product and not as decoration. */
+.shot {
+    margin: 0;
+}
+
+.shot img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--rule);
+    border-top-width: 1.25rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--surface-raised);
+    box-shadow: var(--shadow-raised), 0 24px 48px -24px rgb(22 32 43 / 25%);
+}
+
+.shot figcaption {
+    margin-top: var(--space-3);
+    color: var(--ink-muted);
+    font-size: 0.9375rem;
+}
+
+.hero__shot img {
+    transform: perspective(1600px) rotateY(-4deg);
+}
+
+@media (width < 60rem), (prefers-reduced-motion: reduce) {
+    .hero__shot img {
+        transform: none;
+    }
+}
+
+/* -------------------------------------------------------------- sections -- */
+
+.home__section {
+    padding-block: var(--space-8);
+}
+
+.home__section--tinted {
+    border-block: 1px solid var(--rule);
+    background-color: var(--surface-sunken);
+}
+
+.home__heading {
+    margin: 0 0 var(--space-3);
+    font-size: clamp(1.5rem, 1.2rem + 1.2vw, 2.125rem);
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+}
+
+.home__lede {
+    max-width: 60ch;
+    margin: 0 0 var(--space-6);
+    color: var(--ink-muted);
+    font-size: 1.0625rem;
+}
+
+.flow {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: var(--space-5);
+    margin: var(--space-6) 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.flow__step p {
+    margin: 0;
+    color: var(--ink-muted);
+}
+
+.flow__number {
+    display: inline-grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    margin-bottom: var(--space-3);
+    border-radius: 50%;
+    background-color: var(--accent-tint);
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.flow__title,
+.feature__title,
+.split__title {
+    margin: 0 0 var(--space-2);
+    font-size: 1.125rem;
+    font-weight: 650;
+}
+
+.features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+    gap: var(--space-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.feature {
+    padding: var(--space-5);
+    border: 1px solid var(--rule);
+    border-top: 3px solid var(--accent);
+    border-radius: var(--radius-lg);
+    background-color: var(--surface-raised);
+}
+
+.feature p {
+    margin: 0;
+    color: var(--ink-muted);
+    font-size: 0.9375rem;
+}
+
+/* Two columns that must never read as one sum: the whole point of the section. */
+.split {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+    gap: var(--space-4);
+}
+
+.split__side {
+    padding: var(--space-5) var(--space-6);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-lg);
+    background-color: var(--surface-raised);
+}
+
+.split__side p {
+    margin: 0 0 var(--space-4);
+    color: var(--ink-muted);
+}
+
+.split__side .split__tag {
+    display: inline-block;
+    margin: 0;
+    padding: var(--space-1) var(--space-3);
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
+.split__side--time .split__tag {
+    background-color: var(--marker-tint);
+    color: var(--marker);
+}
+
+.split__side--expenses .split__tag {
+    background-color: var(--success-tint);
+    color: var(--success);
+}
+
+.gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+    gap: var(--space-6);
+    margin-top: var(--space-6);
+}
+
+@media (width < 30rem) {
+    .gallery {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* ----------------------------------------------------------- association -- */
+
+.tenants {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+@media (width < 30rem) {
+    .tenants {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.tenant {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    justify-content: space-between;
+    padding: var(--space-4) var(--space-5);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-lg);
+    background-color: var(--surface-raised);
+}
+
+.tenant__name {
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.tenant__link {
+    color: var(--accent);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.tenant__link:hover {
+    color: var(--accent-hover);
+    text-decoration: underline;
+}
+
+/* --------------------------------------------------------------- contact -- */
+
+.contact {
+    max-width: 40rem;
+    margin-inline: auto;
+    padding: var(--space-7) var(--space-6);
+    border-radius: var(--radius-lg);
+    background-color: var(--accent-tint);
+    text-align: center;
+}
+
+.contact p {
+    margin: 0 0 var(--space-5);
+    color: var(--ink-muted);
+}
+
+.contact .contact__address {
+    margin: var(--space-3) 0 0;
+    font-size: 0.875rem;
+}

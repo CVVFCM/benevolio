@@ -10,12 +10,12 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * What Kubernetes probes, and the only route this application serves outside a
- * tenant or the backoffice.
+ * What Kubernetes probes.
  *
- * It exists because there is nothing else safe to probe. `/` is not routed at all
- * — every page lives under `/a/{organizationSlug}/…`, `/admin` or `/login` — so the
- * chart's original probe on `/` got a 404 forever and the pod never turned ready.
+ * It exists because there was nothing else safe to probe. `/` was not routed then, so
+ * the chart's original probe on it got a 404 forever and the pod never turned ready.
+ * It is the public home page now, and still not a probe target: it reads the
+ * database to list associations, which is exactly what the paragraph below rules out.
  *
  * DELIBERATELY DOES NOT TOUCH THE DATABASE. The same endpoint backs the liveness
  * probe, and a liveness probe that fails when the database blips would turn a

@@ -62,6 +62,9 @@ final class OrganizationCrudController extends AbstractCrudController
         yield BooleanField::new('active', 'organization.active')
             ->setHelp('organization.active.help');
 
+        yield BooleanField::new('listedOnHomepage', 'organization.listed_on_homepage')
+            ->setHelp('organization.listed_on_homepage.help');
+
         // What CERFA 2041-RD asks about the beneficiary. Without the SIREN/RNA a
         // receipt is not a valid document, so App\Receipt\ReceiptEligibility refuses
         // to issue one rather than leaving the line blank — see that class.
