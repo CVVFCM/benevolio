@@ -1,0 +1,19 @@
+{#
+    « Se connecter en tant que », as a POST form: Symfony's switch_user checks no CSRF,
+    so App\Security\ImpersonationListener refuses a switch without this token.
+#}
+{# @var action \EasyCorp\Bundle\EasyAdminBundle\Dto\ActionDto #}
+{# @var entity \EasyCorp\Bundle\EasyAdminBundle\Dto\EntityDto #}
+<form method="post" action="{{ action.linkUrl }}" class="d-inline">
+    <input type="hidden" name="_switch_user" value="{{ entity.instance.userIdentifier }}">
+    <input type="hidden" name="{{ constant('App\\Security\\ImpersonationListener::CSRF_FIELD') }}" value="{{ csrf_token(constant('App\\Security\\ImpersonationListener::CSRF_TOKEN_ID')) }}">
+    <twig:ea:Button
+        variant="{{ action.variant }}"
+        class="{{ action.cssClass }}"
+        {{ ...action.htmlAttributes|ea_html_attrs|filter(v => v is not null) }}
+        type="submit"
+        icon="{{ action.icon }}"
+    >
+        <span class="action-label">{{ action.label|trans }}</span>
+    </twig:ea:Button>
+</form>

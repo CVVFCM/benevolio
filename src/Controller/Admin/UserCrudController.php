@@ -90,7 +90,11 @@ final class UserCrudController extends AbstractCrudController
             ->setHelp(Crud::PAGE_NEW, 'Un lien lui sera envoyé par courriel pour choisir son mot de passe. Personne d\'autre ne le connaîtra.')
             // Single-record pages fetch by id and never see the query builder
             // below. See the class docblock.
-            ->setEntityPermission(UserVoter::VIEW);
+            ->setEntityPermission(UserVoter::VIEW)
+            // Inlined: the dropdown renders its own <form> and ignores an action's
+            // template, so « Renvoyer l'invitation » would post without its CSRF token
+            // and always answer « La page a expiré ».
+            ->showEntityActionsInlined();
     }
 
     /**

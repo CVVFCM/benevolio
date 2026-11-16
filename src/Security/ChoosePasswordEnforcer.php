@@ -11,6 +11,7 @@ use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
+use Symfony\Component\Security\Core\Authentication\Token\SwitchUserToken;
 
 use function in_array;
 
@@ -23,6 +24,10 @@ use function in_array;
  *     in;
  *   - a forgotten-password link logs in an account that does have one, which only
  *     the session flag set by LoginLinkSuccessHandler can tell apart.
+ *
+ * Not while a super-admin impersonates the account: they may look at an invited
+ * account, but choosing its password is its holder's alone — access_control refuses
+ * them the page, so redirecting there would be a loop.
  *
  * Priority 0: after the firewall (8), which is what puts the token in storage.
  */
@@ -49,9 +54,10 @@ final readonly class ChoosePasswordEnforcer
             return;
         }
 
-        $user = $this->tokenStorage->getToken()?->getUser();
+        $token = $this->tokenStorage->getToken();
+        $user = $token?->getUser();
 
-        if (!$user instanceof User) {
+        if (!$user instanceof User || $token instanceof SwitchUserToken) {
             return;
         }
 

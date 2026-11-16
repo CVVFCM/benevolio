@@ -95,6 +95,25 @@ final class UserAdminTest extends WebTestCase
         self::assertSelectorTextContains('body', 'Invitation renvoyée à attente@asso.test');
     }
 
+    /**
+     * From the list too. EasyAdmin's actions dropdown renders its own form and ignores
+     * the action's template, which carries the CSRF token: there, the button always
+     * answered « La page a expiré ». The CRUD shows its actions inlined for that reason.
+     */
+    #[Test]
+    public function an_invitation_can_be_resent_from_the_list(): void
+    {
+        $organization = OrganizationFactory::createOne();
+        $this->loginAs(UserFactory::new()->admin($organization)->create());
+        UserFactory::new()->admin($organization)->invited()->create(['email' => 'attente@asso.test']);
+
+        $crawler = $this->client->request(Request::METHOD_GET, '/admin/user');
+        $this->client->submit($crawler->filter('form[action$="/resend-invitation"]')->form());
+
+        self::assertResponseRedirects();
+        self::assertEmailCount(1);
+    }
+
     #[Test]
     public function an_active_account_offers_no_resend_and_refuses_one(): void
     {
