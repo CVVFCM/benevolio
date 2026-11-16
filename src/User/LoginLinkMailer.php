@@ -41,7 +41,11 @@ final readonly class LoginLinkMailer
         private MailerInterface $mailer,
         // The main firewall's own handler, not the firewall-aware alias, which
         // picks a firewall from the current request and so fails without one.
-        #[Autowire(service: 'security.authenticator.login_link_handler.main')]
+        // Lazy, because its SignatureHasher refuses an empty kernel.secret on
+        // construction, and EasyAdmin's route loader builds every CRUD controller —
+        // so this service — during cache:warmup in the Docker build, where
+        // APP_SECRET is deliberately empty.
+        #[Autowire(service: 'security.authenticator.login_link_handler.main', lazy: true)]
         private LoginLinkHandlerInterface $loginLinkHandler,
         #[Autowire('%app.mail_from%')]
         private string $from,
