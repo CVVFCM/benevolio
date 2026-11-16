@@ -62,6 +62,12 @@
                 <target>Exercices comptables</target>
             </segment>
         </unit>
+        <unit id="menu.users">
+            <segment>
+                <source>menu.users</source>
+                <target>Administrateurs</target>
+            </segment>
+        </unit>
 
         <unit id="menu.receipts">
             <segment>
@@ -247,16 +253,10 @@
                 <target>Obligatoire pour un administrateur d'association. Doit rester vide pour un administrateur de la plateforme.</target>
             </segment>
         </unit>
-        <unit id="user.password">
+        <unit id="user.status">
             <segment>
-                <source>user.password</source>
-                <target>Mot de passe</target>
-            </segment>
-        </unit>
-        <unit id="user.password.help">
-            <segment>
-                <source>user.password.help</source>
-                <target>12 caractères minimum. Laisser vide lors d'une modification conserve le mot de passe actuel.</target>
+                <source>user.status</source>
+                <target>État</target>
             </segment>
         </unit>
     </file>

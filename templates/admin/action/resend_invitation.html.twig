@@ -1,0 +1,19 @@
+{#
+    EasyAdmin's action template, as a POST form carrying a CSRF token: renderAsForm()
+    emits the form but no token, and sending mail must not be reachable from a
+    pasted or prefetched link.
+#}
+{# @var action \EasyCorp\Bundle\EasyAdminBundle\Dto\ActionDto #}
+{# @var entity \EasyCorp\Bundle\EasyAdminBundle\Dto\EntityDto #}
+<form method="post" action="{{ action.linkUrl }}" class="d-inline">
+    <input type="hidden" name="token" value="{{ csrf_token(constant('App\\Controller\\Admin\\UserCrudController::CSRF_RESEND_INVITATION') ~ entity.primaryKeyValue) }}">
+    <twig:ea:Button
+        variant="{{ action.variant }}"
+        class="{{ action.cssClass }}"
+        {{ ...action.htmlAttributes|ea_html_attrs|filter(v => v is not null) }}
+        type="submit"
+        icon="{{ action.icon }}"
+    >
+        <span class="action-label">{{ action.label|trans }}</span>
+    </twig:ea:Button>
+</form>

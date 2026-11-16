@@ -85,8 +85,16 @@ final class DashboardAccessTest extends WebTestCase
         $this->client->request('GET', '/admin/organization');
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
 
+        // /admin/user exists now, but it is the association's own
+        // App\Controller\Admin\UserCrudController, not the platform's: no roles
+        // checkbox reachable, and its own title rather than « Comptes administrateurs ».
         $this->client->request('GET', '/admin/user');
-        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        self::assertResponseIsSuccessful();
+        self::assertSelectorTextContains('h1', 'Administrateurs');
+        self::assertSelectorTextNotContains('h1', 'Comptes administrateurs');
+
+        $this->client->request('GET', '/admin/user/new');
+        self::assertSelectorNotExists('input[name$="[roles][]"]');
     }
 
     #[Test]

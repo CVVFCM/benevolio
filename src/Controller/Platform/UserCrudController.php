@@ -6,6 +6,8 @@ namespace App\Controller\Platform;
 
 use App\Entity\User;
 use App\Security\Role;
+use App\User\LoginLinkMailer;
+use App\User\OwnerAssigner;
 use Doctrine\ORM\EntityManagerInterface;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
@@ -13,16 +15,16 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\AssociationField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\ChoiceField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\EmailField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
-use Symfony\Component\Form\Extension\Core\Type\PasswordType;
-use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
  * Manages back-office accounts across every tenant.
  *
- * The form binds a plaintext password to User::$plainPassword, which is not
- * persisted; persistEntity()/updateEntity() hash it and immediately clear it, so
- * the stored hash never round-trips through the form.
+ * No password field: like an association's own « Administrateurs » page, creating
+ * an account mails its holder a login link to choose their own (LoginLinkMailer).
+ * The first account of an association becomes its owner (OwnerAssigner). The roles
+ * checkbox does offer « Responsable », so a super-admin can repair ownership by
+ * hand; App\Validator\OneOwnerPerOrganization refuses a second.
  *
  * CONVENTION EXCEPTION: see App\Controller\Admin\DashboardController.
  *
@@ -32,7 +34,8 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 final class UserCrudController extends AbstractCrudController
 {
     public function __construct(
-        private readonly UserPasswordHasherInterface $passwordHasher,
+        private readonly OwnerAssigner $ownerAssigner,
+        private readonly LoginLinkMailer $loginLinkMailer,
     ) {
     }
 
@@ -67,43 +70,22 @@ final class UserCrudController extends AbstractCrudController
             ->autocomplete()
             ->setHelp('user.organization.help');
 
-        // Required when creating, optional when editing: leaving it empty on an
-        // edit keeps the existing password.
-        yield TextField::new('plainPassword', 'user.password')
-            ->setFormType(PasswordType::class)
-            ->setFormTypeOption('required', Crud::PAGE_NEW === $pageName)
-            ->setFormTypeOption('empty_data', null)
-            ->setHelp('user.password.help')
-            ->onlyOnForms();
+        yield TextField::new('password', 'user.status')
+            ->formatValue(static fn (mixed $value, User $user): string => $user->hasPassword()
+                ? 'Actif'
+                : 'Invitation en attente')
+            // Sorting would order accounts by password hash.
+            ->setSortable(false)
+            ->hideOnForm();
     }
 
     public function persistEntity(EntityManagerInterface $entityManager, object $entityInstance): void
     {
-        $this->hashPlainPassword($entityInstance);
+        $this->ownerAssigner->assignIfFirst($entityInstance);
 
         parent::persistEntity($entityManager, $entityInstance);
-    }
 
-    public function updateEntity(EntityManagerInterface $entityManager, object $entityInstance): void
-    {
-        $this->hashPlainPassword($entityInstance);
-
-        parent::updateEntity($entityManager, $entityInstance);
-    }
-
-    private function hashPlainPassword(object $entityInstance): void
-    {
-        if (!$entityInstance instanceof User) {
-            return;
-        }
-
-        $plainPassword = $entityInstance->getPlainPassword();
-
-        if (null === $plainPassword) {
-            return;
-        }
-
-        $entityInstance->setPassword($this->passwordHasher->hashPassword($entityInstance, $plainPassword));
-        $entityInstance->erasePlainPassword();
+        // After the flush, as in App\Controller\Admin\UserCrudController.
+        $this->loginLinkMailer->sendInvitation($entityInstance);
     }
 }

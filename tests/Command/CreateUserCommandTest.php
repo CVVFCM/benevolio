@@ -67,6 +67,37 @@ final class CreateUserCommandTest extends KernelTestCase
     /**
      * The point of the whole command: the account must actually be able to log in.
      */
+    /**
+     * On a fresh deployment the first account the command creates is the one that
+     * has to own the association — App\User\OwnerAssigner, called here explicitly.
+     */
+    #[Test]
+    public function the_first_admin_of_an_association_becomes_its_owner(): void
+    {
+        OrganizationFactory::createOne(['slug' => 'les-jardins']);
+
+        $this->command->setInputs([self::PASSWORD]);
+        $this->command->execute(['email' => 'premier@jardins.test', '--organization' => 'les-jardins']);
+        $this->command->assertCommandIsSuccessful();
+        self::assertStringContainsString('Responsable de l\'association', $this->command->getDisplay());
+
+        $this->command->setInputs([self::PASSWORD]);
+        $this->command->execute(['email' => 'second@jardins.test', '--organization' => 'les-jardins']);
+        $this->command->assertCommandIsSuccessful();
+
+        self::assertTrue($this->user('premier@jardins.test')->isOwner());
+        self::assertFalse($this->user('second@jardins.test')->isOwner());
+    }
+
+    #[Test]
+    public function a_super_admin_is_never_an_owner(): void
+    {
+        $this->command->setInputs([self::PASSWORD]);
+        $this->command->execute(['email' => 'patron@plateforme.test', '--role' => 'super-admin']);
+
+        self::assertFalse($this->user('patron@plateforme.test')->isOwner());
+    }
+
     #[Test]
     public function the_stored_password_is_hashed_and_verifies(): void
     {

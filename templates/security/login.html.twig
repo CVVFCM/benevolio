@@ -57,6 +57,8 @@
 
                 <button class="button login__submit" type="submit">{{ 'login.submit'|trans }}</button>
             </form>
+
+            <p class="login__aside"><a href="{{ path('forgot_password') }}">{{ 'login.forgot_password'|trans }}</a></p>
         </div>
 
         {{ include('_theme_switcher.html.twig') }}
