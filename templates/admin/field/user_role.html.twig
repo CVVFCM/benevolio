@@ -1,0 +1,6 @@
+{#
+    One label for an account's role. The stored roles are an array — an owner holds
+    ROLE_ADMIN and ROLE_OWNER — which EasyAdmin would print as raw role names.
+#}
+{# @var entity \EasyCorp\Bundle\EasyAdminBundle\Dto\EntityDto #}
+{{ entity.instance.owner ? 'Responsable de l\'association' : 'Administrateur de l\'association' }}

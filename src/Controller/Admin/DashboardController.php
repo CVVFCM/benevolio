@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Controller\Platform\OrganizationCrudController;
-use App\Controller\Platform\UserCrudController;
+use App\Controller\Platform\UserCrudController as PlatformUserCrudController;
 use App\Tenant\TenantContext;
 use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminDashboard;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
@@ -37,6 +37,9 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
  * dashboard, where the Doctrine filter is armed. Any CRUD added here must be
  * tenant-scoped.
  *
+ * App\Controller\Admin\UserCrudController is another: User is not TenantAware either
+ * (filtering it would break authentication), so it scopes itself like DeclarationAction.
+ *
  * The one exception is App\Controller\Admin\MyOrganizationCrudController, which acts on
  * Organization — the tenant itself, and therefore not TenantAware. It scopes itself, on
  * every entry point; read its docblock before adding anything like it.
@@ -46,7 +49,9 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
     routeName: 'admin',
     deniedControllers: [
         OrganizationCrudController::class,
-        UserCrudController::class,
+        // The platform's, not App\Controller\Admin\UserCrudController: aliased
+        // because the two share a short name.
+        PlatformUserCrudController::class,
     ],
 )]
 #[IsGranted('ROLE_ADMIN')]
@@ -115,6 +120,7 @@ final class DashboardController extends AbstractDashboardController
         yield MenuItem::section('menu.configuration');
         yield MenuItem::linkTo(TaskCrudController::class, 'menu.tasks', 'fa fa-tags');
         yield MenuItem::linkTo(FiscalYearCrudController::class, 'menu.fiscal_years', 'fa fa-calendar-days');
+        yield MenuItem::linkTo(UserCrudController::class, 'menu.users', 'fa fa-user-shield');
 
         // linkToUrl, not linkTo: MenuItem::linkTo() points at a controller's index, and
         // MyOrganizationCrudController has none — there is one association to show, the

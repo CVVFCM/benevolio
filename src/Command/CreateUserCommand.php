@@ -7,6 +7,7 @@ namespace App\Command;
 use App\Entity\User;
 use App\Repository\OrganizationRepository;
 use App\Security\Role;
+use App\User\OwnerAssigner;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -50,6 +51,7 @@ final class CreateUserCommand extends Command
         private readonly ValidatorInterface $validator,
         private readonly UserPasswordHasherInterface $passwordHasher,
         private readonly OrganizationRepository $organizations,
+        private readonly OwnerAssigner $ownerAssigner,
     ) {
         parent::__construct();
     }
@@ -151,6 +153,9 @@ final class CreateUserCommand extends Command
         $user->setEmail($email);
         $user->grant($role);
         $user->setOrganization($organization);
+        // The first account of an association is its owner — usually this one, on
+        // a fresh deployment. Before validate(), so the one-owner check sees it.
+        $this->ownerAssigner->assignIfFirst($user);
         // Validated, not stored: the length and breach constraints hang off
         // $plainPassword, so it has to be set before validate() and cleared after.
         $user->setPlainPassword($password);
@@ -170,7 +175,11 @@ final class CreateUserCommand extends Command
         $this->entityManager->persist($user);
         $this->entityManager->flush();
 
-        $io->success(sprintf('Compte « %s » créé (%s).', $user->getEmail(), $role->label()));
+        $io->success(sprintf(
+            'Compte « %s » créé (%s).',
+            $user->getEmail(),
+            ($user->isOwner() ? Role::OWNER : $role)->label(),
+        ));
 
         return Command::SUCCESS;
     }

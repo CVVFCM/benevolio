@@ -13,6 +13,8 @@ security:
     role_hierarchy:
         # A platform super-admin can do anything an organization admin can.
         ROLE_SUPER_ADMIN: [ROLE_ADMIN]
+        # An association's owner is one of its admins, identified as the first.
+        ROLE_OWNER: [ROLE_ADMIN]
 
     firewalls:
         dev:
@@ -28,6 +30,17 @@ security:
                 # config/packages/csrf.yaml already declares the "authenticate"
                 # stateless CSRF token id that the login form must submit.
                 enable_csrf: true
+            # Accounts are created without a password and are emailed one of these
+            # instead, as is anyone who forgot theirs — see App\User\LoginLinkMailer.
+            # Signed with the password hash, so a link dies the moment a password is
+            # set or changed. No max_uses: it needs a cache shared by every pod, and a
+            # mail scanner prefetching the URL would burn it before the user clicks.
+            login_link:
+                check_route: login_link_check
+                signature_properties: [id, email, password]
+                # The forgotten-password lifetime; invitations override it per link.
+                lifetime: 3600
+                success_handler: App\Security\LoginLinkSuccessHandler
             logout:
                 # A URL path, not a route name: the security route loader in
                 # config/routes/security.yaml turns it into the "logout" route.
@@ -44,6 +57,14 @@ security:
         # redirected to the login form. See App\Controller\HealthController.
         - { path: ^/health$, roles: PUBLIC_ACCESS }
         - { path: ^/login$, roles: PUBLIC_ACCESS }
+        # Where an emailed login link is checked, and where one is asked for.
+        - { path: ^/login/lien$, roles: PUBLIC_ACCESS }
+        - { path: ^/mot-de-passe-oublie$, roles: PUBLIC_ACCESS }
+        # Choosing a password needs an account to choose it for: reached after a
+        # login link (App\Security\ChoosePasswordEnforcer sends you here). Fully:
+        # it changes a password without asking for the old one, so a remember-me
+        # cookie alone must not reach it.
+        - { path: ^/mot-de-passe$, roles: IS_AUTHENTICATED_FULLY }
         # The volunteer declaration form. Volunteers have no account, so this whole
         # prefix is anonymous by design; the tenant comes from the {organizationSlug}
         # in the URL (see App\Tenant\UrlPrefixTenantResolver).

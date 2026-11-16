@@ -264,7 +264,8 @@ switcher inside `/admin` and `/platform`.
 
 Not built yet, by explicit decision: accounting entries and their export, tax
 receipts, valuation rates and mission types, resending a confirmation link, and
-purging declarations never confirmed. When you add them, update this file.
+purging declarations never confirmed. On accounts: no rate limit on « Mot de passe
+oublié », no ownership transfer, no email change. When you add them, update this file.
 
 ## Stack
 
@@ -340,6 +341,15 @@ Two resolvers run in priority order, first match wins:
   the entity inaccessible and hands the action a `null` instance instead of
   refusing the request. If you ever give this entity an `organization` FK, delete
   all three and the voter with them.
+- **`User` in `/admin` is scoped the same way, by hand.** It cannot be
+  `TenantAware` (see above), so `App\Controller\Admin\UserCrudController` does what
+  `DeclarationActionCrudController` does: `createIndexQueryBuilder()` filters on the
+  current organization (index and autocomplete), `setEntityPermission()` runs
+  `UserVoter::VIEW` (detail, delete), and the custom « Renvoyer l'invitation » action
+  and `deleteEntity()` check the voter themselves. `UserVoter::VIEW` also answers
+  **yes to a `null` subject**, because EasyAdmin checks the entity permission on the
+  « new » page before any instance exists. Covered by
+  `tests/Controller/Admin/UserIsolationTest`.
 - **The filter is OFF in CLI** — console commands, migrations, fixtures. That is
   deliberate (a migration must touch every tenant), but any command acting on
   behalf of one association must scope its own queries.
@@ -368,6 +378,53 @@ An association edits its own record — CERFA identity and signature — from
 `/platform`. The slug is read-only on the association's side: it addresses the public
 volunteer URLs, and changing it invalidates links already handed out.
 
+### Back-office accounts — owner, invitations, login links
+
+An association manages its own admins from « Administrateurs » in `/admin`
+(`App\Controller\Admin\UserCrudController`). **Nobody types a password for someone
+else**, anywhere: creating an account takes an email address, and its holder is mailed
+a link to choose their own. `/platform` works the same way; only `app:user:create`
+still takes a password, because bootstrapping and `composer reset` cannot wait on mail.
+
+- **Owner.** The first account of an association is its owner: `Role::OWNER`, with
+  `ROLE_OWNER: [ROLE_ADMIN]` in the hierarchy. An owner holds **both** stored roles.
+  `App\User\OwnerAssigner::assignIfFirst()` grants it, and is called **explicitly** from
+  the three creation paths (both user CRUDs and the command), not from a Doctrine
+  listener — the `DefaultTasks` reasoning. A fourth creation path must call it too.
+  `App\Validator\OneOwnerPerOrganization` refuses a second; `/platform`'s roles
+  checkbox offers « Responsable » so a super-admin can repair ownership by hand.
+- **Owner and admin have the same rights except one: deleting.** `UserVoter::DELETE`
+  lets only the owner delete, never the owner account itself, and nobody their own.
+  There is no edit (the email is the login) and no batch delete (a second road the
+  rules would have to be enforced on twice).
+- **`User::$password` is nullable.** Null is « Invitation en attente »: the account
+  exists and cannot log in with a password. « Renvoyer l'invitation » is offered only
+  in that state — an active account uses « Mot de passe oublié ».
+- **The link is Symfony's `login_link`, not symfonycasts/reset-password-bundle**, which
+  has no tagged release supporting Symfony 8 (only `dev-main`). Swap if one appears.
+  `App\User\LoginLinkMailer` sends both mails: **invitation 7 days, forgotten
+  password 1 hour**, per link via `createLoginLink($user, null, $lifetime)`.
+- **It injects `security.authenticator.login_link_handler.main` by id.** The
+  autowired `LoginLinkHandlerInterface` is firewall-aware: it picks the firewall from
+  the current request and throws without one — so in a test, or any CLI path.
+- **Signed with `[id, email, password]`, no `max_uses`.** Setting or changing the
+  password kills every link issued before; until then a link is reusable within its
+  lifetime. `max_uses` would need a cache shared by every pod, and a mail scanner
+  prefetching the URL would burn it before the person clicks.
+- **A link logs in, then forces « Choisissez votre mot de passe ».**
+  `App\Security\LoginLinkSuccessHandler` sets a session flag and redirects there;
+  `App\Security\ChoosePasswordEnforcer` (kernel.request, priority 0, after the
+  firewall) redirects every request back until the password is saved — for an account
+  with no password, **or** with the flag (a forgotten-password link logs in an account
+  that has one). Saving calls `Security::login($user, 'form_login')`, because the new
+  hash would otherwise read as "user changed" and log them out on the next request.
+- **TRAP — the enforcer returns before touching the token when there is no previous
+  session.** Reading the token wakes the lazy firewall, which marks every response
+  private; `/health` caught it.
+- « Mot de passe oublié » (`/mot-de-passe-oublie`) answers **the same page whatever
+  the address**, so it does not reveal who has an account. It is **not rate-limited**,
+  by decision for now.
+
 ## Layout
 
 - `src/Entity/` — domain model
@@ -382,6 +439,7 @@ volunteer URLs, and changing it invalidates links already handed out.
 - `src/Declaration/` — the declaration use cases (`DeclarationSubmitter`,
   `DeclarationConfirmer`, `DeclarationDecider`) and their exceptions
 - `src/Organization/` — organization-level services (`DefaultTasks`)
+- `src/User/` — back-office account services (`OwnerAssigner`, `LoginLinkMailer`)
 - `src/Tenant/` — tenant contract, resolvers, context, request listener
 - `src/Doctrine/Filter/` — the tenant SQL filter; `src/Doctrine/Type/` — DBAL types
 - `src/Security/` — roles, voters
@@ -632,8 +690,10 @@ Run `bin/console` and `composer` **inside the php container** (`make cli`, or
 migrations on container start.
 
 App served at `https://localhost`. `composer reset` (so `make reset`) leaves three
-logins: **`admin@example.com` / `!ChangeMe!`** — an admin **of CVVFCM**, created by
-the reset script itself, so it lands in `/admin` where the features are — plus the
+logins: **`admin@example.com` / `!ChangeMe!`** — **the owner of CVVFCM**, created by
+the reset script itself through `app:user:create`, so it lands in `/admin` where the
+features are and can delete other admins (the fixtures deliberately create no owner,
+which is what lets the command make this one the owner) — plus the
 fixture accounts `super-admin@benevolio.test` (the platform, `/platform`) and
 `admin@cvvfcm.test`, whose password is in
 `App\Factory\UserFactory::DEFAULT_PASSWORD`. The association's public form is at
@@ -645,7 +705,8 @@ arm the tenant filter, so giving one an organization would scope the whole platf
 backoffice to it. `app:user:create` refuses that combination outright.
 
 **Password rules are deliberately weak**, and this applies in production too:
-minimum `User::PASSWORD_MIN_LENGTH` (8) characters, and nothing else.
+minimum `User::PASSWORD_MIN_LENGTH` (8) characters, and nothing else — on
+« Choisissez votre mot de passe » as in the command.
 `Assert\NotCompromisedPassword` was removed — it called haveibeenpwned on every
 write, which meant the account commands needed network egress and a well-known
 development password could not be used. Re-adding it means re-adding
@@ -757,6 +818,8 @@ rows, not code*. `app:user:create` reads the password from a hidden prompt, or f
 `--password` for scripts that cannot answer one — `composer reset` uses it to seed
 the development account. **`--password` puts a live credential in shell history
 and in `ps`**, so it is for throwaway accounts; use the prompt for anything real.
+The first account created for an association this way becomes its owner, who can
+then invite the others from « Administrateurs » without anyone touching a password.
 
 ## Conventions
 

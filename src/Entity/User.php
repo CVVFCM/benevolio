@@ -7,6 +7,7 @@ namespace App\Entity;
 use App\Exception\InvalidEntityStateException;
 use App\Repository\UserRepository;
 use App\Security\Role;
+use App\Validator\OneOwnerPerOrganization;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
@@ -33,6 +34,7 @@ use function in_array;
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: 'app_user')]
 #[UniqueEntity(fields: ['email'], message: 'Cette adresse électronique est déjà utilisée.')]
+#[OneOwnerPerOrganization]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     public const int EMAIL_MAX_LENGTH = 180;
@@ -48,9 +50,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[Assert\Length(max: self::EMAIL_MAX_LENGTH)]
     private string $email = '';
 
-    /** The hashed password — never the plaintext one. */
-    #[ORM\Column]
-    private string $password = '';
+    /**
+     * The hashed password — never the plaintext one.
+     *
+     * Null until the account's holder chooses one: accounts are created without a
+     * password and receive a login link instead (App\User\LoginLinkMailer). Null is
+     * what the back office shows as « Invitation en attente », and an account in that
+     * state cannot log in with a password at all.
+     */
+    #[ORM\Column(nullable: true)]
+    private ?string $password = null;
 
     /**
      * NOT persisted. Carries the plaintext password from a form to the hasher,
@@ -83,6 +92,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[Assert\Expression(
         'this.getOrganization() !== null or this.hasRole(constant("App\\\\Security\\\\Role::SUPER_ADMIN"))',
         message: 'Un administrateur d\'association doit être rattaché à une association.',
+    )]
+    #[Assert\Expression(
+        'this.getOrganization() !== null or !this.hasRole(constant("App\\\\Security\\\\Role::OWNER"))',
+        message: 'Le responsable d\'une association doit y être rattaché.',
     )]
     private ?Organization $organization = null;
 
@@ -135,9 +148,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->email;
     }
 
-    public function getPassword(): string
+    public function getPassword(): ?string
     {
         return $this->password;
+    }
+
+    /**
+     * False while the invitation is pending: the account exists but its holder has
+     * not chosen a password yet.
+     */
+    public function hasPassword(): bool
+    {
+        return null !== $this->password;
     }
 
     /**
@@ -165,7 +187,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     /**
      * Forgets the plaintext password once it has been hashed. Symfony 8 removed
      * UserInterface::eraseCredentials(), so callers that set a plain password are
-     * responsible for calling this — see App\Controller\Platform\UserCrudController.
+     * responsible for calling this — see App\Command\CreateUserCommand.
      */
     public function erasePlainPassword(): void
     {
@@ -212,6 +234,27 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function hasRole(Role $role): bool
     {
         return in_array($role->value, $this->roles, true);
+    }
+
+    /**
+     * The organization's owner — its first admin. See App\User\OwnerAssigner.
+     */
+    public function isOwner(): bool
+    {
+        return $this->hasRole(Role::OWNER);
+    }
+
+    /**
+     * Adds a role to those already held. grant() replaces them, which is right when
+     * building an account and wrong when promoting one.
+     */
+    public function addRole(Role $role): self
+    {
+        if (!$this->hasRole($role)) {
+            $this->roles[] = $role->value;
+        }
+
+        return $this;
     }
 
     public function getOrganization(): ?Organization

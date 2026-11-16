@@ -110,5 +110,101 @@
                 <target>Attestation</target>
             </segment>
         </unit>
+        <unit id="login.forgot_password">
+            <segment>
+                <source>login.forgot_password</source>
+                <target>Mot de passe oublié ?</target>
+            </segment>
+        </unit>
+        <unit id="forgot_password.title">
+            <segment>
+                <source>forgot_password.title</source>
+                <target>Mot de passe oublié</target>
+            </segment>
+        </unit>
+        <unit id="forgot_password.intro">
+            <segment>
+                <source>forgot_password.intro</source>
+                <target>Indiquez l'adresse de votre compte : vous recevrez un lien pour choisir un nouveau mot de passe.</target>
+            </segment>
+        </unit>
+        <unit id="forgot_password.submit">
+            <segment>
+                <source>forgot_password.submit</source>
+                <target>Recevoir un lien</target>
+            </segment>
+        </unit>
+        <unit id="forgot_password.back">
+            <segment>
+                <source>forgot_password.back</source>
+                <target>Retour à la connexion</target>
+            </segment>
+        </unit>
+        <unit id="forgot_password.sent.title">
+            <segment>
+                <source>forgot_password.sent.title</source>
+                <target>Vérifiez votre messagerie</target>
+            </segment>
+        </unit>
+        <unit id="forgot_password.sent.body">
+            <segment>
+                <source>forgot_password.sent.body</source>
+                <target>Si un compte existe pour cette adresse, un lien vient de lui être envoyé. Il est valable une heure.</target>
+            </segment>
+        </unit>
+        <unit id="choose_password.title">
+            <segment>
+                <source>choose_password.title</source>
+                <target>Choisissez votre mot de passe</target>
+            </segment>
+        </unit>
+        <unit id="choose_password.intro.first">
+            <segment>
+                <source>choose_password.intro.first</source>
+                <target>Bienvenue. Choisissez le mot de passe qui vous servira à vous connecter désormais.</target>
+            </segment>
+        </unit>
+        <unit id="choose_password.intro.reset">
+            <segment>
+                <source>choose_password.intro.reset</source>
+                <target>Choisissez votre nouveau mot de passe. L'ancien ne fonctionnera plus.</target>
+            </segment>
+        </unit>
+        <unit id="choose_password.password">
+            <segment>
+                <source>choose_password.password</source>
+                <target>Mot de passe</target>
+            </segment>
+        </unit>
+        <unit id="choose_password.password.help">
+            <segment>
+                <source>choose_password.password.help</source>
+                <target>Au moins {min} caractères.</target>
+            </segment>
+        </unit>
+        <unit id="choose_password.repeat">
+            <segment>
+                <source>choose_password.repeat</source>
+                <target>Confirmez le mot de passe</target>
+            </segment>
+        </unit>
+        <unit id="choose_password.mismatch">
+            <segment>
+                <source>choose_password.mismatch</source>
+                <target>Les deux mots de passe ne sont pas identiques.</target>
+            </segment>
+        </unit>
+        <unit id="choose_password.submit">
+            <segment>
+                <source>choose_password.submit</source>
+                <target>Enregistrer mon mot de passe</target>
+            </segment>
+        </unit>
+        <unit id="choose_password.logout">
+            <segment>
+                <source>choose_password.logout</source>
+                <target>Se déconnecter</target>
+            </segment>
+        </unit>
     </file>
 </xliff>

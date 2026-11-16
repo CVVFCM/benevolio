@@ -1,0 +1,15 @@
+Bonjour,
+
+Un compte vous a été ouvert pour administrer {% if organization %}{{ organization.name }}{% else %}la plateforme Benevolio{% endif %},
+avec l'adresse {{ user.email }}.
+
+Ouvrez ce lien : il vous connecte et vous demande de choisir votre mot de
+passe. C'est ce mot de passe qui vous servira ensuite à vous connecter.
+
+{{ loginUrl }}
+
+Ce lien est valable jusqu'au {{ expiresAt|format_datetime('long', 'short') }} et ne sert
+plus une fois votre mot de passe choisi. Si vous n'attendiez pas ce message,
+ignorez-le.
+
+{{ senderName }}

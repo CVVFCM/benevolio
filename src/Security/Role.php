@@ -15,6 +15,13 @@ enum Role: string
     /** Manages one organization: its volunteers, missions, rates and contributions. */
     case ADMIN = 'ROLE_ADMIN';
 
+    /**
+     * The organization's first admin, identified as its owner. One per organization,
+     * granted automatically by App\User\OwnerAssigner. Inherits ADMIN through the
+     * role hierarchy; the only extra right today is deleting other admins.
+     */
+    case OWNER = 'ROLE_OWNER';
+
     /** Manages the platform itself: creates and configures organizations. */
     case SUPER_ADMIN = 'ROLE_SUPER_ADMIN';
 
@@ -22,6 +29,7 @@ enum Role: string
     {
         return match ($this) {
             self::ADMIN => 'Administrateur de l\'association',
+            self::OWNER => 'Responsable de l\'association',
             self::SUPER_ADMIN => 'Administrateur de la plateforme',
         };
     }

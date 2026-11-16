@@ -7,6 +7,7 @@ namespace App\Factory;
 use App\Entity\Organization;
 use App\Entity\User;
 use App\Security\Role;
+use ReflectionProperty;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Zenstruck\Foundry\Persistence\PersistentObjectFactory;
 
@@ -42,6 +43,36 @@ final class UserFactory extends PersistentObjectFactory
             'roles' => [Role::ADMIN->value],
             'organization' => $organization,
         ]);
+    }
+
+    /**
+     * The association's owner — what App\User\OwnerAssigner makes of its first
+     * account. Explicit here: factories bypass the assigner, so an owner only
+     * exists in a test that asks for one.
+     */
+    public function owner(Organization $organization): self
+    {
+        return $this->with([
+            'roles' => [Role::ADMIN->value, Role::OWNER->value],
+            'organization' => $organization,
+        ]);
+    }
+
+    /**
+     * An account created but whose holder has not chosen a password yet:
+     * « Invitation en attente ».
+     *
+     * Through reflection because nothing in the application ever clears a password,
+     * so User has no method for it — and should not grow one for a test's sake.
+     * Registered after initialize()'s default password, so it runs after it.
+     */
+    public function invited(): self
+    {
+        return $this->afterInstantiate(
+            static function (User $user): void {
+                new ReflectionProperty(User::class, 'password')->setValue($user, null);
+            },
+        );
     }
 
     /**
