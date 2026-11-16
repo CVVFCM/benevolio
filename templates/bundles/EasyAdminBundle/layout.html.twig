@@ -1,0 +1,26 @@
+{#
+    EasyAdmin's layout, plus the banner shown while a super-admin acts as someone else.
+
+    The exit is a POST to the platform dashboard: the firewall restores the super-admin
+    before access_control runs, then redirects to that same URL. Posted to an /admin URL
+    instead, the restored super-admin would land in a back office with no association to
+    show them. The dashboard because it is the one platform route that accepts a POST:
+    the router answers 405 before the firewall runs.
+#}
+{% extends '@!EasyAdmin/layout.html.twig' %}
+
+{% block wrapper_wrapper %}
+    {% if is_granted('IS_IMPERSONATOR') %}
+        <form class="impersonation-banner" method="post" action="{{ path('platform') }}" role="status">
+            <span>
+                <twig:ea:Icon name="fa fa-user-secret" />
+                Vous êtes connecté en tant que <strong>{{ app.user.userIdentifier }}</strong>.
+            </span>
+            <input type="hidden" name="_switch_user" value="_exit">
+            <input type="hidden" name="{{ constant('App\\Security\\ImpersonationListener::CSRF_FIELD') }}" value="{{ csrf_token(constant('App\\Security\\ImpersonationListener::CSRF_TOKEN_ID')) }}">
+            <button type="submit" class="btn btn-sm btn-light">Revenir à la plateforme</button>
+        </form>
+    {% endif %}
+
+    {{ parent() }}
+{% endblock %}

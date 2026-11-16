@@ -41,6 +41,14 @@ security:
                 # The forgotten-password lifetime; invitations override it per link.
                 lifetime: 3600
                 success_handler: App\Security\LoginLinkSuccessHandler
+            # A super-admin may act as an association's account, to see what they see.
+            # The role is a voter attribute, not a role: App\Security\Voter\ImpersonationVoter
+            # decides per target (association accounts only, never a super-admin).
+            # Symfony checks no CSRF on _switch_user, so App\Security\ImpersonationListener
+            # demands a POST with a token, and logs every start and exit.
+            switch_user:
+                role: IMPERSONATE_USER
+                target_route: admin
             logout:
                 # A URL path, not a route name: the security route loader in
                 # config/routes/security.yaml turns it into the "logout" route.
@@ -64,7 +72,9 @@ security:
         # login link (App\Security\ChoosePasswordEnforcer sends you here). Fully:
         # it changes a password without asking for the old one, so a remember-me
         # cookie alone must not reach it.
-        - { path: ^/mot-de-passe$, roles: IS_AUTHENTICATED_FULLY }
+        # Never while impersonating: a super-admin must not set someone else's password,
+        # which is the whole point of the invitation link.
+        - { path: ^/mot-de-passe$, allow_if: "is_fully_authenticated() and !is_granted('IS_IMPERSONATOR')" }
         # The volunteer declaration form. Volunteers have no account, so this whole
         # prefix is anonymous by design; the tenant comes from the {organizationSlug}
         # in the URL (see App\Tenant\UrlPrefixTenantResolver).

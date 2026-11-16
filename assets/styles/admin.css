@@ -214,3 +214,22 @@
     color: var(--text-muted-color, #6c6f7d);
     font-size: 0.8125rem;
 }
+
+/* ---------------------------------------------------------- impersonation -- */
+
+/*
+ * The bar shown while a super-admin acts as an association's account
+ * (templates/bundles/EasyAdminBundle/layout.html.twig). Loud on purpose: forgetting
+ * whose session this is means acting in someone else's name.
+ */
+.impersonation-banner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 1rem;
+    background: var(--bs-warning, #ffc107);
+    color: #212529;
+    font-size: 0.875rem;
+}

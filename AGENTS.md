@@ -425,6 +425,42 @@ still takes a password, because bootstrapping and `composer reset` cannot wait o
   the address**, so it does not reveal who has an account. It is **not rate-limited**,
   by decision for now.
 
+### Impersonation — « Se connecter en tant que »
+
+A platform super-admin can act as an association's account, from the « Administrateurs »
+list in `/platform`. It is Symfony's `switch_user` on the main firewall, with three things
+added, and each closes a hole the stock feature leaves open:
+
+- **CSRF.** `switch_user` reads `_switch_user` from the query string, a POST body or a
+  header, and checks no token: any page a super-admin opened could switch their session.
+  `App\Security\ImpersonationListener` (on `SwitchUserEvent`) refuses anything but a POST
+  carrying a token for `ImpersonationListener::CSRF_TOKEN_ID`, **in and out**. EasyAdmin's
+  own « exit impersonation » menu entry is a GET link, so
+  `Admin\DashboardController::configureUserMenu()` drops it; the banner is the way out.
+- **Who.** The firewall's `role` is `App\Security\Voter\ImpersonationVoter::IMPERSONATE`,
+  checked against the target: a super-admin, not already impersonating, acting as an account
+  attached to an association — never another super-admin, never themselves.
+- **No password on someone's behalf.** `ChoosePasswordEnforcer` ignores a `SwitchUserToken`
+  (an invited account can be looked at), and `access_control` refuses `/mot-de-passe` to
+  `IS_IMPERSONATOR`.
+
+Both forms post to **`/platform`**, the dashboard route, because it is the one platform
+route accepting POST: `platform_user_index` is GET-only and the router answers 405 before
+the firewall sees `_switch_user`. Entering redirects to `/admin` (`target_route`); exiting
+lands back on `/platform`. Exiting **from an `/admin` URL** would land the restored
+super-admin in a back office with no association to show.
+
+The banner is `templates/bundles/EasyAdminBundle/layout.html.twig`, styled in `admin.css`.
+**Every start and exit is logged on the `impersonation` channel**, and that is the only
+trace, by decision — nobody is notified. Production writes the channel straight to stderr;
+the main handler is `fingers_crossed`, and buffered there the lines would only appear when an
+error followed them.
+
+**TRAP — EasyAdmin's actions dropdown ignores an action's template.** It renders its own
+`<a>` or `<form>`, so a custom template carrying a CSRF token is silently bypassed and the
+action posts without it. Both user CRUDs call `showEntityActionsInlined()` for that reason;
+« Renvoyer l'invitation » was broken on `/admin`'s list until this was found.
+
 ## Layout
 
 - `src/Entity/` — domain model

@@ -6,9 +6,12 @@ namespace App\Controller\Platform;
 
 use App\Entity\User;
 use App\Security\Role;
+use App\Security\Voter\ImpersonationVoter;
 use App\User\LoginLinkMailer;
 use App\User\OwnerAssigner;
 use Doctrine\ORM\EntityManagerInterface;
+use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
+use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
 use EasyCorp\Bundle\EasyAdminBundle\Field\AssociationField;
@@ -25,6 +28,10 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
  * The first account of an association becomes its owner (OwnerAssigner). The roles
  * checkbox does offer « Responsable », so a super-admin can repair ownership by
  * hand; App\Validator\OneOwnerPerOrganization refuses a second.
+ *
+ * « Se connecter en tant que » switches the session to an association's account
+ * (the firewall's switch_user), as a POST with a CSRF token — see
+ * App\Security\ImpersonationListener and App\Security\Voter\ImpersonationVoter.
  *
  * CONVENTION EXCEPTION: see App\Controller\Admin\DashboardController.
  *
@@ -51,7 +58,26 @@ final class UserCrudController extends AbstractCrudController
         return $crud
             ->setEntityLabelInSingular('user.label')
             ->setEntityLabelInPlural('user.label_plural')
-            ->setDefaultSort(['email' => 'ASC']);
+            ->setDefaultSort(['email' => 'ASC'])
+            // Inlined: the dropdown renders its own <a>/<form> and ignores an action's
+            // template, so « Se connecter en tant que » would lose its CSRF token there.
+            ->showEntityActionsInlined();
+    }
+
+    public function configureActions(Actions $actions): Actions
+    {
+        // Posted to the platform dashboard, the one platform route that takes a POST
+        // (the router answers 405 before the firewall would see `_switch_user`). The
+        // firewall switches before any controller runs, then redirects to /admin.
+        $impersonate = Action::new('impersonate', 'Se connecter en tant que', 'fa fa-user-secret')
+            ->linkToRoute('platform')
+            ->setTemplatePath('admin/action/impersonate.html.twig')
+            ->displayIf(fn (User $user): bool => $this->isGranted(ImpersonationVoter::IMPERSONATE, $user));
+
+        return $actions
+            ->add(Crud::PAGE_INDEX, Action::DETAIL)
+            ->add(Crud::PAGE_INDEX, $impersonate)
+            ->add(Crud::PAGE_DETAIL, $impersonate);
     }
 
     public function configureFields(string $pageName): iterable
