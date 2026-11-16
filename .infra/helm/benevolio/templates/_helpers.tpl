@@ -61,3 +61,28 @@ Gotenberg component selector labels.
 {{ include "benevolio.selectorLabels" . }}
 app.kubernetes.io/component: gotenberg
 {{- end }}
+
+{{/*
+Name of the CNPG Cluster. Its read-write Service is <name>-rw and the credentials
+CNPG generates for the application owner are in the Secret <name>-app.
+*/}}
+{{- define "benevolio.database.clusterName" -}}
+{{ include "benevolio.fullname" . }}-db
+{{- end }}
+
+{{/*
+DATABASE_URL, built from the Secret CNPG generates. Kubernetes expands $(VAR) only
+from variables declared EARLIER in the same env list, so the order is load-bearing.
+`uri` is used rather than assembling user/password by hand because CNPG builds it
+with proper URL escaping; it carries no query string, so Doctrine's parameters are
+appended here.
+*/}}
+{{- define "benevolio.database.env" -}}
+- name: CNPG_APP_URI
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "benevolio.database.clusterName" . }}-app
+      key: uri
+- name: DATABASE_URL
+  value: "$(CNPG_APP_URI)?serverVersion={{ .Values.database.postgresMajor }}&charset=utf8"
+{{- end }}

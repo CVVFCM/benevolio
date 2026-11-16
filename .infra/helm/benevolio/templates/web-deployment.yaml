@@ -41,6 +41,9 @@ spec:
             - name: admin
               containerPort: 2019
               protocol: TCP
+          # DATABASE_URL, from the Secret CNPG generates. See _helpers.tpl.
+          env:
+            {{- include "benevolio.database.env" . | nindent 12 }}
           envFrom:
             - configMapRef:
                 name: {{ include "benevolio.fullname" . }}-config

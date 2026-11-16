@@ -736,7 +736,7 @@ moving tag.
 **organization** secrets shared with the other repos — `OCI_*`, `OKE_KUBECONFIG`,
 `CLOUDFLARE_API_TOKEN`, and `SCW_ACCESS_KEY` / `SCW_SECRET_KEY` for Object Storage,
 which cvvfcm-v4 already uses under those names. Application ones belong to this
-repo's **`prod` environment** — `APP_SECRET`, `DATABASE_URL`, `MAILER_DSN`. Never
+repo's **`prod` environment** — `APP_SECRET`, `MAILER_DSN`. Never
 move an application secret up to the organization: it would hand every other repo
 the keys to this database.
 
@@ -755,20 +755,42 @@ it renders whatever HTML it is handed, so it must never be exposed).
 somewhere else; with neither, rendering fails at template time rather than on the
 first validated declaration.
 
-**The database is external, and the chart cannot run its own.** It used to bundle
-the Bitnami PostgreSQL subchart; that is gone, along with `helm dependency update`
-and the `benevolio-pg-auth` Secret CD used to create. The entire connection is one
-`DATABASE_URL` DSN from the `prod` environment. There is deliberately no second
-code path to keep working.
+**The database is CloudNativePG, declared by the chart.** The operator is installed
+cluster-wide (`cnpg-system`) and is not part of this chart; `templates/database-cluster.yaml`
+declares one `Cluster`, `benevolio-db`. It replaced Neon, which replaced a Bitnami subchart.
 
-**Both DSNs are shape-checked at render time, not merely required.** Being
+- **No database credential goes through CD.** The operator generates the owner's password
+  into the Secret `benevolio-db-app`, and the web pods and the migration Job build
+  `DATABASE_URL` from its `uri` key plus `serverVersion` (`benevolio.database.env` in
+  `_helpers.tpl`). Kubernetes expands `$(VAR)` only from variables declared *earlier* in
+  the same `env` list, so that order is load-bearing.
+- **`helm.sh/resource-policy: keep`** on the Cluster: `helm uninstall` leaves the data.
+  Deleting it is a deliberate `kubectl delete cluster benevolio-db`.
+- **One instance, 1 Gi, on `longhorn-cnpg`** — one Longhorn replica, `strict-local`, so the
+  data lives on one node's disk and nothing else. Sized for ~1 000 declarations and ~100
+  accounts: the data is tens of megabytes, and what would fill the volume is WAL, which
+  `database.parameters` caps (`max_wal_size` defaults to 1 GB, and CNPG's own
+  `wal_keep_size` of 512 MB is for standbys this cluster does not have). The class allows
+  expansion, so growing is a change to `database.storage.size`.
+- **`database.postgresMajor` drives three things** — the server image, the `serverVersion`
+  Doctrine is told, and the `pg_dump` the backup runs (which must not be older than the
+  server). Change it and all three move together; a major upgrade of the data itself is
+  still a CNPG operation, not a values change.
+- **The backup is a daily `pg_dump`**, not CNPG's physical backup (`database.backup`,
+  `templates/database-backup-cronjob.yaml`): 03:00 Europe/Paris, custom format, uploaded with
+  rclone to `<s3Bucket>/backups/` with the receipts' credentials, and pruned after **7 days**.
+  With one replica on one disk, **it is the only copy that survives losing that node**. The
+  prune runs inside the prefix, which the chart refuses to render empty — the receipts share
+  the bucket. Restore:
+  `pg_restore --clean --if-exists --no-owner --no-acl -d "$URI" benevolio-….dump`.
+
+**The mailer DSN is shape-checked at render time, not merely required.** Being
 non-empty was not enough: `MAILER_DSN` was once set to the whole environment line,
 `MAILER_DSN=brevo+api://…`, which passed `required`, deployed green, satisfied
 every probe, and then threw *"The mailer DSN must contain a scheme"* on the
 volunteer's first page load — a 500 on the only page the public uses, while
 `/admin` and `/health` stayed fine. `templates/secret.yaml` now refuses a
-`mailerDsn` without a scheme and a `database.url` that is not `postgresql://`, and
-names the offending prefix. Keep that guard on any DSN added later.
+`mailerDsn` without a scheme and names the offending prefix. Keep that guard on any DSN added later.
 
 **`secrets.mailerDsn` is `required` in the chart, on purpose.** Since a declaration
 is only final once the volunteer opens an emailed link, an instance that cannot

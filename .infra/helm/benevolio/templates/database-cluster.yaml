@@ -1,0 +1,29 @@
+# The application's PostgreSQL, run by the CloudNativePG operator already installed in
+# the cluster (cnpg-system). The operator creates the -rw Service and the -app Secret
+# holding the owner's generated credentials, which the pods read DATABASE_URL from —
+# no database credential passes through CD at all.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ include "benevolio.database.clusterName" . }}
+  labels:
+    {{- include "benevolio.labels" . | nindent 4 }}
+  annotations:
+    # The data outlives the release. `helm uninstall` must never take the database
+    # with it; deleting it is a deliberate `kubectl delete cluster`.
+    helm.sh/resource-policy: keep
+spec:
+  instances: {{ .Values.database.instances }}
+  imageName: {{ printf "%s:%v" .Values.database.image.repository .Values.database.postgresMajor | quote }}
+  bootstrap:
+    initdb:
+      database: {{ .Values.database.name }}
+      owner: {{ .Values.database.owner }}
+  storage:
+    storageClass: {{ .Values.database.storage.storageClass }}
+    size: {{ .Values.database.storage.size }}
+  postgresql:
+    parameters:
+      {{- toYaml .Values.database.parameters | nindent 6 }}
+  resources:
+    {{- toYaml .Values.database.resources | nindent 4 }}
