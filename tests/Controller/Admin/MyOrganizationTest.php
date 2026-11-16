@@ -67,6 +67,24 @@ final class MyOrganizationTest extends WebTestCase
      * empty row a treasurer has to interpret.
      */
     #[Test]
+    public function an_association_chooses_to_appear_on_the_home_page(): void
+    {
+        $organization = OrganizationFactory::new()->withCerfaIdentity()->create(['slug' => 'jardins']);
+        $this->loginAdminOf($organization);
+
+        $crawler = $this->client->request('GET', $this->detailUrl($organization).'/edit');
+        $form = $crawler->selectButton('Enregistrer')->form();
+        $checkbox = $form['Organization[listedOnHomepage]'];
+        self::assertInstanceOf(ChoiceFormField::class, $checkbox);
+        $checkbox->tick();
+        $this->client->submit($form);
+
+        self::assertResponseRedirects();
+        $this->client->request('GET', '/');
+        self::assertSelectorExists('a[href="/a/jardins/declaration"]');
+    }
+
+    #[Test]
     public function an_association_without_a_signature_is_told_what_that_means(): void
     {
         $organization = OrganizationFactory::createOne();

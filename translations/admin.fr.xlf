@@ -144,6 +144,18 @@
                 <target>Désactiver une association ferme son administration et ses formulaires publics, sans supprimer ses données.</target>
             </segment>
         </unit>
+        <unit id="organization.listed_on_homepage">
+            <segment>
+                <source>organization.listed_on_homepage</source>
+                <target>Visible sur la page d'accueil</target>
+            </segment>
+        </unit>
+        <unit id="organization.listed_on_homepage.help">
+            <segment>
+                <source>organization.listed_on_homepage.help</source>
+                <target>L'association apparaît sur la page d'accueil publique, avec un lien vers son formulaire de déclaration. Une association désactivée n'y apparaît jamais.</target>
+            </segment>
+        </unit>
         <unit id="organization.cerfa_fieldset">
             <segment>
                 <source>organization.cerfa_fieldset</source>

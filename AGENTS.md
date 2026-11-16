@@ -494,6 +494,30 @@ action posts without it. Both user CRUDs call `showEntityActionsInlined()` for t
 There is no `src/Bridge/` and no third-party integration; if one arrives, give it
 its own namespace then.
 
+## The public home page
+
+`/` (`App\Controller\HomeController`, `templates/home.html.twig`) presents the product
+to an association considering it, in French, and lists the associations that opted in,
+each linking to its declaration form.
+
+- **Opt-in, per association**: `Organization::$listedOnHomepage`, off by default, ticked
+  from « Mon association » or `/platform`. An inactive association is never listed,
+  whatever the flag says — its form would 404. The migration that added it ticked CVVFCM.
+- **Cached publicly for five minutes.** That only holds while nothing on the page reads
+  the security token: `app.user` or `is_granted()` in the template wakes the lazy firewall
+  and makes every response private. `HomeTest` asserts the header and the absence of a
+  session cookie.
+- **The contact link is `mailto:` `%app.mail_from%`** — the one address the deployment
+  already owns. A separate contact address would be a new chart value.
+- **Screenshots are static**, `assets/images/landing/*.webp`: captured from the dev
+  fixtures (fake names) at 1280 × 800 in the light theme, converted with Pillow. They go
+  stale when the screens change; retake them the same way rather than editing them.
+- **Logging in no longer lands on `/`.** `form_login`'s `default_target_path` is
+  `backoffice` (`/espace`, `App\Controller\BackofficeController`), which sends a
+  super-admin to `/platform` and anyone else to `/admin`. Before the home page existed, a
+  plain login landed on a 404 in production; the home page's « Espace administrateur »
+  link uses the same route.
+
 ## The public declaration form
 
 `/a/{organizationSlug}/declaration`, anonymous, built on Symfony 8.1's native
@@ -844,10 +868,10 @@ one the chart invented for itself would not be, so the mail would be accepted he
 and dropped there. The template refuses an empty value and refuses a
 `Name <addr>` form.
 
-**Kubernetes probes `/health`** (`App\Controller\HealthController`), and it is the
-only route outside a tenant or the backoffice. There is nothing else safe to probe:
-`/` is not routed at all, so the chart's original probe on it 404'd forever and the
-pod never turned ready. The endpoint **does not touch the database** — the same URL
+**Kubernetes probes `/health`** (`App\Controller\HealthController`). There was nothing
+else safe to probe: `/` was not routed then, so the chart's original probe on it 404'd
+forever and the pod never turned ready. `/` is the public home page now and still must not
+be probed — it queries the database. The endpoint **does not touch the database** — the same URL
 backs the liveness probe, and failing it on a database blip would restart every pod
 over something the application does not control. Do not "improve" it into a tenant
 URL either: `/a/<slug>/declaration` cannot answer before an organization exists (so

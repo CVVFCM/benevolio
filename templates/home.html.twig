@@ -1,0 +1,157 @@
+{% extends 'base.html.twig' %}
+
+{#
+    The public home page — see App\Controller\HomeController.
+
+    MUST NOT read app.user, is_granted() or anything that wakes the security token:
+    the response is cached publicly, and a lazy firewall woken here would make it
+    private for every visitor.
+#}
+
+{% block title %}{{ 'home.title'|trans }}{% endblock %}
+
+{% block meta %}
+    <meta name="description" content="{{ 'home.meta_description'|trans }}">
+{% endblock %}
+
+{% block body %}
+    {% set mailto = 'mailto:' ~ contact_email ~ '?subject=' ~ ('home.contact.subject'|trans|url_encode) %}
+
+    <div class="home">
+        <header class="home__bar">
+            <a class="home__brand" href="{{ path('home') }}">
+                <span aria-hidden="true">🤝</span> {{ 'app.name'|trans }}
+            </a>
+
+            <nav class="home__nav" aria-label="{{ 'app.name'|trans }}">
+                <a href="#fonctionnalites">{{ 'home.nav.features'|trans }}</a>
+                {% if organizations is not empty %}
+                    <a href="#associations">{{ 'home.nav.organizations'|trans }}</a>
+                {% endif %}
+                <a class="home__nav-cta" href="{{ path('backoffice') }}">{{ 'home.nav.backoffice'|trans }}</a>
+            </nav>
+        </header>
+
+        <main>
+            <section class="hero home__wrap">
+                <div class="hero__text">
+                    <p class="eyebrow">{{ 'home.hero.eyebrow'|trans }}</p>
+                    <h1 class="hero__title">{{ 'home.hero.title'|trans }}</h1>
+                    <p class="hero__lede">{{ 'home.hero.lede'|trans }}</p>
+
+                    <div class="hero__actions">
+                        <a class="button-link" href="{{ mailto }}">{{ 'home.hero.contact'|trans }}</a>
+                        <a class="button-link button--quiet" href="#fonctionnalites">{{ 'home.hero.discover'|trans }}</a>
+                    </div>
+                </div>
+
+                <figure class="shot hero__shot">
+                    <img
+                        src="{{ asset('images/landing/declaration-form.webp') }}"
+                        alt="{{ 'home.hero.screenshot_alt'|trans }}"
+                        width="1280" height="800"
+                        fetchpriority="high"
+                    >
+                </figure>
+            </section>
+
+            <section class="home__section home__wrap" aria-labelledby="principe">
+                <h2 id="principe" class="home__heading">{{ 'home.steps.title'|trans }}</h2>
+
+                <ol class="flow">
+                    {% for step in ['declare', 'review', 'books'] %}
+                        <li class="flow__step">
+                            <span class="flow__number" aria-hidden="true">{{ loop.index }}</span>
+                            <h3 class="flow__title">{{ ('home.steps.' ~ step ~ '.title')|trans }}</h3>
+                            <p>{{ ('home.steps.' ~ step ~ '.text')|trans }}</p>
+                        </li>
+                    {% endfor %}
+                </ol>
+            </section>
+
+            <section id="fonctionnalites" class="home__section home__section--tinted" aria-labelledby="fonctionnalites-titre">
+                <div class="home__wrap">
+                    <h2 id="fonctionnalites-titre" class="home__heading">{{ 'home.features.title'|trans }}</h2>
+                    <p class="home__lede">{{ 'home.features.lede'|trans }}</p>
+
+                    <ul class="features">
+                        {% for feature in ['form', 'valuation', 'expenses', 'receipts', 'fiscal_years', 'admins'] %}
+                            <li class="feature">
+                                <h3 class="feature__title">{{ ('home.features.' ~ feature ~ '.title')|trans }}</h3>
+                                <p>{{ ('home.features.' ~ feature ~ '.text')|trans }}</p>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </section>
+
+            <section class="home__section home__wrap" aria-labelledby="deux-contributions">
+                <h2 id="deux-contributions" class="home__heading">{{ 'home.split.title'|trans }}</h2>
+                <p class="home__lede">{{ 'home.split.lede'|trans }}</p>
+
+                <div class="split">
+                    {% for side in ['time', 'expenses'] %}
+                        <div class="split__side split__side--{{ side }}">
+                            <h3 class="split__title">{{ ('home.split.' ~ side ~ '.title')|trans }}</h3>
+                            <p>{{ ('home.split.' ~ side ~ '.text')|trans }}</p>
+                            <p class="split__tag">{{ ('home.split.' ~ side ~ '.tag')|trans }}</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="home__section home__wrap" aria-labelledby="en-images">
+                <h2 id="en-images" class="home__heading">{{ 'home.gallery.title'|trans }}</h2>
+
+                <div class="gallery">
+                    {% for shot in ['declarations', 'ledger'] %}
+                        <figure class="shot">
+                            <img
+                                src="{{ asset('images/landing/' ~ shot ~ '.webp') }}"
+                                alt="{{ ('home.gallery.' ~ shot ~ '.alt')|trans }}"
+                                width="1280" height="800"
+                                loading="lazy"
+                            >
+                            <figcaption>{{ ('home.gallery.' ~ shot ~ '.caption')|trans }}</figcaption>
+                        </figure>
+                    {% endfor %}
+                </div>
+            </section>
+
+            {% if organizations is not empty %}
+                <section id="associations" class="home__section home__section--tinted" aria-labelledby="associations-titre">
+                    <div class="home__wrap">
+                        <h2 id="associations-titre" class="home__heading">{{ 'home.organizations.title'|trans }}</h2>
+                        <p class="home__lede">{{ 'home.organizations.lede'|trans }}</p>
+
+                        <ul class="tenants">
+                            {% for organization in organizations %}
+                                <li class="tenant">
+                                    <span class="tenant__name">{{ organization.name }}</span>
+                                    <a class="tenant__link" href="{{ path('declaration', {organizationSlug: organization.slug}) }}">
+                                        {{ 'home.organizations.declare'|trans }} <span aria-hidden="true">→</span>
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </section>
+            {% endif %}
+
+            <section class="home__section home__wrap" aria-labelledby="contact">
+                <div class="contact">
+                    <h2 id="contact" class="home__heading">{{ 'home.contact.title'|trans }}</h2>
+                    <p>{{ 'home.contact.text'|trans }}</p>
+                    <a class="button-link" href="{{ mailto }}">{{ 'home.contact.button'|trans }}</a>
+                    <p class="contact__address">{{ contact_email }}</p>
+                </div>
+            </section>
+        </main>
+
+        <footer class="public__footer">
+            <p>{{ 'app.name'|trans }} — {{ 'app.tagline'|trans }}</p>
+
+            {{ include('_theme_switcher.html.twig') }}
+        </footer>
+    </div>
+{% endblock %}

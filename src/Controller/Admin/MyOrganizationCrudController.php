@@ -16,6 +16,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Config\KeyValueStore;
 use EasyCorp\Bundle\EasyAdminBundle\Context\AdminContext;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
 use EasyCorp\Bundle\EasyAdminBundle\Dto\EntityDto;
+use EasyCorp\Bundle\EasyAdminBundle\Field\BooleanField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\CountryField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\Field;
 use EasyCorp\Bundle\EasyAdminBundle\Field\FormField;
@@ -107,6 +108,12 @@ final class MyOrganizationCrudController extends AbstractCrudController
             ->setHelp('Utilisé dans l\'adresse du formulaire public : /a/{raccourci}/declaration. '
                 .'Modifiable seulement par l\'administrateur de la plateforme, car le changer '
                 .'invalide les liens déjà communiqués aux bénévoles.');
+
+        // Opt-in: an association is named on the public home page only if it asks to be.
+        yield BooleanField::new('listedOnHomepage', 'Visible sur la page d\'accueil')
+            ->renderAsSwitch(false)
+            ->setHelp('Affiche le nom de l\'association sur la page d\'accueil de la plateforme, '
+                .'avec un lien vers son formulaire de déclaration.');
 
         yield FormField::addFieldset('Reçus fiscaux')
             ->setHelp('Ces informations figurent sur chaque reçu fiscal (CERFA 2041-RD). '

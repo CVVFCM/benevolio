@@ -30,6 +30,8 @@ security:
                 # config/packages/csrf.yaml already declares the "authenticate"
                 # stateless CSRF token id that the login form must submit.
                 enable_csrf: true
+                # Not `/`, which is the public home page: see App\Controller\BackofficeController.
+                default_target_path: backoffice
             # Accounts are created without a password and are emailed one of these
             # instead, as is anyone who forgot theirs — see App\User\LoginLinkMailer.
             # Signed with the password hash, so a link dies the moment a password is
@@ -64,6 +66,10 @@ security:
         # Probed by Kubernetes, which carries no credentials and must not be
         # redirected to the login form. See App\Controller\HealthController.
         - { path: ^/health$, roles: PUBLIC_ACCESS }
+        # The public home page. Must stay anonymous: see App\Controller\HomeController.
+        - { path: ^/$, roles: PUBLIC_ACCESS }
+        # Sends a logged-in account to its back office: App\Controller\BackofficeController.
+        - { path: ^/espace$, roles: ROLE_ADMIN }
         - { path: ^/login$, roles: PUBLIC_ACCESS }
         # Where an emailed login link is checked, and where one is asked for.
         - { path: ^/login/lien$, roles: PUBLIC_ACCESS }

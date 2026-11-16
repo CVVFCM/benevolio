@@ -82,6 +82,26 @@ final class LoginControllerTest extends WebTestCase
         self::assertResponseIsSuccessful();
     }
 
+    /**
+     * A login that asked for nothing first lands in the back office, not on `/`: that is
+     * the public home page now, and before it existed it was a 404.
+     */
+    #[Test]
+    public function a_plain_login_lands_in_the_back_office(): void
+    {
+        $this->createAdmin();
+
+        $this->client->request('GET', '/login');
+        $this->client->submitForm('Se connecter', [
+            '_username' => 'admin@example.test',
+            '_password' => self::PASSWORD,
+        ]);
+
+        self::assertResponseRedirects('http://localhost/espace');
+        $this->client->followRedirect();
+        self::assertResponseRedirects('/admin');
+    }
+
     private function createAdmin(): void
     {
         UserFactory::new()

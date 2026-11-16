@@ -67,6 +67,15 @@ class Organization
     #[ORM\Column]
     private bool $active = true;
 
+    /**
+     * Listed on the public home page, with a link to its declaration form. Opt-in and
+     * off by default: being named on a public page is the association's choice, not a
+     * side effect of using the platform. Only meaningful while `active` — an inactive
+     * association is never listed, whatever this says.
+     */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $listedOnHomepage = false;
+
     /*
      * ---------------------------------------------------------------- CERFA ----
      *
@@ -222,6 +231,18 @@ class Organization
     public function setActive(bool $active): self
     {
         $this->active = $active;
+
+        return $this;
+    }
+
+    public function isListedOnHomepage(): bool
+    {
+        return $this->listedOnHomepage;
+    }
+
+    public function setListedOnHomepage(bool $listedOnHomepage): self
+    {
+        $this->listedOnHomepage = $listedOnHomepage;
 
         return $this;
     }
