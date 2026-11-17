@@ -142,6 +142,23 @@ final class ForgotPasswordTest extends WebTestCase
         self::assertEmailCount(1);
     }
 
+    /**
+     * Per visitor, on top of per address: one machine cannot have the platform mail a
+     * long list of addresses. The page still answers the same.
+     */
+    #[Test]
+    public function one_visitor_gets_ten_reset_mails_an_hour_whatever_the_addresses(): void
+    {
+        UserFactory::new()->admin(OrganizationFactory::createOne())->create(['email' => 'tresorier@example.test']);
+        $limiter = self::getContainer()->get('limiter.forgot_password_ip')->create('127.0.0.1');
+        $limiter->consume(10);
+
+        $this->submit('tresorier@example.test');
+
+        self::assertSelectorTextContains('main', 'Vérifiez votre messagerie');
+        self::assertEmailCount(0);
+    }
+
     private function submit(string $email): void
     {
         $this->client->request(Request::METHOD_GET, '/mot-de-passe-oublie');

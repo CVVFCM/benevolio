@@ -11,9 +11,12 @@ on:
     types: [published]
   workflow_dispatch:
 
+# Queued, never cancelled. Cancelling a run mid-`helm upgrade` leaves the release in
+# `pending-upgrade`, and every later deploy then fails with "another operation is in
+# progress" until someone rolls back by hand — which is what two quick merges did.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 env:
   IMAGE_PREFIX: ghcr.io/cvvfcm/benevolio/

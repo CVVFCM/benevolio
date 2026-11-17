@@ -45,6 +45,7 @@ final readonly class RequestLinkController
         private PersonRepository $people,
         private VolunteerLinkMailer $mailer,
         private RateLimiterFactoryInterface $volunteerLinkLimiter,
+        private RateLimiterFactoryInterface $volunteerLinkIpLimiter,
         private UrlGeneratorInterface $urlGenerator,
     ) {
     }
@@ -66,7 +67,8 @@ final readonly class RequestLinkController
 
             // Counted before the lookup, so the limit tells nothing either.
             $key = $organization->getId()->toRfc4122().'|'.mb_strtolower($email->value);
-            if ($this->volunteerLinkLimiter->create($key)->consume()->isAccepted()) {
+            if ($this->volunteerLinkLimiter->create($key)->consume()->isAccepted()
+                && $this->volunteerLinkIpLimiter->create((string) $request->getClientIp())->consume()->isAccepted()) {
                 $this->mailer->send($organization, $email, $this->people->findOneByEmail($email));
             }
 

@@ -47,6 +47,7 @@ final readonly class DeclarationController
         private TenantContext $tenantContext,
         private UrlGeneratorInterface $urlGenerator,
         private RateLimiterFactoryInterface $declarationRecipientLimiter,
+        private RateLimiterFactoryInterface $declarationIpLimiter,
         private CurrentVolunteer $currentVolunteer,
     ) {
     }
@@ -103,7 +104,9 @@ final readonly class DeclarationController
             // a handful of confirmation mails a day from one association, no more.
             $recipient = $organization->getId()->toRfc4122().'|'.mb_strtolower((string) $draft->email);
 
-            if (!$this->declarationRecipientLimiter->create($recipient)->consume()->isAccepted()) {
+            // And one visitor files for a limited number of addresses: per IP, per day.
+            if (!$this->declarationRecipientLimiter->create($recipient)->consume()->isAccepted()
+                || !$this->declarationIpLimiter->create((string) $request->getClientIp())->consume()->isAccepted()) {
                 return new Response(
                     $this->twig->render('public/declaration/too_many.html.twig', ['organization' => $organization]),
                     Response::HTTP_TOO_MANY_REQUESTS,

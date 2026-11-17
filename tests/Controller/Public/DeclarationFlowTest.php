@@ -517,6 +517,22 @@ final class DeclarationFlowTest extends WebTestCase
         self::assertCount(0, $crawler->filter('.error-summary'));
     }
 
+    /**
+     * Per visitor, on top of per address: twenty anonymous declarations a day from one
+     * machine, whatever the addresses typed.
+     */
+    #[Test]
+    public function one_visitor_files_twenty_declarations_a_day_whatever_the_addresses(): void
+    {
+        OrganizationFactory::createOne(['slug' => 'les-jardins']);
+        self::getContainer()->get('limiter.declaration_ip')->create('127.0.0.1')->consume(20);
+
+        $this->completeFlow(['email' => 'tout.nouveau@example.test']);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
+        self::assertCount(0, $this->freshEntityManager()->getRepository(Declaration::class)->findAll());
+    }
+
     private function assertPageContainsText(string $needle): void
     {
         self::assertStringContainsString($needle, $this->client->getCrawler()->filter('body')->text());

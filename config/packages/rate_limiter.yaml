@@ -24,3 +24,19 @@ framework:
             policy: fixed_window
             limit: 3
             interval: '1 hour'
+
+        # Per visitor, on top of the per-address limits above: one machine must not mail,
+        # or file for, many addresses. Production sees the real visitor address — the
+        # Gateway overwrites X-Forwarded-For, and it is a trusted proxy — see AGENTS.md.
+        forgot_password_ip:
+            policy: fixed_window
+            limit: 10
+            interval: '1 hour'
+        volunteer_link_ip:
+            policy: fixed_window
+            limit: 10
+            interval: '1 hour'
+        declaration_ip:
+            policy: fixed_window
+            limit: 20
+            interval: '1 day'

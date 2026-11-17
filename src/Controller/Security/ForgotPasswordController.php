@@ -38,6 +38,7 @@ final readonly class ForgotPasswordController
         private UserRepository $users,
         private LoginLinkMailer $mailer,
         private RateLimiterFactoryInterface $forgotPasswordLimiter,
+        private RateLimiterFactoryInterface $forgotPasswordIpLimiter,
     ) {
     }
 
@@ -53,7 +54,8 @@ final readonly class ForgotPasswordController
             // Counted for every address, known or not, and before the lookup: the
             // limit must not become a way to tell which addresses have an account.
             // Over it, the page below is shown all the same and nothing is sent.
-            $allowed = $this->forgotPasswordLimiter->create(mb_strtolower($email))->consume()->isAccepted();
+            $allowed = $this->forgotPasswordLimiter->create(mb_strtolower($email))->consume()->isAccepted()
+                && $this->forgotPasswordIpLimiter->create((string) $request->getClientIp())->consume()->isAccepted();
 
             if ($allowed && null !== $user = $this->users->findOneBy(['email' => $email])) {
                 $this->mailer->sendPasswordReset($user);
