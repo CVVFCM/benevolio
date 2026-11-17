@@ -9,6 +9,7 @@ use App\Entity\DeclarationAction;
 use App\Entity\Organization;
 use App\Entity\Person;
 use App\Entity\Task;
+use App\Enum\FiscalPower;
 use App\Factory\OrganizationFactory;
 use App\Form\Declaration\DeclarationDraft;
 use App\State\DeclarationActionState;
@@ -17,6 +18,7 @@ use App\Tests\Support\LogsInAdmins;
 use App\Tests\Support\ReloadsEntities;
 use App\Tests\Support\ResetsRateLimiters;
 use App\Tests\Support\WalksDeclarationFlow;
+use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -433,6 +435,36 @@ final class DeclarationFlowTest extends WebTestCase
      * apostrophes to &#039;, so a raw-string assertion on a French message with an
      * apostrophe fails for the wrong reason.
      */
+    #[Test]
+    public function an_electric_vehicle_is_recorded_on_the_line(): void
+    {
+        OrganizationFactory::createOne(['slug' => 'les-jardins']);
+        $this->client->request('GET', '/a/les-jardins/declaration');
+        $this->client->submitForm('Suivant', $this->personStep());
+
+        $this->client->submitForm('Suivant', [
+            self::FORM.'[actions][actions][0][task]' => $this->firstTaskId(),
+            self::FORM.'[actions][actions][0][title]' => 'Convoyage',
+            self::FORM.'[actions][actions][0][date]' => new DateTimeImmutable('-30 days')->format('Y-m-d'),
+            self::FORM.'[actions][actions][0][consecutiveDays]' => '1',
+            self::FORM.'[actions][actions][0][workHours]' => '2',
+            self::FORM.'[actions][actions][0][distanceKm]' => '34',
+            self::FORM.'[actions][actions][0][journeys]' => '2',
+            self::FORM.'[actions][actions][0][ownVehicle]' => '1',
+            self::FORM.'[actions][actions][0][fiscalPower]' => FiscalPower::FIVE_CV->value,
+            self::FORM.'[actions][actions][0][electricVehicle]' => '1',
+        ]);
+        $this->client->submitForm('Enregistrer ma déclaration', [
+            self::FORM.'[legal][accuracyAttested]' => '1',
+            self::FORM.'[legal][expensesWaived]' => '1',
+        ]);
+        self::assertResponseRedirects();
+
+        $lines = $this->findAllOf(DeclarationAction::class);
+        self::assertCount(1, $lines);
+        self::assertTrue($lines[0]->isElectricVehicle());
+    }
+
     private function assertPageContainsText(string $needle): void
     {
         self::assertStringContainsString($needle, $this->client->getCrawler()->filter('body')->text());

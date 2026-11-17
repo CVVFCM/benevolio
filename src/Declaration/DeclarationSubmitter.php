@@ -179,6 +179,7 @@ final readonly class DeclarationSubmitter
             // Normalise to the two decimals the column holds, so "7.5" and "7.50"
             // are stored identically.
             number_format((float) $draft->workHours, 2, '.', ''),
+            $draft->electricVehicle,
         );
     }
 }

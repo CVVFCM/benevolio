@@ -187,6 +187,80 @@ final class ContributionValuatorTest extends KernelTestCase
         self::assertSame(5000, $this->valuator->valueWithin($action, $fiscalYear)->hours->cents);
     }
 
+    /**
+     * @return iterable<string, array{int, int, int, int}>
+     */
+    public static function electricCases(): iterable
+    {
+        // km, millièmes per km, bonus %, expected cents
+        // 72,473 € × 1,2 = 86,9676 €: one division, never 72,47 € × 1,2 = 86,964 €.
+        yield '137 km at 0,529, +20 %' => [137, 529, 20, 8697];
+        yield '100 km at 0,529, +20 % = 63,48 € exactly' => [100, 529, 20, 6348];
+        // 15 × 529 × 1,2 = 9,522 € → 9,52 €.
+        yield '15 km at 0,529, +20 %' => [15, 529, 20, 952];
+        yield 'a bonus set to 0 % is the plain barème' => [137, 529, 0, 7247];
+    }
+
+    #[Test]
+    #[DataProvider('electricCases')]
+    public function an_electric_vehicle_gets_the_bonus_in_one_rounding(int $km, int $milliEuros, int $bonus, int $expectedCents): void
+    {
+        $organization = OrganizationFactory::createOne();
+        $fiscalYear = FiscalYearFactory::new()->for($organization)->calendarYear(2025)
+            ->create(['defaultMilliEurosPerKm' => $milliEuros, 'defaultElectricBonusPercent' => $bonus]);
+        $action = $this->actionOn($organization, '2025-06-15', [
+            'ownVehicle' => true,
+            'fiscalPower' => FiscalPower::THREE_CV_OR_LESS,
+            'electricVehicle' => true,
+            'journeys' => 1,
+            'distanceKm' => $km,
+        ]);
+
+        self::assertSame($expectedCents, $this->valuator->valueWithin($action, $fiscalYear)->mileage->cents);
+    }
+
+    /**
+     * The bracket's own bonus, like its own rate, beats the exercice default.
+     */
+    #[Test]
+    public function a_brackets_bonus_beats_the_default(): void
+    {
+        $organization = OrganizationFactory::createOne();
+        $fiscalYear = FiscalYearFactory::new()->for($organization)->calendarYear(2025)
+            ->withPublishedBareme()
+            ->create(['defaultElectricBonusPercent' => 0]);
+        foreach ($fiscalYear->getMileageRates() as $rate) {
+            if (FiscalPower::FIVE_CV === $rate->getFiscalPower()) {
+                $rate->setElectricBonusPercent(10);
+            }
+        }
+        $action = $this->actionOn($organization, '2025-06-15', [
+            ...DeclarationActionFactory::WAIVED_TRAVEL,
+            'electricVehicle' => true,
+        ]);
+
+        // 68 km at 0,636 €/km + 10 % = 47,5728 € → 47,57 €.
+        self::assertSame(4757, $this->valuator->valueWithin($action, $fiscalYear)->mileage->cents);
+    }
+
+    /**
+     * Ticked without the volunteer's own vehicle, the flag is dropped: there is nothing
+     * to waive, so nothing to bonus.
+     */
+    #[Test]
+    public function electric_without_an_own_vehicle_is_dropped(): void
+    {
+        $organization = OrganizationFactory::createOne();
+        $action = $this->actionOn($organization, '2025-06-15', [
+            'ownVehicle' => false,
+            'fiscalPower' => null,
+            'electricVehicle' => true,
+        ]);
+
+        self::assertFalse($action->isElectricVehicle());
+        self::assertSame(0, $this->valuator->valueWithin($action, $this->year2025AtDefaultRates($organization))->mileage->cents);
+    }
+
     private function year2025AtDefaultRates(Organization $organization): FiscalYear
     {
         return FiscalYearFactory::new()

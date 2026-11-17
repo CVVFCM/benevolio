@@ -137,6 +137,15 @@ final class DeclarationActionFactory extends PersistentObjectFactory
     }
 
     /**
+     * The volunteer's own vehicle is electric: the barème is « majoré ». Combine with
+     * withWaivedTravel() or withOwnVehicle(); without an own vehicle it is dropped.
+     */
+    public function electric(): self
+    {
+        return $this->with(['electricVehicle' => true]);
+    }
+
+    /**
      * No travel at all: hours only, which open no right to a receipt.
      */
     public function onFoot(): self
@@ -144,6 +153,7 @@ final class DeclarationActionFactory extends PersistentObjectFactory
         return $this->with([
             'ownVehicle' => false,
             'fiscalPower' => null,
+            'electricVehicle' => false,
             'journeys' => 0,
             'distanceKm' => 0,
         ]);
@@ -168,6 +178,7 @@ final class DeclarationActionFactory extends PersistentObjectFactory
             'distanceKm' => self::faker()->numberBetween(5, 80),
             'ownVehicle' => false,
             'fiscalPower' => null,
+            'electricVehicle' => false,
             // Quarter-hour granularity, which is what DECIMAL(5,2) is for.
             'workHours' => sprintf(
                 '%d.%02d',

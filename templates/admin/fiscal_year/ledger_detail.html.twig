@@ -94,7 +94,7 @@
                                     <td>
                                         {{ entry.action.totalDistanceKm }} km
                                         {% if entry.action.fiscalPower %}
-                                            <br><small class="ledger__note">{{ entry.action.fiscalPower.label }}</small>
+                                            <br><small class="ledger__note">{{ entry.action.fiscalPower.label }}{{ entry.action.electricVehicle ? ', électrique (+' ~ entry.valuation.fiscalYear.mileageRateFor(entry.action.fiscalPower).electricBonusPercent ~ ' %)' }}</small>
                                         {% endif %}
                                     </td>
                                     <td class="is-numeric">{{ entry.valuation.mileage|euros }}</td>

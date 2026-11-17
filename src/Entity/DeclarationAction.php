@@ -43,6 +43,10 @@ use function sprintf;
     'this.usesOwnVehicle() ? this.getFiscalPower() !== null : this.getFiscalPower() === null',
     message: 'La puissance fiscale est requise lorsque le bénévole utilise son propre véhicule, et doit rester vide sinon.',
 )]
+#[Assert\Expression(
+    'this.usesOwnVehicle() or !this.isElectricVehicle()',
+    message: 'Seul un véhicule personnel peut être déclaré électrique.',
+)]
 class DeclarationAction
 {
     public const int TITLE_MAX_LENGTH = 150;
@@ -113,6 +117,14 @@ class DeclarationAction
     #[ORM\Column(enumType: FiscalPower::class, nullable: true)]
     private ?FiscalPower $fiscalPower;
 
+    /**
+     * An electric vehicle gets the barème « majoré » — see
+     * FiscalYear::DEFAULT_ELECTRIC_BONUS_PERCENT. Only meaningful with the volunteer's own
+     * vehicle, and forced false otherwise, as fiscalPower is forced null.
+     */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $electricVehicle;
+
     /** Hours given, as a DECIMAL(5,2) string — e.g. "7.50" for seven and a half. */
     #[ORM\Column(type: Types::DECIMAL, precision: 5, scale: 2)]
     private string $workHours;
@@ -129,6 +141,7 @@ class DeclarationAction
         bool $ownVehicle,
         ?FiscalPower $fiscalPower,
         string $workHours,
+        bool $electricVehicle = false,
     ) {
         $this->id = Uuid::v7();
         $this->declaration = $declaration;
@@ -142,6 +155,7 @@ class DeclarationAction
         $this->distanceKm = $distanceKm;
         $this->ownVehicle = $ownVehicle;
         $this->fiscalPower = $ownVehicle ? $fiscalPower : null;
+        $this->electricVehicle = $ownVehicle && $electricVehicle;
         $this->workHours = $workHours;
 
         $declaration->addAction($this);
@@ -265,6 +279,11 @@ class DeclarationAction
     public function usesOwnVehicle(): bool
     {
         return $this->ownVehicle;
+    }
+
+    public function isElectricVehicle(): bool
+    {
+        return $this->electricVehicle;
     }
 
     public function getFiscalPower(): ?FiscalPower

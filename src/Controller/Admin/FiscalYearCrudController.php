@@ -134,7 +134,7 @@ final class FiscalYearCrudController extends AbstractCrudController
         // formatValue callback — the same trap already documented in
         // App\Controller\Admin\TaskCrudController, walked into again here.
         yield IntegerField::new('defaultMilliEurosPerKm', 'Barème kilométrique par défaut')
-            ->formatValue(static fn (mixed $value, FiscalYear $year): string => $year->getDefaultMileageRate()->format())
+            ->formatValue(static fn (mixed $value, FiscalYear $year): string => $year->getDefaultMileageRate()->formatWithElectricBonus())
             ->hideOnForm();
 
         yield IntegerField::new('defaultMilliEurosPerKm', 'Barème kilométrique par défaut (millièmes d\'euro / km)')
@@ -144,6 +144,11 @@ final class FiscalYearCrudController extends AbstractCrudController
                 .'Barème automobile 2025 (arrêté du 27 mars 2023) : 3 CV et moins 529, '
                 .'4 CV 606, 5 CV 636, 6 CV 665, 7 CV et plus 697.',
             );
+
+        yield IntegerField::new('defaultElectricBonusPercent', 'Majoration véhicule électrique par défaut (%)')
+            ->onlyOnForms()
+            ->setHelp('Le barème est majoré de 20 % pour un véhicule électrique, sur toutes les '
+                .'puissances fiscales. S\'applique aux puissances sans ligne propre ci-dessous.');
 
         // Editable, and this is the ONLY way either kind of rate can be created: there is no
         // CRUD for them and there should not be — a rate has no meaning apart from the exercice

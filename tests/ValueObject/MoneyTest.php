@@ -63,8 +63,9 @@ final class MoneyTest extends TestCase
     {
         self::assertSame("12,00\u{a0}€/h", new HourlyRate(1200)->format());
         // Three decimals: the barème is published in millièmes.
-        self::assertSame("0,529\u{a0}€/km", new MileageRate(529)->format());
-        self::assertSame("1,005\u{a0}€/km", new MileageRate(1005)->format());
+        self::assertSame("0,529\u{a0}€/km", new MileageRate(529, 20)->format());
+        self::assertSame("1,005\u{a0}€/km", new MileageRate(1005, 20)->format());
+        self::assertSame("0,636\u{a0}€/km, +20\u{a0}% électrique", new MileageRate(636, 20)->formatWithElectricBonus());
     }
 
     /**

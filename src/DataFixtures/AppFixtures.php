@@ -138,6 +138,18 @@ final class AppFixtures extends Fixture
                     'date' => new DateTimeImmutable(sprintf('%d-06-21', $year)),
                     'workHours' => '5.50',
                 ]);
+
+            // The same travel in an electric car: the barème « majoré » of 20 %.
+            $electric = DeclarationFactory::new()->for($organization)->confirmed()->create();
+            DeclarationActionFactory::new()
+                ->forDeclaration($electric)
+                ->validated()
+                ->withWaivedTravel()
+                ->electric()
+                ->create([
+                    'date' => new DateTimeImmutable(sprintf('%d-09-14', $year)),
+                    'workHours' => '3.00',
+                ]);
         }
     }
 }

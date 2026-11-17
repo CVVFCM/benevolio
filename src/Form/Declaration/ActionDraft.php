@@ -76,6 +76,12 @@ final class ActionDraft
     public ?FiscalPower $fiscalPower = null;
 
     /**
+     * No constraint: ticked without « véhicule personnel », it means nothing, and
+     * DeclarationAction drops it the way it drops a fiscal power.
+     */
+    public bool $electricVehicle = false;
+
+    /**
      * Kept as a decimal string rather than a float: NumberType with
      * `input: 'string'` transforms it, and the entity column is DECIMAL(5,2), so
      * the exact value the volunteer typed reaches the database.

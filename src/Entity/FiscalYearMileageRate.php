@@ -53,6 +53,14 @@ class FiscalYearMileageRate
     )]
     private int $milliEurosPerKm = FiscalYear::DEFAULT_MILLI_EUROS_PER_KM;
 
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => FiscalYear::DEFAULT_ELECTRIC_BONUS_PERCENT])]
+    #[Assert\Range(
+        notInRangeMessage: 'La majoration électrique doit être comprise entre {{ min }} et {{ max }} %.',
+        min: 0,
+        max: 100,
+    )]
+    private int $electricBonusPercent = FiscalYear::DEFAULT_ELECTRIC_BONUS_PERCENT;
+
     public function __construct(FiscalYear $fiscalYear, FiscalPower $fiscalPower)
     {
         $this->id = Uuid::v7();
@@ -70,12 +78,12 @@ class FiscalYearMileageRate
      */
     public function __toString(): string
     {
-        return sprintf('%s : %s', $this->fiscalPower->label(), $this->getMileageRate());
+        return sprintf('%s : %s', $this->fiscalPower->label(), $this->getMileageRate()->formatWithElectricBonus());
     }
 
     public function getMileageRate(): MileageRate
     {
-        return new MileageRate($this->milliEurosPerKm);
+        return new MileageRate($this->milliEurosPerKm, $this->electricBonusPercent);
     }
 
     public function getId(): Uuid
@@ -96,6 +104,18 @@ class FiscalYearMileageRate
     public function setMilliEurosPerKm(int $milliEurosPerKm): self
     {
         $this->milliEurosPerKm = $milliEurosPerKm;
+
+        return $this;
+    }
+
+    public function getElectricBonusPercent(): int
+    {
+        return $this->electricBonusPercent;
+    }
+
+    public function setElectricBonusPercent(int $electricBonusPercent): self
+    {
+        $this->electricBonusPercent = $electricBonusPercent;
 
         return $this;
     }
