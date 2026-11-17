@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Doctrine\Type\EmailType;
+use App\Enum\FiscalPower;
 use App\Repository\PersonRepository;
 use App\Tenant\TenantAware;
 use App\Tenant\TenantAwareTrait;
@@ -17,14 +18,17 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
+use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
  * Someone who gives to the association — in practice a volunteer.
  *
- * A Person is NOT a User: they have no account and never log in. They identify
- * themselves by filling the first step of the public declaration form, and are
- * matched to an existing record by (organization, email).
+ * A Person is NOT a back-office User. They may declare anonymously — matched to an
+ * existing record by (organization, email) — or log in to their association's
+ * volunteer space with a link mailed to them: then they are the UserInterface of the
+ * `volunteer` firewall, with ROLE_VOLUNTEER, for that association only. See
+ * App\Volunteer\CurrentVolunteer.
  *
  * The address is the person's *current* one, overwritten by each new declaration.
  * If a re-issued tax receipt ever has to carry the address as it was at the time
@@ -40,7 +44,7 @@ use Symfony\Component\Uid\Uuid;
     message: 'Une personne avec cette adresse électronique existe déjà dans cette association.',
     errorPath: 'email',
 )]
-class Person implements TenantAware
+class Person implements TenantAware, UserInterface
 {
     use TenantAwareTrait;
 
@@ -71,6 +75,27 @@ class Person implements TenantAware
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private DateTimeImmutable $createdAt;
+
+    /**
+     * One way, home → association, in km: what each new action line starts with. Typed in
+     * « Mon profil », never taken from a declaration — an event elsewhere is another
+     * distance.
+     */
+    #[ORM\Column(type: Types::INTEGER, nullable: true)]
+    private ?int $distanceKm = null;
+
+    #[ORM\Column(enumType: FiscalPower::class, nullable: true)]
+    private ?FiscalPower $fiscalPower = null;
+
+    #[ORM\Column(options: ['default' => false])]
+    private bool $electricVehicle = false;
+
+    /**
+     * Signed into every volunteer login link and bumped on each login, so a link works
+     * once. The back office does the same with User::$loginLinkVersion.
+     */
+    #[ORM\Column(options: ['default' => 0])]
+    private int $loginLinkVersion = 0;
 
     /**
      * Unlike Organization and User, a Person is never instantiated by EasyAdmin
@@ -127,6 +152,57 @@ class Person implements TenantAware
     public function getAddress(): Address
     {
         return $this->address;
+    }
+
+    public function getDistanceKm(): ?int
+    {
+        return $this->distanceKm;
+    }
+
+    public function getFiscalPower(): ?FiscalPower
+    {
+        return $this->fiscalPower;
+    }
+
+    public function isElectricVehicle(): bool
+    {
+        return $this->electricVehicle;
+    }
+
+    /**
+     * What « Mon profil » edits. Name and address are not here: they change only through
+     * a confirmed declaration (updateIdentity()), so the identity printed on a CERFA has
+     * always been stated on a declaration.
+     */
+    public function updateVehicle(?int $distanceKm, ?FiscalPower $fiscalPower, bool $electricVehicle): void
+    {
+        $this->distanceKm = $distanceKm;
+        $this->fiscalPower = $fiscalPower;
+        $this->electricVehicle = $electricVehicle;
+    }
+
+    public function getLoginLinkVersion(): int
+    {
+        return $this->loginLinkVersion;
+    }
+
+    /** Spends every login link mailed so far. */
+    public function bumpLoginLinkVersion(): void
+    {
+        ++$this->loginLinkVersion;
+    }
+
+    public function getUserIdentifier(): string
+    {
+        return $this->id->toRfc4122();
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function getRoles(): array
+    {
+        return ['ROLE_VOLUNTEER'];
     }
 
     /**

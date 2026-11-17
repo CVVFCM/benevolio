@@ -1,0 +1,28 @@
+{% extends 'public/layout.html.twig' %}
+
+{% form_theme form 'form/public_theme.html.twig' %}
+
+{% block title %}Se connecter — {{ organization.name }}{% endblock %}
+
+{% block main %}
+    <h1>Votre espace bénévole</h1>
+
+    <p class="lede">
+        Recevez un lien de connexion par courriel. Votre espace garde vos coordonnées et
+        votre véhicule pour vos prochaines déclarations, et vous y retrouvez vos déclarations
+        et vos reçus fiscaux. Pas de mot de passe.
+    </p>
+
+    {{ form_start(form, {attr: {novalidate: 'novalidate'}}) }}
+        <div class="form__grid">
+            {{ form_row(form.email, {row_attr: {class: 'field field--wide'}}) }}
+        </div>
+        <div class="navigator">
+            <button type="submit" class="button">Recevoir un lien</button>
+        </div>
+    {{ form_end(form) }}
+
+    <p>
+        Vous pouvez aussi <a href="{{ path('declaration', {organizationSlug: organization.slug}) }}">déclarer sans vous connecter</a>.
+    </p>
+{% endblock %}

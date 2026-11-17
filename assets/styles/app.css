@@ -206,6 +206,34 @@ body {
     letter-spacing: -0.01em;
 }
 
+/* The volunteer space: « Se connecter », or the account's pages and « Se déconnecter ». */
+.public__account {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+    align-items: baseline;
+    font-size: 0.9375rem;
+}
+
+.public__who {
+    color: var(--ink-faint);
+}
+
+.public__logout {
+    display: inline;
+    margin: 0;
+}
+
+.link-button {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--accent);
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
 .public__app {
     margin: 0;
     color: var(--ink-faint);
@@ -469,6 +497,12 @@ body {
 .alert__hint {
     margin-top: var(--space-1);
     font-size: 0.9375rem;
+}
+
+.alert--success {
+    border-color: color-mix(in oklab, var(--success) 35%, transparent);
+    background-color: var(--success-tint);
+    color: var(--success);
 }
 
 .alert--danger {

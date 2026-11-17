@@ -13,10 +13,11 @@
 {$SERVER_NAME:localhost} {
 	log {
 		{$CADDY_SERVER_LOG_OPTIONS}
-		# Two URLs are credentials and must not sit in the pod's log: a login link
-		# (its `hash` signs the account in, for 7 days on an invitation) and a
+		# Some URLs are credentials and must not sit in the pod's log: a login link
+		# (its `hash` signs the account in, for 7 days on an invitation), a volunteer's
+		# login link (its `_hash`, which the same `hash=` pattern catches) and a
 		# declaration's confirmation link (the token is the last path segment).
-		# One regexp for both, because a field takes a single filter.
+		# One regexp for all, because a field takes a single filter.
 		format filter {
 			request>uri regexp "(hash=)[^&]+|(/declaration/confirmer/)[A-Za-z0-9_-]+" "${1}${2}REDACTED"
 			# The same URL comes back as the Referer of whatever the page loads next.

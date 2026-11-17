@@ -18,3 +18,9 @@ framework:
             policy: fixed_window
             limit: 5
             interval: '1 day'
+        # Volunteer login links: three per address, per association, per hour. Keyed on
+        # the address for the reason forgot_password is — see AGENTS.md, Rate limits.
+        volunteer_link:
+            policy: fixed_window
+            limit: 3
+            interval: '1 hour'

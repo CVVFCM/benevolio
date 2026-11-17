@@ -9,6 +9,7 @@ use App\Exception\UnknownOrganizationException;
 use App\Form\Declaration\DeclarationDraft;
 use App\Form\Declaration\DeclarationFlowType;
 use App\Tenant\TenantContext;
+use App\Volunteer\CurrentVolunteer;
 use Symfony\Component\Form\Flow\FormFlowInterface;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -46,6 +47,7 @@ final readonly class DeclarationController
         private TenantContext $tenantContext,
         private UrlGeneratorInterface $urlGenerator,
         private RateLimiterFactoryInterface $declarationRecipientLimiter,
+        private CurrentVolunteer $currentVolunteer,
     ) {
     }
 
@@ -63,14 +65,42 @@ final readonly class DeclarationController
         // A data object is required up front: the flow reads the current step off
         // it before any submission, and the session storage replaces it with the
         // stored draft if there is one.
-        $flow = $this->formFactory->create(DeclarationFlowType::class, new DeclarationDraft());
+        $volunteer = $this->currentVolunteer->get();
+
+        // A logged-in volunteer declares as themselves: the email is theirs, shown
+        // read-only, and DeclarationSubmitter::submitAs() files under them whatever was
+        // typed. Set before the form is built, so the field shows it.
+        $draft = new DeclarationDraft();
+        $draft->email = $volunteer?->getEmail()->value;
+
+        $flow = $this->formFactory->create(DeclarationFlowType::class, $draft);
         assert($flow instanceof FormFlowInterface);
 
         $flow->handleRequest($request);
 
+        // Again after handleRequest(), which may have restored a draft started
+        // anonymously under another address.
+        $current = $flow->getData();
+        if (null !== $volunteer && $current instanceof DeclarationDraft) {
+            $current->email = $volunteer->getEmail()->value;
+        }
+
         if ($flow->isFinished()) {
             $draft = $flow->getData();
             assert($draft instanceof DeclarationDraft);
+
+            if (null !== $volunteer) {
+                $this->submitter->submitAs($volunteer, $draft);
+
+                $session = $request->getSession();
+                if ($session instanceof Session) {
+                    $session->getFlashBag()->add('success', 'Votre déclaration est enregistrée. L\'association va l\'examiner.');
+                }
+
+                return new RedirectResponse($this->urlGenerator->generate('volunteer_declarations', [
+                    'organizationSlug' => $organization->getSlug(),
+                ]));
+            }
 
             // The form mails whatever address was typed, to anyone. One address gets
             // a handful of confirmation mails a day from one association, no more.
@@ -115,6 +145,7 @@ final readonly class DeclarationController
             $this->twig->render('public/declaration/flow.html.twig', [
                 'flow' => $stepForm->createView(),
                 'organization' => $organization,
+                'volunteer' => $volunteer,
             ]),
             $status,
         );

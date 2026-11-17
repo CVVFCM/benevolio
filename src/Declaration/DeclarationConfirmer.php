@@ -95,6 +95,20 @@ final readonly class DeclarationConfirmer
         });
     }
 
+    /**
+     * Confirms a declaration filed by a volunteer logged in to their space — see
+     * DeclarationSubmitter::submitAs(). The login link proved the address; nobody vouches
+     * for anyone, so it is recorded as the volunteer's own confirmation.
+     *
+     * Runs inside the caller's transaction.
+     */
+    public function confirmBySubmission(Declaration $declaration): void
+    {
+        $this->stateMachine->apply($declaration, DeclarationState::TRANSITION_CONFIRM);
+        $declaration->markConfirmed($this->clock->now());
+        $this->entityManager->flush();
+    }
+
     public function canConfirmManually(Declaration $declaration): bool
     {
         return $declaration->getState()->isAwaitingConfirmation();
