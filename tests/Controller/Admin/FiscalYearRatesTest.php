@@ -8,6 +8,7 @@ use App\Entity\FiscalYear;
 use App\Entity\FiscalYearTaskRate;
 use App\Entity\Organization;
 use App\Entity\Task;
+use App\Enum\FiscalPower;
 use App\Factory\FiscalYearFactory;
 use App\Factory\OrganizationFactory;
 use App\Tests\Support\LogsInAdmins;
@@ -117,6 +118,34 @@ final class FiscalYearRatesTest extends WebTestCase
 
         self::assertResponseIsSuccessful();
         self::assertStringContainsString('18,50', $this->bodyText());
+    }
+
+    #[Test]
+    public function the_electric_bonus_is_entered_on_the_exercice_and_per_bracket(): void
+    {
+        $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
+        $fiscalYear = $this->calendarYear2026($organization);
+        $this->loginAsAdminOf($organization);
+
+        $crawler = $this->client->request('GET', $this->editUrl($fiscalYear));
+        $form = $crawler->selectButton('Sauvegarder les modifications')->form();
+        $name = $form->getName();
+
+        /** @var array<string, array<string, mixed>> $values */
+        $values = $form->getPhpValues();
+        self::assertSame('20', $values[$name]['defaultElectricBonusPercent'] ?? null, 'A new exercice starts at 20 %.');
+        $values[$name]['defaultElectricBonusPercent'] = '25';
+        $values[$name]['mileageRates'] = [
+            ['fiscalPower' => FiscalPower::FIVE_CV->value, 'milliEurosPerKm' => '636', 'electricBonusPercent' => '15'],
+        ];
+
+        $this->client->request('POST', $form->getUri(), $values);
+        self::assertResponseRedirects();
+
+        $reloaded = $this->reload($fiscalYear);
+        self::assertSame(25, $reloaded->getDefaultElectricBonusPercent());
+        self::assertSame(15, $reloaded->mileageRateFor(FiscalPower::FIVE_CV)->electricBonusPercent);
+        self::assertSame(25, $reloaded->mileageRateFor(FiscalPower::SIX_CV)->electricBonusPercent);
     }
 
     private function calendarYear2026(Organization $organization): FiscalYear

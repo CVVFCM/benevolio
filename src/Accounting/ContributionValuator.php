@@ -77,10 +77,15 @@ final readonly class ContributionValuator
     }
 
     /**
-     * kilometres × millièmes d'euro per km ÷ 10 → cents.
+     * kilometres × millièmes d'euro per km × percent ÷ 1 000 → cents.
      *
-     * Ten, not a thousand: a millième is a tenth of a cent, and the result is wanted in
-     * cents. 137 km at 529 gives 72 473 tenths of a cent, so 7 247 cents — 72,47 €.
+     * A millième is a tenth of a cent, and the percent is 100, or 100 plus the electric
+     * bonus: ÷ 10 for the unit, ÷ 100 for the percent. 137 km at 529 gives 7 247 cents —
+     * 72,47 €; electric at +20 %, 8 697 cents — 86,97 €.
+     *
+     * ONE division, so the bonus is never applied to an already-rounded figure: 0,529 × 1,2
+     * is 0,6348 €/km, which no millième holds, and rounding the rate first would round
+     * the law.
      */
     private function mileageCents(DeclarationAction $action, FiscalYear $fiscalYear): int
     {
@@ -93,9 +98,12 @@ final readonly class ContributionValuator
         // DeclarationAction, which is why this is an assertion and not a branch.
         assert(null !== $fiscalPower);
 
+        $rate = $fiscalYear->mileageRateFor($fiscalPower);
+        $percent = 100 + ($action->isElectricVehicle() ? $rate->electricBonusPercent : 0);
+
         return self::divideRoundingHalfUp(
-            $action->getTotalDistanceKm() * $fiscalYear->mileageRateFor($fiscalPower)->milliEurosPerKm,
-            10,
+            $action->getTotalDistanceKm() * $rate->milliEurosPerKm * $percent,
+            1000,
         );
     }
 

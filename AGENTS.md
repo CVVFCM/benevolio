@@ -49,6 +49,13 @@ Two consequences that are easy to get wrong:
   records are not the volunteer's total. A flag computed from local kilometres would claim
   knowledge that does not exist. The band-1 rate is applied to what is declared, and the
   volunteer's own situation is theirs to settle.
+- **An electric vehicle's allowance is « majorée de 20 % »**, on every bracket — the
+  barème says so since revenus 2021, with no exception for small powers (the 1 CV
+  exclusion belonged to the abolished bénévole scale). The percentage is held beside each
+  rate, on the exercice and on each bracket (`defaultElectricBonusPercent`,
+  `FiscalYearMileageRate::$electricBonusPercent`, 20 by default), and travels with it in
+  `MileageRate`. It is applied to the **amount, in the same single division**: 0,529 × 1,2
+  is 0,6348 €/km, which no millième holds.
 
 **Volunteers have no account.** They are not `User`s. They identify themselves by
 filling the first step of the public form under `/a/{organizationSlug}/declaration`.
@@ -70,6 +77,7 @@ differently, so never sum them together:
 | `distanceKm` | Kilometres of **one journey, one way**. |
 | `journeys` | Number of **one-way** journeys — a return trip is two. Total distance is `distanceKm × journeys`. |
 | `fiscalPower` | An enum of the *barème* brackets (≤3 CV, 4, 5, 6, ≥7 CV), because the scale distinguishes only those. Required exactly when `ownVehicle` is true. **No euro rates anywhere**: the scale is republished yearly and belongs with valuation, keyed by financial year. |
+| `electricVehicle` | The volunteer's own vehicle is electric, and the barème is « majoré » — see below. Forced false without `ownVehicle`, as `fiscalPower` is forced null. |
 | `consecutiveDays` | The action may span several days from `date`. The action must be **over**: `DeclarationAction::endDateFor()` is the shared arithmetic, applied on the DTO *and* the entity, and it normalises to midnight — an end date of "today at 17:30" would otherwise read as later than "today". |
 | `task` | The *tâche effectuée* — a per-association **entity**, not an enum. Its hourly rate lives on the exercice, not on it. See below. |
 

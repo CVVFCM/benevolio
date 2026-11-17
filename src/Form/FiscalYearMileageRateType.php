@@ -18,7 +18,7 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
  * One bracket of the barème kilométrique for one exercice.
  *
  * An override of the exercice's default rate, per puissance fiscale.
- * `FiscalYear::milliEurosPerKmFor()` is the single place the fallback lives.
+ * `FiscalYear::mileageRateFor()` is the single place the fallback lives.
  *
  * @extends AbstractType<FiscalYearMileageRate>
  */
@@ -40,6 +40,10 @@ final class FiscalYearMileageRateType extends AbstractType
                 'label' => 'Barème (millièmes d\'euro / km)',
                 'help' => 'Saisissez 529 pour 0,529 €/km. Barème 2025 (arrêté du 27 mars 2023) : '
                     .'3 CV et moins 529, 4 CV 606, 5 CV 636, 6 CV 665, 7 CV et plus 697.',
+            ])
+            ->add('electricBonusPercent', IntegerType::class, [
+                'label' => 'Majoration véhicule électrique (%)',
+                'help' => '20 % depuis 2021, sur toutes les puissances.',
             ]);
     }
 

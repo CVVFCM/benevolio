@@ -156,6 +156,8 @@ final class FiscalYearTest extends KernelTestCase
 
         self::assertSame(1500, $fiscalYear->hourlyRateFor($task)->centsPerHour);
         self::assertSame(529, $fiscalYear->mileageRateFor(FiscalPower::FIVE_CV)->milliEurosPerKm);
+        // 20 % for an electric vehicle, until an exercice says otherwise.
+        self::assertSame(20, $fiscalYear->mileageRateFor(FiscalPower::FIVE_CV)->electricBonusPercent);
     }
 
     #[Test]

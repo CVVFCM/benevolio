@@ -89,6 +89,13 @@ class FiscalYear implements TenantAware
     /** 10,000 €/km. Same purpose as MAX_HOURLY_RATE_CENTS. */
     public const int MAX_MILLI_EUROS_PER_KM = 10_000;
 
+    /**
+     * An electric vehicle's allowance is « majorée de 20 % » (barème kilométrique, since
+     * revenus 2021), on every bracket. Held on each exercice and each bracket, like the
+     * barème itself, because the figure is the state's to change.
+     */
+    public const int DEFAULT_ELECTRIC_BONUS_PERCENT = 20;
+
     #[ORM\Id]
     #[ORM\Column(type: UuidType::NAME, unique: true)]
     private Uuid $id;
@@ -137,6 +144,14 @@ class FiscalYear implements TenantAware
         message: 'Le barème kilométrique ne peut pas dépasser {{ compared_value }} millièmes d\'euro.',
     )]
     private int $defaultMilliEurosPerKm = self::DEFAULT_MILLI_EUROS_PER_KM;
+
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => self::DEFAULT_ELECTRIC_BONUS_PERCENT])]
+    #[Assert\Range(
+        notInRangeMessage: 'La majoration électrique doit être comprise entre {{ min }} et {{ max }} %.',
+        min: 0,
+        max: 100,
+    )]
+    private int $defaultElectricBonusPercent = self::DEFAULT_ELECTRIC_BONUS_PERCENT;
 
     /** @var Collection<int, FiscalYearTaskRate> */
     #[ORM\OneToMany(targetEntity: FiscalYearTaskRate::class, mappedBy: 'fiscalYear', cascade: ['persist', 'remove'], orphanRemoval: true)]
@@ -264,6 +279,18 @@ class FiscalYear implements TenantAware
         return $this;
     }
 
+    public function getDefaultElectricBonusPercent(): int
+    {
+        return $this->defaultElectricBonusPercent;
+    }
+
+    public function setDefaultElectricBonusPercent(int $defaultElectricBonusPercent): self
+    {
+        $this->defaultElectricBonusPercent = $defaultElectricBonusPercent;
+
+        return $this;
+    }
+
     /**
      * The hourly rate in force for a task in this exercice.
      *
@@ -304,7 +331,7 @@ class FiscalYear implements TenantAware
 
     public function getDefaultMileageRate(): MileageRate
     {
-        return new MileageRate($this->defaultMilliEurosPerKm);
+        return new MileageRate($this->defaultMilliEurosPerKm, $this->defaultElectricBonusPercent);
     }
 
     /** @return Collection<int, FiscalYearTaskRate> */

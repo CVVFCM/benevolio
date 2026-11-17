@@ -90,6 +90,11 @@ final class ActionDraftType extends AbstractType
                 'required' => false,
                 'help' => 'Uniquement si vous êtes venu avec votre véhicule.',
                 'choice_label' => static fn (FiscalPower $power): string => $power->label(),
+            ])
+            ->add('electricVehicle', CheckboxType::class, [
+                'label' => 'Mon véhicule est électrique',
+                'required' => false,
+                'help' => 'Le barème kilométrique est majoré de 20 % pour un véhicule électrique.',
             ]);
     }
 
