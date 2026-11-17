@@ -53,7 +53,11 @@
                     {{ 'login.remember_me'|trans }}
                 </label>
 
-                <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+                {# data-controller loads csrf_protection_controller.js, which sets the
+                   double-submit cookie. Without it the script never runs on this page,
+                   and a session that already used the cookie on another form is refused:
+                   « double-submit info was used in a previous request but is now missing ». #}
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}" data-controller="csrf-protection">
 
                 <button class="button login__submit" type="submit">{{ 'login.submit'|trans }}</button>
             </form>
