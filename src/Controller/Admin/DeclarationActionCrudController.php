@@ -150,7 +150,7 @@ final class DeclarationActionCrudController extends AbstractCrudController
             ->renderAsBadges(DeclarationActionState::badgeStyles());
 
         yield TextField::new('workHours', 'Heures')
-            ->formatValue(static fn (mixed $value, DeclarationAction $action): string => sprintf('%s h', $action->getWorkHours()));
+            ->formatValue(static fn (mixed $value, DeclarationAction $action): string => $action->getHours()->format());
 
         yield IntegerField::new('consecutiveDays', 'Jours consécutifs')->onlyOnDetail();
         yield IntegerField::new('journeys', 'Trajets')->onlyOnDetail();

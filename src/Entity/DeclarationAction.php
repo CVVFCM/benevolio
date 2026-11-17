@@ -7,6 +7,7 @@ namespace App\Entity;
 use App\Enum\FiscalPower;
 use App\Repository\DeclarationActionRepository;
 use App\State\DeclarationActionState;
+use App\ValueObject\WorkHours;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -277,17 +278,13 @@ class DeclarationAction
     }
 
     /**
-     * The declared hours as an exact number of hundredths, so totals can be summed
-     * without floating point. See Declaration::getTotalWorkHours().
+     * The declared hours, exact: summed in hundredths without floating point. See
+     * Declaration::getTotalHours().
      */
-    public function getWorkHoursInHundredths(): int
+    public function getHours(): WorkHours
     {
-        $parts = explode('.', $this->workHours, 2);
-        $whole = $parts[0];
-        // DECIMAL(5,2) always comes back from PostgreSQL with two decimals, but a
-        // value assigned in PHP may be a bare "7".
-        $fraction = str_pad(substr($parts[1] ?? '', 0, 2), 2, '0');
-
-        return (int) $whole * 100 + (int) $fraction;
+        // DECIMAL(5,2) always comes back from PostgreSQL with two decimals, but a value
+        // assigned in PHP may be a bare "7" — WorkHours::fromDecimal() takes both.
+        return WorkHours::fromDecimal($this->workHours);
     }
 }

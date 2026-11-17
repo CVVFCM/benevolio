@@ -27,12 +27,12 @@ final readonly class LedgerEntry
     /** Hours are always declared, but a line can legitimately have none. */
     public function hasHours(): bool
     {
-        return $this->valuation->hoursCents > 0;
+        return $this->valuation->hours->isPositive();
     }
 
     /** Travel only counts when the volunteer used their own vehicle. */
     public function hasMileage(): bool
     {
-        return $this->valuation->mileageCents > 0;
+        return $this->valuation->mileage->isPositive();
     }
 }

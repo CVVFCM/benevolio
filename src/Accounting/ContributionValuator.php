@@ -7,6 +7,7 @@ namespace App\Accounting;
 use App\Entity\DeclarationAction;
 use App\Entity\FiscalYear;
 use App\Repository\FiscalYearRepository;
+use App\ValueObject\Money;
 
 use function assert;
 use function intdiv;
@@ -17,7 +18,7 @@ use function intdiv;
  * ALL ARITHMETIC IS INTEGRAL. `ext-bcmath` is not installed, and a float has no place
  * on a path that ends on a tax receipt — 0,529 is not representable in binary, and
  * neither is 7,25 × 12. Every operand is already an integer by the time it arrives:
- * hours as hundredths (`getWorkHoursInHundredths()`), the mileage rate as millièmes
+ * hours as hundredths (`getHours()`), the mileage rate as millièmes
  * d'euro. Only the final division rounds, and it rounds half away from zero, which is
  * the *arrondi au centime le plus proche* an accountant expects.
  *
@@ -56,8 +57,8 @@ final readonly class ContributionValuator
     public function valueWithin(DeclarationAction $action, FiscalYear $fiscalYear): ContributionValuation
     {
         return new ContributionValuation(
-            hoursCents: $this->hoursCents($action, $fiscalYear),
-            mileageCents: $this->mileageCents($action, $fiscalYear),
+            hours: new Money($this->hoursCents($action, $fiscalYear)),
+            mileage: new Money($this->mileageCents($action, $fiscalYear)),
             fiscalYear: $fiscalYear,
         );
     }
@@ -67,10 +68,10 @@ final readonly class ContributionValuator
      */
     private function hoursCents(DeclarationAction $action, FiscalYear $fiscalYear): int
     {
-        $rateCents = $fiscalYear->hourlyRateCentsFor($action->getTask());
+        $rateCents = $fiscalYear->hourlyRateFor($action->getTask())->centsPerHour;
 
         return self::divideRoundingHalfUp(
-            $action->getWorkHoursInHundredths() * $rateCents,
+            $action->getHours()->hundredths * $rateCents,
             100,
         );
     }
@@ -93,7 +94,7 @@ final readonly class ContributionValuator
         assert(null !== $fiscalPower);
 
         return self::divideRoundingHalfUp(
-            $action->getTotalDistanceKm() * $fiscalYear->milliEurosPerKmFor($fiscalPower),
+            $action->getTotalDistanceKm() * $fiscalYear->mileageRateFor($fiscalPower)->milliEurosPerKm,
             10,
         );
     }

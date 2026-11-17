@@ -16,10 +16,8 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-use function abs;
 use function array_map;
 use function assert;
-use function intdiv;
 use function is_string;
 use function preg_match;
 use function sprintf;
@@ -153,7 +151,7 @@ final class GenerateReceiptsCommand extends Command
                     static fn (ReceiptRunOutcome $outcome): array => [
                         $outcome->receipt()->getNumber(),
                         $outcome->person->getFullName(),
-                        self::euros($outcome->receipt()->getAmountCents()),
+                        $outcome->receipt()->getAmount()->format(),
                     ],
                     $report->issued(),
                 ),
@@ -204,7 +202,7 @@ final class GenerateReceiptsCommand extends Command
         $summary = sprintf(
             '%d reçu(s) émis pour un total de %s.',
             $report->issuedCount(),
-            self::euros($report->totalCents()),
+            $report->total()->format(),
         );
 
         if (null !== $failure) {
@@ -222,14 +220,5 @@ final class GenerateReceiptsCommand extends Command
         $io->success($summary);
 
         return Command::SUCCESS;
-    }
-
-    /**
-     * Cents to a readable amount. Integer split, like every other money path here — see
-     * App\Twig\AccountingExtension, which does the same for the pages.
-     */
-    private static function euros(int $cents): string
-    {
-        return sprintf('%d,%02d €', intdiv($cents, 100), abs($cents % 100));
     }
 }

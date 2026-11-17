@@ -6,6 +6,8 @@ namespace App\Accounting;
 
 use App\Entity\FiscalYear;
 use App\Entity\Person;
+use App\ValueObject\Money;
+use App\ValueObject\WorkHours;
 
 use function count;
 
@@ -43,12 +45,12 @@ final readonly class Ledger
     public function summary(): LedgerSummary
     {
         $volunteers = [];
-        $workHoursInHundredths = 0;
+        $workHours = WorkHours::zero();
         $waivedDistanceKm = 0;
 
         foreach ($this->entries as $entry) {
             $volunteers[$entry->action->getDeclaration()->getPerson()->getId()->toRfc4122()] = true;
-            $workHoursInHundredths += $entry->action->getWorkHoursInHundredths();
+            $workHours = $workHours->plus($entry->action->getHours());
 
             // Only travel that was actually valued. A journey as a passenger is declared
             // but waives nothing, and including it would leave the kilometres shown next
@@ -60,10 +62,10 @@ final readonly class Ledger
 
         return new LedgerSummary(
             fiscalYear: $this->fiscalYear,
-            hoursCents: $this->hoursCents(),
-            mileageCents: $this->mileageCents(),
+            hours: $this->hours(),
+            mileage: $this->mileage(),
             volunteerCount: count($volunteers),
-            workHoursInHundredths: $workHoursInHundredths,
+            workHours: $workHours,
             waivedDistanceKm: $waivedDistanceKm,
         );
     }
@@ -72,7 +74,7 @@ final readonly class Ledger
      * Entries grouped by volunteer, which is what justifies an individual reçu fiscal —
      * though the receipt covers a civil year and this covers an exercice.
      *
-     * @return array<string, array{person: Person, entries: list<LedgerEntry>, hoursCents: int, mileageCents: int}>
+     * @return array<string, array{person: Person, entries: list<LedgerEntry>, hours: Money, mileage: Money}>
      */
     public function byVolunteer(): array
     {
@@ -86,36 +88,36 @@ final readonly class Ledger
                 $grouped[$key] = [
                     'person' => $person,
                     'entries' => [],
-                    'hoursCents' => 0,
-                    'mileageCents' => 0,
+                    'hours' => Money::zero(),
+                    'mileage' => Money::zero(),
                 ];
             }
 
             $grouped[$key]['entries'][] = $entry;
-            $grouped[$key]['hoursCents'] += $entry->valuation->hoursCents;
-            $grouped[$key]['mileageCents'] += $entry->valuation->mileageCents;
+            $grouped[$key]['hours'] = $grouped[$key]['hours']->plus($entry->valuation->hours);
+            $grouped[$key]['mileage'] = $grouped[$key]['mileage']->plus($entry->valuation->mileage);
         }
 
         return $grouped;
     }
 
-    /** Total bénévolat valorisé, in cents. Débit 864 = crédit 875. */
-    private function hoursCents(): int
+    /** Total bénévolat valorisé. Débit 864 = crédit 875. */
+    private function hours(): Money
     {
-        $total = 0;
+        $total = Money::zero();
         foreach ($this->entries as $entry) {
-            $total += $entry->valuation->hoursCents;
+            $total = $total->plus($entry->valuation->hours);
         }
 
         return $total;
     }
 
-    /** Total abandon de frais, in cents. This is the receiptable figure. */
-    private function mileageCents(): int
+    /** Total abandon de frais. This is the receiptable figure. */
+    private function mileage(): Money
     {
-        $total = 0;
+        $total = Money::zero();
         foreach ($this->entries as $entry) {
-            $total += $entry->valuation->mileageCents;
+            $total = $total->plus($entry->valuation->mileage);
         }
 
         return $total;

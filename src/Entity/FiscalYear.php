@@ -9,6 +9,8 @@ use App\Repository\FiscalYearRepository;
 use App\Tenant\TenantAware;
 use App\Tenant\TenantAwareTrait;
 use App\Validator\FiscalYearDoesNotOverlap;
+use App\ValueObject\HourlyRate;
+use App\ValueObject\MileageRate;
 use DateTimeImmutable;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -269,30 +271,40 @@ class FiscalYear implements TenantAware
      * default when an override exists, which is a wrong figure rather than a missing
      * one.
      */
-    public function hourlyRateCentsFor(Task $task): int
+    public function hourlyRateFor(Task $task): HourlyRate
     {
         foreach ($this->taskRates as $rate) {
             if ($rate->getTask()->getId()->equals($task->getId())) {
-                return $rate->getHourlyRateCents();
+                return $rate->getHourlyRate();
             }
         }
 
-        return $this->defaultHourlyRateCents;
+        return $this->getDefaultHourlyRate();
     }
 
     /**
-     * The mileage rate in force for a puissance fiscale in this exercice, in
-     * millièmes d'euro per kilometre. THE ONE PLACE the mileage fallback lives.
+     * The mileage rate in force for a puissance fiscale in this exercice. THE ONE PLACE
+     * the mileage fallback lives.
      */
-    public function milliEurosPerKmFor(FiscalPower $fiscalPower): int
+    public function mileageRateFor(FiscalPower $fiscalPower): MileageRate
     {
         foreach ($this->mileageRates as $rate) {
             if ($rate->getFiscalPower() === $fiscalPower) {
-                return $rate->getMilliEurosPerKm();
+                return $rate->getMileageRate();
             }
         }
 
-        return $this->defaultMilliEurosPerKm;
+        return $this->getDefaultMileageRate();
+    }
+
+    public function getDefaultHourlyRate(): HourlyRate
+    {
+        return new HourlyRate($this->defaultHourlyRateCents);
+    }
+
+    public function getDefaultMileageRate(): MileageRate
+    {
+        return new MileageRate($this->defaultMilliEurosPerKm);
     }
 
     /** @return Collection<int, FiscalYearTaskRate> */

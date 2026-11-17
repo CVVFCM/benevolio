@@ -7,6 +7,7 @@ namespace App\Entity;
 use App\Repository\ReceiptRepository;
 use App\Tenant\TenantAware;
 use App\Tenant\TenantAwareTrait;
+use App\ValueObject\Money;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -102,7 +103,7 @@ class Receipt implements TenantAware
         Person $person,
         int $year,
         string $number,
-        int $amountCents,
+        Money $amount,
         string $storagePath,
         string $volunteerName,
         string $volunteerAddress,
@@ -115,7 +116,7 @@ class Receipt implements TenantAware
         $this->person = $person;
         $this->year = $year;
         $this->number = $number;
-        $this->amountCents = $amountCents;
+        $this->amountCents = $amount->cents;
         $this->storagePath = $storagePath;
         $this->volunteerName = $volunteerName;
         $this->volunteerAddress = $volunteerAddress;
@@ -147,9 +148,15 @@ class Receipt implements TenantAware
         return $this->year;
     }
 
+    /** For EasyAdmin's MoneyField, which reads cents. */
     public function getAmountCents(): int
     {
         return $this->amountCents;
+    }
+
+    public function getAmount(): Money
+    {
+        return new Money($this->amountCents);
     }
 
     public function getStoragePath(): string

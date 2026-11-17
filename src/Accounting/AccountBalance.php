@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Accounting;
 
+use App\ValueObject\Money;
+
 /**
  * One account's débit and crédit over an exercice.
  *
@@ -15,8 +17,8 @@ final readonly class AccountBalance
 {
     public function __construct(
         public PcgAccount $account,
-        public int $debitCents,
-        public int $creditCents,
+        public Money $debit,
+        public Money $credit,
     ) {
     }
 }

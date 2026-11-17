@@ -48,18 +48,18 @@ final class LedgerSummaryTest extends KernelTestCase
         $summary = $this->summaryOf($fiscalYear);
 
         self::assertSame(3, $summary->volunteerCount);
-        self::assertSame(600, $summary->workHoursInHundredths);
-        self::assertSame(7200, $summary->hoursCents);
-        self::assertSame(0, $summary->mileageCents);
+        self::assertSame(600, $summary->workHours->hundredths);
+        self::assertSame(7200, $summary->hours->cents);
+        self::assertSame(0, $summary->mileage->cents);
 
         // Two lines, not six: nothing was waived, so the abandon de frais écriture does
         // not exist and must not appear as three zero rows.
         $entries = $summary->entries();
         self::assertCount(2, $entries);
         self::assertSame(PcgAccount::PERSONNEL_BENEVOLE, $entries[0]->account);
-        self::assertSame(7200, $entries[0]->debitCents);
+        self::assertSame(7200, $entries[0]->debit->cents);
         self::assertSame(PcgAccount::BENEVOLAT, $entries[1]->account);
-        self::assertSame(7200, $entries[1]->creditCents);
+        self::assertSame(7200, $entries[1]->credit->cents);
     }
 
     /**
@@ -79,7 +79,7 @@ final class LedgerSummaryTest extends KernelTestCase
         $summary = $this->summaryOf($fiscalYear);
 
         // 68 km at the 5 CV rate of 0,636 = 43,248 € → 43,25 €.
-        self::assertSame(4325, $summary->mileageCents);
+        self::assertSame(4325, $summary->mileage->cents);
         self::assertSame(68, $summary->waivedDistanceKm);
         self::assertCount(6, $summary->entries());
 
@@ -153,7 +153,7 @@ final class LedgerSummaryTest extends KernelTestCase
         $summary = $this->summaryOf($fiscalYear);
 
         self::assertSame(0, $summary->waivedDistanceKm);
-        self::assertSame(0, $summary->mileageCents);
+        self::assertSame(0, $summary->mileage->cents);
     }
 
     #[Test]
@@ -176,7 +176,7 @@ final class LedgerSummaryTest extends KernelTestCase
     {
         foreach ($summary->balances() as $balance) {
             if ($balance->account === $account) {
-                return [$balance->debitCents, $balance->creditCents];
+                return [$balance->debit->cents, $balance->credit->cents];
             }
         }
 

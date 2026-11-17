@@ -26,8 +26,6 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Twig\Environment;
 
-use function sprintf;
-
 /**
  * The association's exercices comptables, and the rates that hold for each.
  *
@@ -136,7 +134,7 @@ final class FiscalYearCrudController extends AbstractCrudController
         // formatValue callback — the same trap already documented in
         // App\Controller\Admin\TaskCrudController, walked into again here.
         yield IntegerField::new('defaultMilliEurosPerKm', 'Barème kilométrique par défaut')
-            ->formatValue(static fn (mixed $value, FiscalYear $year): string => self::formatMilliEuros($year->getDefaultMilliEurosPerKm()))
+            ->formatValue(static fn (mixed $value, FiscalYear $year): string => $year->getDefaultMileageRate()->format())
             ->hideOnForm();
 
         yield IntegerField::new('defaultMilliEurosPerKm', 'Barème kilométrique par défaut (millièmes d\'euro / km)')
@@ -178,7 +176,7 @@ final class FiscalYearCrudController extends AbstractCrudController
             ->formatValue(static function (mixed $value, FiscalYear $year): string {
                 $parts = [];
                 foreach ($year->getMileageRates() as $rate) {
-                    $parts[] = $rate->getFiscalPower()->label().' : '.self::formatMilliEuros($rate->getMilliEurosPerKm());
+                    $parts[] = (string) $rate;
                 }
 
                 return [] === $parts ? 'Aucun — le barème par défaut s\'applique' : implode(' · ', $parts);
@@ -191,7 +189,7 @@ final class FiscalYearCrudController extends AbstractCrudController
                 foreach ($year->getTaskRates() as $rate) {
                     // Escaped: a formatValue() string is printed raw, and a task
                     // name is typed by an admin. See DeclarationCrudController.
-                    $parts[] = htmlspecialchars($rate->getTask()->getName()).' : '.self::formatEuros($rate->getHourlyRateCents());
+                    $parts[] = htmlspecialchars((string) $rate);
                 }
 
                 return [] === $parts ? 'Aucun — le taux par défaut s\'applique' : implode(' · ', $parts);
@@ -282,20 +280,5 @@ final class FiscalYearCrudController extends AbstractCrudController
             ->setAction($action)
             ->setEntityId($fiscalYear->getId()->toRfc4122())
             ->generateUrl();
-    }
-
-    /**
-     * Millièmes d'euro per km to a readable rate: 529 → "0,529 €/km".
-     *
-     * Integer arithmetic, like everywhere else on a money path.
-     */
-    private static function formatMilliEuros(int $milliEuros): string
-    {
-        return sprintf("%d,%03d\u{a0}€/km", intdiv($milliEuros, 1000), abs($milliEuros % 1000));
-    }
-
-    private static function formatEuros(int $cents): string
-    {
-        return sprintf("%d,%02d\u{a0}€/h", intdiv($cents, 100), abs($cents % 100));
     }
 }

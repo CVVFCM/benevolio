@@ -68,7 +68,7 @@ final readonly class YearlyReceiptRun
         $interrupted = false;
 
         foreach ($this->waivedByVolunteer($organization, $year) as $waived) {
-            if ($waived->amountCents <= 0) {
+            if (!$waived->amount->isPositive()) {
                 $outcomes[] = ReceiptRunOutcome::skipped(
                     $waived->person,
                     'Aucun frais abandonné sur l\'année : le temps donné n\'ouvre pas droit '
@@ -127,7 +127,7 @@ final readonly class YearlyReceiptRun
             $key = $person->getId()->toRfc4122();
 
             $totals[$key] ??= new WaivedYear($person, $year);
-            $totals[$key]->add($action, $this->valuator->value($action)?->mileageCents);
+            $totals[$key]->add($action, $this->valuator->value($action)?->mileage);
         }
 
         return array_values($totals);
@@ -148,7 +148,7 @@ final readonly class YearlyReceiptRun
                     $organization,
                     $waived->person,
                     $number,
-                    $waived->amountCents,
+                    $waived->amount,
                     $waived->lastWaivedDay(),
                     $issuedAt,
                 );
@@ -160,7 +160,7 @@ final readonly class YearlyReceiptRun
                     $waived->person,
                     $year,
                     $number,
-                    $waived->amountCents,
+                    $waived->amount,
                     $path,
                     $values->volunteerName,
                     $values->volunteerAddress,

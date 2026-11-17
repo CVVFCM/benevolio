@@ -210,7 +210,7 @@ final class DeclarationDeciderTest extends KernelTestCase
         $reloaded = $this->reload($declaration);
 
         // 2.25 + 3.50 with no floating point drift.
-        self::assertSame('5.75', $reloaded->getTotalWorkHours());
+        self::assertSame(575, $reloaded->getTotalHours()->hundredths);
         // One-way distance × journeys, per line: 10×2 + 7×4.
         self::assertSame(48, $reloaded->getTotalDistanceKm());
     }

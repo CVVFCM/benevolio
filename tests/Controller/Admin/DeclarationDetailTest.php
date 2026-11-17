@@ -80,7 +80,7 @@ final class DeclarationDetailTest extends WebTestCase
         $text = $this->detailText($declaration);
 
         self::assertStringContainsString('Régate du printemps', $text);
-        self::assertStringContainsString('6.50 h', $text);
+        self::assertStringContainsString("6,50\u{a0}h", $text);
         // Total distance, and the multiplication behind it.
         self::assertStringContainsString('24', $text);
         self::assertStringContainsString('12 × 2', $text);

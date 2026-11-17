@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Accounting;
 
 use App\Entity\FiscalYear;
+use App\ValueObject\Money;
+use App\ValueObject\WorkHours;
 
 use function array_filter;
 use function array_values;
@@ -29,14 +31,14 @@ final readonly class LedgerSummary
 {
     public function __construct(
         public FiscalYear $fiscalYear,
-        /** Total bénévolat valorisé, in cents. Débit 864 = crédit 875. */
-        public int $hoursCents,
-        /** Total abandon de frais, in cents. The receiptable family. */
-        public int $mileageCents,
+        /** Total bénévolat valorisé. Débit 864 = crédit 875. */
+        public Money $hours,
+        /** Total abandon de frais. The receiptable family. */
+        public Money $mileage,
         /** How many volunteers stand behind those figures. */
         public int $volunteerCount,
-        /** Donated hours, in hundredths — integers all the way, like every amount here. */
-        public int $workHoursInHundredths,
+        /** Donated hours. */
+        public WorkHours $workHours,
         /**
          * Kilometres that were actually **valued** — travel in the volunteer's own
          * vehicle. Not every declared kilometre: a passenger's journey is declared but
@@ -49,7 +51,7 @@ final readonly class LedgerSummary
 
     public function isEmpty(): bool
     {
-        return 0 === $this->hoursCents && 0 === $this->mileageCents;
+        return $this->hours->isZero() && $this->mileage->isZero();
     }
 
     /**
@@ -68,48 +70,48 @@ final readonly class LedgerSummary
 
         // Bénévolat valorisé. Débit 864 / crédit 875 under règlement ANC 2018-06, which
         // swapped 870 and 875 from the old 99-01. Off balance sheet, never receiptable.
-        if (0 !== $this->hoursCents) {
+        if (!$this->hours->isZero()) {
             $entries[] = new LedgerSummaryEntry(
                 $date,
                 PcgAccount::PERSONNEL_BENEVOLE,
                 'Bénévolat valorisé de l\'exercice',
-                debitCents: $this->hoursCents,
+                debit: $this->hours,
             );
             $entries[] = new LedgerSummaryEntry(
                 $date,
                 PcgAccount::BENEVOLAT,
                 'Contrepartie du bénévolat valorisé',
-                creditCents: $this->hoursCents,
+                credit: $this->hours,
             );
         }
 
         // Abandon de frais, in two écritures. Art. 141-4 requires the waiver to
         // extinguish the debt owed to the volunteer, so 4681 stands between the charge
         // and the resource: the donation is not credited out of nowhere.
-        if (0 !== $this->mileageCents) {
+        if (!$this->mileage->isZero()) {
             $entries[] = new LedgerSummaryEntry(
                 $date,
                 PcgAccount::VOYAGES_ET_DEPLACEMENTS,
                 'Frais de déplacement des bénévoles',
-                debitCents: $this->mileageCents,
+                debit: $this->mileage,
             );
             $entries[] = new LedgerSummaryEntry(
                 $date,
                 PcgAccount::FRAIS_DES_BENEVOLES,
                 'Frais à rembourser aux bénévoles',
-                creditCents: $this->mileageCents,
+                credit: $this->mileage,
             );
             $entries[] = new LedgerSummaryEntry(
                 $date,
                 PcgAccount::FRAIS_DES_BENEVOLES,
                 'Renonciation au remboursement',
-                debitCents: $this->mileageCents,
+                debit: $this->mileage,
             );
             $entries[] = new LedgerSummaryEntry(
                 $date,
                 PcgAccount::ABANDONS_DE_FRAIS,
                 'Abandon de frais par les bénévoles',
-                creditCents: $this->mileageCents,
+                credit: $this->mileage,
             );
         }
 
@@ -159,9 +161,9 @@ final readonly class LedgerSummary
     {
         /** @var array<string, PcgAccount> $accounts in the order they were first booked */
         $accounts = [];
-        /** @var array<string, int> $debits */
+        /** @var array<string, Money> $debits */
         $debits = [];
-        /** @var array<string, int> $credits */
+        /** @var array<string, Money> $credits */
         $credits = [];
 
         foreach ($this->entries() as $entry) {
@@ -170,13 +172,13 @@ final readonly class LedgerSummary
             $key = 'pcg-'.$entry->account->value;
 
             $accounts[$key] = $entry->account;
-            $debits[$key] = ($debits[$key] ?? 0) + $entry->debitCents;
-            $credits[$key] = ($credits[$key] ?? 0) + $entry->creditCents;
+            $debits[$key] = ($debits[$key] ?? Money::zero())->plus($entry->debit);
+            $credits[$key] = ($credits[$key] ?? Money::zero())->plus($entry->credit);
         }
 
         $balances = [];
         foreach ($accounts as $key => $account) {
-            $balances[] = new AccountBalance($account, $debits[$key] ?? 0, $credits[$key] ?? 0);
+            $balances[] = new AccountBalance($account, $debits[$key] ?? Money::zero(), $credits[$key] ?? Money::zero());
         }
 
         return $balances;

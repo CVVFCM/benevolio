@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\ValueObject\HourlyRate;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Constraints as Assert;
 
-use function abs;
-use function intdiv;
 use function sprintf;
 
 /**
@@ -78,12 +77,12 @@ class FiscalYearTaskRate
      */
     public function __toString(): string
     {
-        return sprintf(
-            "%s : %d,%02d\u{a0}€/h",
-            $this->task->getName(),
-            intdiv($this->hourlyRateCents, 100),
-            abs($this->hourlyRateCents % 100),
-        );
+        return sprintf('%s : %s', $this->task->getName(), $this->getHourlyRate());
+    }
+
+    public function getHourlyRate(): HourlyRate
+    {
+        return new HourlyRate($this->hourlyRateCents);
     }
 
     public function getId(): Uuid

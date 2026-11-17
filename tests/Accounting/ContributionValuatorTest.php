@@ -78,7 +78,7 @@ final class ContributionValuatorTest extends KernelTestCase
 
         $valuation = $this->valuator->valueWithin($action, $fiscalYear);
 
-        self::assertSame($expectedCents, $valuation->mileageCents);
+        self::assertSame($expectedCents, $valuation->mileage->cents);
     }
 
     /**
@@ -105,7 +105,7 @@ final class ContributionValuatorTest extends KernelTestCase
 
         $valuation = $this->valuator->valueWithin($action, $fiscalYear);
 
-        self::assertSame($expectedCents, $valuation->hoursCents);
+        self::assertSame($expectedCents, $valuation->hours->cents);
     }
 
     #[Test]
@@ -137,7 +137,7 @@ final class ContributionValuatorTest extends KernelTestCase
 
         // The barème values a vehicle the volunteer owns. A lift from someone else
         // costs them nothing to waive.
-        self::assertSame(0, $valuation->mileageCents);
+        self::assertSame(0, $valuation->mileage->cents);
     }
 
     /**
@@ -157,7 +157,7 @@ final class ContributionValuatorTest extends KernelTestCase
             'distanceKm' => 20,
         ]);
 
-        self::assertSame(4232, $this->valuator->valueWithin($action, $fiscalYear)->mileageCents);
+        self::assertSame(4232, $this->valuator->valueWithin($action, $fiscalYear)->mileage->cents);
     }
 
     #[Test]
@@ -184,7 +184,7 @@ final class ContributionValuatorTest extends KernelTestCase
         ]);
 
         // 2 h at 25,00 €, not at the 12,00 € default.
-        self::assertSame(5000, $this->valuator->valueWithin($action, $fiscalYear)->hoursCents);
+        self::assertSame(5000, $this->valuator->valueWithin($action, $fiscalYear)->hours->cents);
     }
 
     private function year2025AtDefaultRates(Organization $organization): FiscalYear

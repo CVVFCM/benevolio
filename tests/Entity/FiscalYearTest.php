@@ -154,8 +154,8 @@ final class FiscalYearTest extends KernelTestCase
         $fiscalYear = FiscalYearFactory::new()->for($organization)->calendarYear(2025)
             ->create(['defaultHourlyRateCents' => 1500, 'defaultMilliEurosPerKm' => 529]);
 
-        self::assertSame(1500, $fiscalYear->hourlyRateCentsFor($task));
-        self::assertSame(529, $fiscalYear->milliEurosPerKmFor(FiscalPower::FIVE_CV));
+        self::assertSame(1500, $fiscalYear->hourlyRateFor($task)->centsPerHour);
+        self::assertSame(529, $fiscalYear->mileageRateFor(FiscalPower::FIVE_CV)->milliEurosPerKm);
     }
 
     #[Test]
@@ -172,12 +172,12 @@ final class FiscalYearTest extends KernelTestCase
             ->forTask($fiscalYear, $priced)
             ->create(['hourlyRateCents' => 3000]);
 
-        self::assertSame(3000, $fiscalYear->hourlyRateCentsFor($priced));
-        self::assertSame(1500, $fiscalYear->hourlyRateCentsFor($unpriced), 'The override leaked to another task.');
+        self::assertSame(3000, $fiscalYear->hourlyRateFor($priced)->centsPerHour);
+        self::assertSame(1500, $fiscalYear->hourlyRateFor($unpriced)->centsPerHour, 'The override leaked to another task.');
 
         // The published barème, per bracket — not the single default.
-        self::assertSame(529, $fiscalYear->milliEurosPerKmFor(FiscalPower::THREE_CV_OR_LESS));
-        self::assertSame(636, $fiscalYear->milliEurosPerKmFor(FiscalPower::FIVE_CV));
-        self::assertSame(697, $fiscalYear->milliEurosPerKmFor(FiscalPower::SEVEN_CV_OR_MORE));
+        self::assertSame(529, $fiscalYear->mileageRateFor(FiscalPower::THREE_CV_OR_LESS)->milliEurosPerKm);
+        self::assertSame(636, $fiscalYear->mileageRateFor(FiscalPower::FIVE_CV)->milliEurosPerKm);
+        self::assertSame(697, $fiscalYear->mileageRateFor(FiscalPower::SEVEN_CV_OR_MORE)->milliEurosPerKm);
     }
 }

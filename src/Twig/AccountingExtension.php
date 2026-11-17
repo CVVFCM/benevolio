@@ -5,14 +5,11 @@ declare(strict_types=1);
 namespace App\Twig;
 
 use App\Accounting\PcgAccount;
+use App\ValueObject\Money;
+use App\ValueObject\WorkHours;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFilter;
 use Twig\TwigFunction;
-
-use function abs;
-use function intdiv;
-use function number_format;
-use function sprintf;
 
 /**
  * Formatting for the accounting pages.
@@ -46,35 +43,20 @@ final class AccountingExtension extends AbstractExtension
     }
 
     /**
-     * Cents to a French euro string: "7247" → "72,47 €", with a non-breaking space so
-     * the amount never wraps away from its sign.
+     * An amount, the French way: "1 234,56 €". Takes the value object, or a bare count of
+     * cents where a template reads a column directly.
      */
-    public function euros(int $cents): string
+    public function euros(Money|int $amount): string
     {
-        $units = intdiv($cents, 100);
-        $remainder = abs($cents % 100);
-
-        // Grouped in threes, because an exercice total can run to thousands of euros.
-        return sprintf(
-            "%s,%02d\u{a0}€",
-            number_format($units, 0, ',', "\u{202f}"),
-            $remainder,
-        );
+        return ($amount instanceof Money ? $amount : new Money($amount))->format();
     }
 
     /**
-     * Hundredths of an hour to a readable duration: "1275" → "12,75 h".
-     *
-     * Hours are stored in hundredths for the same reason amounts are stored in cents, so
-     * they are formatted the same way: integer split, comma, no float on the way.
+     * A duration: "12,75 h". Takes the value object, or a bare count of hundredths.
      */
-    public function hours(int $hundredths): string
+    public function hours(WorkHours|int $hours): string
     {
-        return sprintf(
-            "%s,%02d\u{a0}h",
-            number_format(intdiv($hundredths, 100), 0, ',', "\u{202f}"),
-            abs($hundredths % 100),
-        );
+        return ($hours instanceof WorkHours ? $hours : new WorkHours($hours))->format();
     }
 
     /**

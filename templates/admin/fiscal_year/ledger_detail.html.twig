@@ -8,20 +8,16 @@
     someone has to be able to see which lines add up to the amount printed on one.
 
     Columns follow PCG art. 1032-1, which requires each record to carry its origin, its
-    content, its imputation and a reference to the pièce justificative. Amounts arrive in
-    cents and are formatted by the `euros` filter — never divided in the template, so no
-    float touches a figure headed for a receipt.
+    content, its imputation and a reference to the pièce justificative. Amounts arrive as
+    App\ValueObject\Money and are formatted by the `euros` filter — never divided in the
+    template, so no float touches a figure headed for a receipt.
 #}
-
-{% macro amount(cents) %}{{ cents|euros }}{% endmacro %}
 
 {% block content_title %}
     Détail par bénévole — {{ fiscal_year.name }}
 {% endblock %}
 
 {% block main %}
-    {% import _self as fmt %}
-
     <p class="ledger__period">
         Du {{ fiscal_year.beginsOn|format_date('long') }}
         au {{ fiscal_year.endsOn|format_date('long') }}.
@@ -68,10 +64,10 @@
                                     <td>{{ entry.action.date|format_date('short') }}</td>
                                     <td class="ledger__account">{{ pcg_account('864').display }}</td>
                                     <td>
-                                        {{ entry.action.task.name }} — {{ entry.action.workHours }} h
+                                        {{ entry.action.task.name }} — {{ entry.action.hours|hours }}
                                         <br><small class="ledger__note">{{ entry.action.title }}</small>
                                     </td>
-                                    <td class="is-numeric">{{ fmt.amount(entry.valuation.hoursCents) }}</td>
+                                    <td class="is-numeric">{{ entry.valuation.hours|euros }}</td>
                                     <td class="is-numeric"></td>
                                     <td class="ledger__note">{{ piece }}</td>
                                 </tr>
@@ -80,7 +76,7 @@
                                     <td class="ledger__account">{{ pcg_account('875').display }}</td>
                                     <td class="ledger__note">Contrepartie du bénévolat valorisé</td>
                                     <td class="is-numeric"></td>
-                                    <td class="is-numeric">{{ fmt.amount(entry.valuation.hoursCents) }}</td>
+                                    <td class="is-numeric">{{ entry.valuation.hours|euros }}</td>
                                     <td></td>
                                 </tr>
                             {% endif %}
@@ -101,7 +97,7 @@
                                             <br><small class="ledger__note">{{ entry.action.fiscalPower.label }}</small>
                                         {% endif %}
                                     </td>
-                                    <td class="is-numeric">{{ fmt.amount(entry.valuation.mileageCents) }}</td>
+                                    <td class="is-numeric">{{ entry.valuation.mileage|euros }}</td>
                                     <td class="is-numeric"></td>
                                     <td class="ledger__note">{{ piece }}</td>
                                 </tr>
@@ -110,14 +106,14 @@
                                     <td class="ledger__account">{{ pcg_account('4681').display }}</td>
                                     <td class="ledger__note">Frais à rembourser au bénévole</td>
                                     <td class="is-numeric"></td>
-                                    <td class="is-numeric">{{ fmt.amount(entry.valuation.mileageCents) }}</td>
+                                    <td class="is-numeric">{{ entry.valuation.mileage|euros }}</td>
                                     <td></td>
                                 </tr>
                                 <tr class="ledger__row ledger__row--waiver">
                                     <td></td>
                                     <td class="ledger__account">{{ pcg_account('4681').display }}</td>
                                     <td class="ledger__note">Renonciation au remboursement</td>
-                                    <td class="is-numeric">{{ fmt.amount(entry.valuation.mileageCents) }}</td>
+                                    <td class="is-numeric">{{ entry.valuation.mileage|euros }}</td>
                                     <td class="is-numeric"></td>
                                     <td></td>
                                 </tr>
@@ -126,7 +122,7 @@
                                     <td class="ledger__account">{{ pcg_account('75412').display }}</td>
                                     <td class="ledger__note">Abandon de frais par le bénévole</td>
                                     <td class="is-numeric"></td>
-                                    <td class="is-numeric">{{ fmt.amount(entry.valuation.mileageCents) }}</td>
+                                    <td class="is-numeric">{{ entry.valuation.mileage|euros }}</td>
                                     <td></td>
                                 </tr>
                             {% endif %}
@@ -135,14 +131,14 @@
                     <tfoot>
                         <tr>
                             <th colspan="3">Bénévolat valorisé (hors bilan, non reçu fiscal)</th>
-                            <th class="is-numeric">{{ fmt.amount(group.hoursCents) }}</th>
-                            <th class="is-numeric">{{ fmt.amount(group.hoursCents) }}</th>
+                            <th class="is-numeric">{{ group.hours|euros }}</th>
+                            <th class="is-numeric">{{ group.hours|euros }}</th>
                             <th></th>
                         </tr>
                         <tr>
                             <th colspan="3">Abandon de frais (ouvre droit à reçu fiscal)</th>
-                            <th class="is-numeric">{{ fmt.amount(group.mileageCents) }}</th>
-                            <th class="is-numeric">{{ fmt.amount(group.mileageCents) }}</th>
+                            <th class="is-numeric">{{ group.mileage|euros }}</th>
+                            <th class="is-numeric">{{ group.mileage|euros }}</th>
                             <th></th>
                         </tr>
                     </tfoot>

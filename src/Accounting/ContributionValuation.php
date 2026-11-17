@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Accounting;
 
 use App\Entity\FiscalYear;
+use App\ValueObject\Money;
 
 /**
  * What one contributed line is worth, and under which exercice.
@@ -19,9 +20,9 @@ final readonly class ContributionValuation
 {
     public function __construct(
         /** Donated hours × the hourly rate. Débit 864 / crédit 875. */
-        public int $hoursCents,
+        public Money $hours,
         /** Kilometres × the barème. Débit 6251 → 4681 → crédit 75412. Zero without travel. */
-        public int $mileageCents,
+        public Money $mileage,
         /** The exercice whose rates were used. */
         public FiscalYear $fiscalYear,
     ) {

@@ -46,7 +46,7 @@
         <p class="receipt-run__summary">
             <strong>{{ report.issuedCount }}</strong>
             {{ report.issuedCount > 1 ? 'reçus émis' : 'reçu émis' }}
-            pour un total de <strong>{{ report.totalCents|euros }}</strong>
+            pour un total de <strong>{{ report.total|euros }}</strong>
             {%- if report.skippedCount > 0 %},
                 {{ report.skippedCount }}
                 {{ report.skippedCount > 1 ? 'bénévoles écartés' : 'bénévole écarté' }}
@@ -83,7 +83,7 @@
                             <tr>
                                 <td>{{ outcome.receipt.number }}</td>
                                 <td>{{ outcome.person.fullName }}</td>
-                                <td class="is-numeric">{{ outcome.receipt.amountCents|euros }}</td>
+                                <td class="is-numeric">{{ outcome.receipt.amount|euros }}</td>
                                 <td>{{ outcome.person.email.value }}</td>
                             </tr>
                         {% endfor %}
