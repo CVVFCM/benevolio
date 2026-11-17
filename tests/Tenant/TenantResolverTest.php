@@ -14,6 +14,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorage;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Zenstruck\Foundry\Test\Factories;
@@ -67,7 +68,7 @@ final class TenantResolverTest extends KernelTestCase
         $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
         $admin = UserFactory::new()->admin($organization)->create();
 
-        $resolved = $this->userResolver($admin)->resolve(new Request());
+        $resolved = $this->userResolver($admin)->resolve($this->requestWithCredentials());
 
         self::assertNotNull($resolved);
         self::assertSame('les-jardins', $resolved->getSlug());
@@ -82,7 +83,7 @@ final class TenantResolverTest extends KernelTestCase
     {
         $superAdmin = UserFactory::new()->superAdmin()->create();
 
-        self::assertNull($this->userResolver($superAdmin)->resolve(new Request()));
+        self::assertNull($this->userResolver($superAdmin)->resolve($this->requestWithCredentials()));
     }
 
     #[Test]
@@ -91,13 +92,28 @@ final class TenantResolverTest extends KernelTestCase
         self::assertNull($this->userResolver(null)->resolve(new Request()));
     }
 
+    /**
+     * A request with no session cookie and no remember-me cookie cannot be anyone's,
+     * so the token is not even read: on a lazy firewall, reading it counts as using
+     * the session and marks the response private — on every page, the cached public
+     * home page and /health included.
+     */
+    #[Test]
+    public function user_resolver_does_not_read_the_token_of_a_request_carrying_no_credentials(): void
+    {
+        $tokenStorage = $this->createMock(TokenStorageInterface::class);
+        $tokenStorage->expects(self::never())->method('getToken');
+
+        self::assertNull(new UserTenantResolver($tokenStorage)->resolve(new Request()));
+    }
+
     #[Test]
     public function user_resolver_refuses_an_admin_of_an_inactive_organization(): void
     {
         $organization = OrganizationFactory::new()->inactive()->create();
         $admin = UserFactory::new()->admin($organization)->create();
 
-        self::assertNull($this->userResolver($admin)->resolve(new Request()));
+        self::assertNull($this->userResolver($admin)->resolve($this->requestWithCredentials()));
     }
 
     #[Test]
@@ -142,6 +158,15 @@ final class TenantResolverTest extends KernelTestCase
         }
 
         return new UserTenantResolver($tokenStorage);
+    }
+
+    /**
+     * Anything the firewall could authenticate from. The remember-me cookie is the
+     * simpler of the two to fake: a previous session needs a session object too.
+     */
+    private function requestWithCredentials(): Request
+    {
+        return new Request(cookies: ['REMEMBERME' => 'anything']);
     }
 
     private function requestWithSlug(string $slug): Request

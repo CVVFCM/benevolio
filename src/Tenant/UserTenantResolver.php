@@ -23,10 +23,22 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInt
  * keeps this class testable without a container.
  *
  * Runs after UrlPrefixTenantResolver (lower priority).
+ *
+ * TRAP — returns before touching the token when the request carries nothing to
+ * authenticate with. Reading the token on a lazy firewall counts as using the
+ * session, and Symfony then marks the response `private, must-revalidate`: every
+ * response, since this runs on every request. That silently made the public home
+ * page uncacheable and /health with it. (Symfony 8.1.1 did not count this first
+ * read; 8.1.11 fixed that, which is how the leak surfaced.) Same guard, same reason,
+ * as App\Security\ChoosePasswordEnforcer — plus the remember-me cookie, because an
+ * admin coming back on that cookie alone still needs their tenant resolved.
  */
 #[AsTaggedItem(priority: 0)]
 final readonly class UserTenantResolver implements TenantResolver
 {
+    /** Symfony's default name; config/packages/security.yaml does not override it. */
+    private const string REMEMBER_ME_COOKIE = 'REMEMBERME';
+
     public function __construct(
         private TokenStorageInterface $tokenStorage,
     ) {
@@ -34,6 +46,10 @@ final readonly class UserTenantResolver implements TenantResolver
 
     public function resolve(Request $request): ?Organization
     {
+        if (!$request->hasPreviousSession() && !$request->cookies->has(self::REMEMBER_ME_COOKIE)) {
+            return null;
+        }
+
         $user = $this->tokenStorage->getToken()?->getUser();
 
         if (!$user instanceof User) {

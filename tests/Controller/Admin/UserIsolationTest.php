@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Controller\Admin;
 
+use App\Controller\Admin\UserCrudController;
 use App\Entity\Organization;
 use App\Entity\User;
 use App\Factory\OrganizationFactory;
@@ -63,9 +64,22 @@ final class UserIsolationTest extends WebTestCase
         UserFactory::new()->owner($this->organization('les-voiles'))->create(['email' => 'eux@voiles.test']);
         $this->loginAs($me);
 
-        $this->request(Request::METHOD_GET, '/admin/user/autocomplete?query=test');
+        // EasyAdmin refuses an autocomplete request that does not say which field it
+        // serves; without this context it answers a 500 before running any query,
+        // and the assertion below would pass on an error page.
+        $this->request(Request::METHOD_GET, '/admin/user/autocomplete', [
+            'query' => 'test',
+            'autocompleteContext' => [
+                'crudControllerFqcn' => UserCrudController::class,
+                'originatingPage' => 'index',
+                'propertyName' => 'email',
+            ],
+        ]);
 
-        self::assertStringNotContainsString('eux@voiles.test', (string) $this->client->getResponse()->getContent());
+        self::assertResponseIsSuccessful();
+        $body = (string) $this->client->getResponse()->getContent();
+        self::assertStringContainsString('moi@jardins.test', $body);
+        self::assertStringNotContainsString('eux@voiles.test', $body);
     }
 
     #[Test]
@@ -109,7 +123,7 @@ final class UserIsolationTest extends WebTestCase
     }
 
     /**
-     * @param array<string, string> $parameters
+     * @param array<string, string|array<string, string>> $parameters
      */
     private function request(string $method, string $uri, array $parameters = []): Crawler
     {
