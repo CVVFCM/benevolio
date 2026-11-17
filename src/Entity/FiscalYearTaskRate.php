@@ -91,11 +91,6 @@ class FiscalYearTaskRate
         return $this->id;
     }
 
-    public function getFiscalYear(): FiscalYear
-    {
-        return $this->fiscalYear;
-    }
-
     public function getTask(): Task
     {
         return $this->task;

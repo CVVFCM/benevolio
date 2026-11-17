@@ -19,7 +19,7 @@ final class OrganizationRepository extends ServiceEntityRepository
     }
 
     /**
-     * Resolves the tenant behind a public /a/{slug}/… URL.
+     * Resolves the tenant behind a public /a/{organizationSlug}/… URL.
      *
      * Inactive organizations are not returned, so deactivating one closes both
      * its backoffice and its public declaration forms.

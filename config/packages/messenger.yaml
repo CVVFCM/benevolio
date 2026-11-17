@@ -3,13 +3,8 @@ framework:
         transports:
             # Nothing is routed here at the moment. Kept because the moment anything is
             # dispatched, `sync` is where it starts: in-process, inside the request, so the
-            # user sees the outcome on the page they are on.
-            #
-            # The receipt used to be routed here, dispatched when a declaration was
-            # validated. Receipts are now issued a whole civil year at a time from
-            # App\Receipt\YearlyReceiptRun, called straight from the controller and the
-            # console command — there is no per-declaration event left to react to. If that
-            # run ever needs to leave the request, it becomes a message routed here.
+            # user sees the outcome on the page they are on. If App\Receipt\YearlyReceiptRun
+            # ever needs to leave the request, it becomes a message routed here.
             sync: 'sync://'
 
         # TRAP, for whoever adds the first entry back: Messenger validates routed classes at

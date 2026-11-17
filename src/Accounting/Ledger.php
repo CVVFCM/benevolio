@@ -33,28 +33,6 @@ final readonly class Ledger
         return [] === $this->entries;
     }
 
-    /** Total bénévolat valorisé, in cents. Débit 864 = crédit 875. */
-    public function hoursCents(): int
-    {
-        $total = 0;
-        foreach ($this->entries as $entry) {
-            $total += $entry->valuation->hoursCents;
-        }
-
-        return $total;
-    }
-
-    /** Total abandon de frais, in cents. This is the receiptable figure. */
-    public function mileageCents(): int
-    {
-        $total = 0;
-        foreach ($this->entries as $entry) {
-            $total += $entry->valuation->mileageCents;
-        }
-
-        return $total;
-    }
-
     /**
      * The exercice as one centralising écriture — what actually reaches the journal.
      *
@@ -119,5 +97,27 @@ final readonly class Ledger
         }
 
         return $grouped;
+    }
+
+    /** Total bénévolat valorisé, in cents. Débit 864 = crédit 875. */
+    private function hoursCents(): int
+    {
+        $total = 0;
+        foreach ($this->entries as $entry) {
+            $total += $entry->valuation->hoursCents;
+        }
+
+        return $total;
+    }
+
+    /** Total abandon de frais, in cents. This is the receiptable figure. */
+    private function mileageCents(): int
+    {
+        $total = 0;
+        foreach ($this->entries as $entry) {
+            $total += $entry->valuation->mileageCents;
+        }
+
+        return $total;
     }
 }

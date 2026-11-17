@@ -41,11 +41,6 @@ final class TenantContext implements ResetInterface
         return $this->organization;
     }
 
-    public function hasOrganization(): bool
-    {
-        return null !== $this->organization;
-    }
-
     public function setOrganization(?Organization $organization): void
     {
         $this->organization = $organization;

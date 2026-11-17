@@ -12,8 +12,8 @@ use Symfony\Component\HttpFoundation\Request;
 use function is_string;
 
 /**
- * Resolves the tenant from the {slug} placeholder of the public volunteer
- * routes, which all live under /a/{slug}/….
+ * Resolves the tenant from the {organizationSlug} placeholder of the public
+ * volunteer routes, which all live under /a/{organizationSlug}/….
  *
  * This is the strategy that works for anonymous visitors: volunteers have no
  * account, so their declaration form cannot derive the organization from a

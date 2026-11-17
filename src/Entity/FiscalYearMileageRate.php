@@ -84,11 +84,6 @@ class FiscalYearMileageRate
         return $this->id;
     }
 
-    public function getFiscalYear(): FiscalYear
-    {
-        return $this->fiscalYear;
-    }
-
     public function getFiscalPower(): FiscalPower
     {
         return $this->fiscalPower;

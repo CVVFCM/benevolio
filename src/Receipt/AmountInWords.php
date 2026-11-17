@@ -26,11 +26,7 @@ use function ucfirst;
  */
 final readonly class AmountInWords
 {
-    public function __construct(
-        /** Kept injectable so a test can pin the locale rather than inherit one. */
-        private string $locale = 'fr_FR',
-    ) {
-    }
+    private const string LOCALE = 'fr_FR';
 
     /**
      * `7247` → "soixante-douze euros et quarante-sept centimes".
@@ -64,7 +60,7 @@ final readonly class AmountInWords
         // Both statements are annotated because PHPStan resolves NumberFormatter to the
         // polyfill and treats it as internal. ext-intl is what actually runs — the
         // polyfill has no SPELLOUT at all — see the class docblock.
-        $formatter = new NumberFormatter($this->locale, NumberFormatter::SPELLOUT);
+        $formatter = new NumberFormatter(self::LOCALE, NumberFormatter::SPELLOUT);
 
         /** @phpstan-ignore method.internalClass */
         $spelled = $formatter->format($number);
@@ -72,7 +68,7 @@ final readonly class AmountInWords
         if (false === $spelled) {
             // Only reachable if ext-intl is missing, in which case a receipt must not go
             // out with a blank letters line — that is a document defect, not a warning.
-            throw new RuntimeException(sprintf('Could not spell out "%d" in locale "%s". Is ext-intl installed?', $number, $this->locale));
+            throw new RuntimeException(sprintf('Could not spell out "%d" in locale "%s". Is ext-intl installed?', $number, self::LOCALE));
         }
 
         return $spelled;

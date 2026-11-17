@@ -39,13 +39,10 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 /**
  * The association's own record: the identity a CERFA is issued in, and its signature.
  *
- * It exists because everything the form 2041-RD asks about the beneficiary used to be
- * editable only from /platform, by a super-admin. An association could not fix its own
- * SIREN, let alone upload a signature — so every unsigned receipt meant an email to
- * someone else.
+ * So an association fixes its own SIREN and signature without asking a super-admin.
  *
- * **THIS IS THE ONLY CRUD UNDER /admin ON AN ENTITY THAT IS NOT TenantAware**, and
- * therefore the only one the Doctrine filter does not protect: Organization *is* the
+ * **NOT TenantAware, like UserCrudController**, so the Doctrine filter does not protect
+ * it: Organization *is* the
  * tenant, so App\Doctrine\Filter\OrganizationFilter has nothing to scope here and another
  * association's UUID in the URL would otherwise be perfectly editable. Every entry point
  * below checks the instance against the tenant. The same trap, from the other side, is
@@ -101,7 +98,7 @@ final class MyOrganizationCrudController extends AbstractCrudController
         yield TextField::new('name', 'Nom de l\'association');
 
         // Read-only, and not merely discouraged: the slug addresses the public volunteer
-        // URLs (/a/{slug}/…), so changing it invalidates every link already handed out. A
+        // URLs (/a/{organizationSlug}/…), so changing it invalidates every link already handed out. A
         // super-admin can still change it from /platform, deliberately.
         yield TextField::new('slug', 'Raccourci public')
             ->setFormTypeOption('disabled', true)
