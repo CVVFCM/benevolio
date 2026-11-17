@@ -36,25 +36,25 @@ final class DefaultTasksTest extends KernelTestCase
     }
 
     #[Test]
-    public function a_new_organization_starts_with_the_default_types(): void
+    public function a_new_organization_starts_with_the_default_tasks(): void
     {
         $organization = OrganizationFactory::createOne();
 
-        self::assertSame($this->sortedDefaults(), $this->typeNamesOf($organization));
+        self::assertSame($this->sortedDefaults(), $this->taskNamesOf($organization));
     }
 
     /**
-     * Every type belongs to the organization it was seeded for — otherwise the
+     * Every task belongs to the organization it was seeded for — otherwise the
      * tenant filter would hide them from the association that needs them.
      */
     #[Test]
-    public function each_organization_gets_its_own_types(): void
+    public function each_organization_gets_its_own_tasks(): void
     {
         $first = OrganizationFactory::createOne(['slug' => 'first']);
         $second = OrganizationFactory::createOne(['slug' => 'second']);
 
-        self::assertSame($this->sortedDefaults(), $this->typeNamesOf($first));
-        self::assertSame($this->sortedDefaults(), $this->typeNamesOf($second));
+        self::assertSame($this->sortedDefaults(), $this->taskNamesOf($first));
+        self::assertSame($this->sortedDefaults(), $this->taskNamesOf($second));
 
         // Ten rows, not five shared ones. The filter is off already in a
         // KernelTestCase — no request means TenantRequestListener never armed it —
@@ -81,11 +81,11 @@ final class DefaultTasksTest extends KernelTestCase
     }
 
     #[Test]
-    public function a_retired_type_is_not_offered_to_volunteers(): void
+    public function a_retired_task_is_not_offered_to_volunteers(): void
     {
         $organization = OrganizationFactory::createOne();
-        $types = $this->entityManager->getRepository(Task::class)->findBy(['organization' => $organization]);
-        $retired = reset($types);
+        $tasks = $this->entityManager->getRepository(Task::class)->findBy(['organization' => $organization]);
+        $retired = reset($tasks);
         self::assertNotFalse($retired);
         $retired->setActive(false);
         $this->entityManager->flush();
@@ -95,7 +95,7 @@ final class DefaultTasksTest extends KernelTestCase
         self::assertCount(count(DefaultTasks::NAMES) - 1, $offered);
         self::assertNotContains(
             $retired->getName(),
-            array_map(static fn (Task $type): string => $type->getName(), $offered),
+            array_map(static fn (Task $task): string => $task->getName(), $offered),
         );
     }
 
@@ -111,17 +111,17 @@ final class DefaultTasksTest extends KernelTestCase
     }
 
     /**
-     * Sorted, so the assertion is about which types exist rather than about the
+     * Sorted, so the assertion is about which tasks exist rather than about the
      * order DefaultTasks happens to declare them in.
      *
      * @return list<string>
      */
-    private function typeNamesOf(Organization $organization): array
+    private function taskNamesOf(Organization $organization): array
     {
         $this->entityManager->clear();
 
         $names = array_map(
-            static fn (Task $type): string => $type->getName(),
+            static fn (Task $task): string => $task->getName(),
             $this->entityManager->getRepository(Task::class)->findBy(['organization' => $organization]),
         );
         sort($names);

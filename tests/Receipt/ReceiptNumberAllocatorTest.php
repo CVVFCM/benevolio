@@ -37,9 +37,7 @@ final class ReceiptNumberAllocatorTest extends KernelTestCase
         self::bootKernel();
 
         $this->entityManager = self::getContainer()->get(EntityManagerInterface::class);
-        // Built by hand: nothing injects it until the run does, so the container inlines it
-        // away — as with DeclarationDecider before it.
-        $this->allocator = new ReceiptNumberAllocator($this->entityManager);
+        $this->allocator = self::getContainer()->get(ReceiptNumberAllocator::class);
     }
 
     #[Test]

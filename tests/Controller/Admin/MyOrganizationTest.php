@@ -7,7 +7,8 @@ namespace App\Tests\Controller\Admin;
 use App\Entity\Organization;
 use App\Entity\OrganizationSignature;
 use App\Factory\OrganizationFactory;
-use App\Factory\UserFactory;
+use App\Tests\Support\LogsInAdmins;
+use App\Tests\Support\ReadsAdminPages;
 use App\ValueObject\Address;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
@@ -40,6 +41,8 @@ use function sys_get_temp_dir;
 final class MyOrganizationTest extends WebTestCase
 {
     use Factories;
+    use LogsInAdmins;
+    use ReadsAdminPages;
     use ResetDatabase;
 
     private const string FIXTURE = __DIR__.'/../../../resources/fixtures/organization-signature.png';
@@ -55,12 +58,12 @@ final class MyOrganizationTest extends WebTestCase
     public function an_admin_sees_their_own_association(): void
     {
         $organization = OrganizationFactory::new()->withCerfaIdentity()->create(['name' => 'Les Jardins Partagés']);
-        $this->loginAdminOf($organization);
+        $this->loginAsAdminOf($organization);
 
-        $this->client->request('GET', $this->detailUrl($organization));
+        $this->client->request('GET', self::detailUrl('/admin/my-organization', $organization->getId()));
 
         self::assertResponseIsSuccessful();
-        $text = $this->client->getCrawler()->filter('body')->text();
+        $text = $this->bodyText();
         self::assertStringContainsString('Les Jardins Partagés', $text);
         self::assertStringContainsString('W083001234', $text);
     }
@@ -74,9 +77,9 @@ final class MyOrganizationTest extends WebTestCase
     public function an_address_the_receipt_could_not_carry_is_refused_on_the_form(): void
     {
         $organization = OrganizationFactory::new()->withCerfaIdentity()->create();
-        $this->loginAdminOf($organization);
+        $this->loginAsAdminOf($organization);
 
-        $crawler = $this->client->request('GET', $this->detailUrl($organization).'/edit');
+        $crawler = $this->client->request('GET', self::detailUrl('/admin/my-organization', $organization->getId()).'/edit');
         $form = $crawler->selectButton('Enregistrer')->form([
             'Organization[addressPostcode]' => '7500',
             'Organization[addressStreet]' => str_repeat('a', Address::STREET_MAX_LENGTH + 1),
@@ -99,9 +102,9 @@ final class MyOrganizationTest extends WebTestCase
     public function a_foreign_postcode_is_accepted(): void
     {
         $organization = OrganizationFactory::new()->withCerfaIdentity()->create();
-        $this->loginAdminOf($organization);
+        $this->loginAsAdminOf($organization);
 
-        $crawler = $this->client->request('GET', $this->detailUrl($organization).'/edit');
+        $crawler = $this->client->request('GET', self::detailUrl('/admin/my-organization', $organization->getId()).'/edit');
         $this->client->submit($crawler->selectButton('Enregistrer')->form([
             'Organization[addressPostcode]' => '1000',
             'Organization[addressCity]' => 'Bruxelles',
@@ -119,9 +122,9 @@ final class MyOrganizationTest extends WebTestCase
     public function an_association_chooses_to_appear_on_the_home_page(): void
     {
         $organization = OrganizationFactory::new()->withCerfaIdentity()->create(['slug' => 'jardins']);
-        $this->loginAdminOf($organization);
+        $this->loginAsAdminOf($organization);
 
-        $crawler = $this->client->request('GET', $this->detailUrl($organization).'/edit');
+        $crawler = $this->client->request('GET', self::detailUrl('/admin/my-organization', $organization->getId()).'/edit');
         $form = $crawler->selectButton('Enregistrer')->form();
         $checkbox = $form['Organization[listedOnHomepage]'];
         self::assertInstanceOf(ChoiceFormField::class, $checkbox);
@@ -137,13 +140,13 @@ final class MyOrganizationTest extends WebTestCase
     public function an_association_without_a_signature_is_told_what_that_means(): void
     {
         $organization = OrganizationFactory::createOne();
-        $this->loginAdminOf($organization);
+        $this->loginAsAdminOf($organization);
 
-        $this->client->request('GET', $this->detailUrl($organization));
+        $this->client->request('GET', self::detailUrl('/admin/my-organization', $organization->getId()));
 
         self::assertStringContainsString(
             'Aucune signature enregistrée',
-            $this->client->getCrawler()->filter('body')->text(),
+            $this->bodyText(),
         );
     }
 
@@ -151,7 +154,7 @@ final class MyOrganizationTest extends WebTestCase
     public function the_bare_url_lands_on_the_admins_own_association(): void
     {
         $organization = OrganizationFactory::createOne();
-        $this->loginAdminOf($organization);
+        $this->loginAsAdminOf($organization);
 
         $this->client->request('GET', '/admin/my-organization');
         $this->client->followRedirect();
@@ -164,7 +167,7 @@ final class MyOrganizationTest extends WebTestCase
     public function another_associations_record_is_not_readable(): void
     {
         $theirs = OrganizationFactory::createOne();
-        $this->loginAdminOf(OrganizationFactory::createOne());
+        $this->loginAsAdminOf(OrganizationFactory::createOne());
 
         // Nothing filters Organization, so this is the controller's own check being tested.
         // The identity map would otherwise hand back a row the SQL never had to return.
@@ -180,7 +183,7 @@ final class MyOrganizationTest extends WebTestCase
     public function another_associations_record_is_not_editable(): void
     {
         $theirs = OrganizationFactory::createOne();
-        $this->loginAdminOf(OrganizationFactory::createOne());
+        $this->loginAsAdminOf(OrganizationFactory::createOne());
 
         $id = $theirs->getId();
         self::getContainer()->get(EntityManagerInterface::class)->clear();
@@ -193,7 +196,7 @@ final class MyOrganizationTest extends WebTestCase
     #[Test]
     public function an_association_that_does_not_exist_is_a_404(): void
     {
-        $this->loginAdminOf(OrganizationFactory::createOne());
+        $this->loginAsAdminOf(OrganizationFactory::createOne());
 
         $this->client->request('GET', '/admin/my-organization/'.Uuid::v7()->toRfc4122());
 
@@ -208,9 +211,9 @@ final class MyOrganizationTest extends WebTestCase
     public function the_slug_cannot_be_changed_from_here(): void
     {
         $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
-        $this->loginAdminOf($organization);
+        $this->loginAsAdminOf($organization);
 
-        $crawler = $this->client->request('GET', $this->detailUrl($organization).'/edit');
+        $crawler = $this->client->request('GET', self::detailUrl('/admin/my-organization', $organization->getId()).'/edit');
         self::assertResponseIsSuccessful();
 
         $slug = $crawler->filter('input[name$="[slug]"]');
@@ -222,9 +225,9 @@ final class MyOrganizationTest extends WebTestCase
     public function uploading_a_signature_stores_it(): void
     {
         $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
-        $this->loginAdminOf($organization);
+        $this->loginAsAdminOf($organization);
 
-        $crawler = $this->client->request('GET', $this->detailUrl($organization).'/edit');
+        $crawler = $this->client->request('GET', self::detailUrl('/admin/my-organization', $organization->getId()).'/edit');
         $form = $crawler->selectButton('Enregistrer')->form();
         $this->field($form, 'signatureUpload', FileFormField::class)->upload(self::FIXTURE);
         $this->client->submit($form);
@@ -265,12 +268,12 @@ final class MyOrganizationTest extends WebTestCase
     public function a_file_that_is_not_an_image_is_refused(): void
     {
         $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
-        $this->loginAdminOf($organization);
+        $this->loginAsAdminOf($organization);
 
         $notAnImage = sys_get_temp_dir().'/not-an-image.png';
         file_put_contents($notAnImage, 'CECI N\'EST PAS UNE IMAGE');
 
-        $crawler = $this->client->request('GET', $this->detailUrl($organization).'/edit');
+        $crawler = $this->client->request('GET', self::detailUrl('/admin/my-organization', $organization->getId()).'/edit');
         $form = $crawler->selectButton('Enregistrer')->form();
         $this->field($form, 'signatureUpload', FileFormField::class)->upload($notAnImage);
         $this->client->submit($form);
@@ -286,9 +289,9 @@ final class MyOrganizationTest extends WebTestCase
     public function ticking_the_box_removes_the_signature(): void
     {
         $organization = OrganizationFactory::new()->withSignature()->create(['slug' => 'les-jardins']);
-        $this->loginAdminOf($organization);
+        $this->loginAsAdminOf($organization);
 
-        $crawler = $this->client->request('GET', $this->detailUrl($organization).'/edit');
+        $crawler = $this->client->request('GET', self::detailUrl('/admin/my-organization', $organization->getId()).'/edit');
         $form = $crawler->selectButton('Enregistrer')->form();
         $this->field($form, 'signatureCleared', ChoiceFormField::class)->tick();
         $this->client->submit($form);
@@ -320,15 +323,5 @@ final class MyOrganizationTest extends WebTestCase
         self::assertInstanceOf($type, $field);
 
         return $field;
-    }
-
-    private function detailUrl(Organization $organization): string
-    {
-        return '/admin/my-organization/'.$organization->getId()->toRfc4122();
-    }
-
-    private function loginAdminOf(Organization $organization): void
-    {
-        $this->client->loginUser(UserFactory::new()->admin($organization)->create());
     }
 }

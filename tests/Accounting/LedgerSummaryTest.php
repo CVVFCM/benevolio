@@ -9,7 +9,6 @@ use App\Accounting\LedgerSummary;
 use App\Accounting\PcgAccount;
 use App\Entity\FiscalYear;
 use App\Entity\Organization;
-use App\Enum\FiscalPower;
 use App\Factory\DeclarationActionFactory;
 use App\Factory\DeclarationFactory;
 use App\Factory\FiscalYearFactory;
@@ -39,7 +38,7 @@ final class LedgerSummaryTest extends KernelTestCase
     public function it_aggregates_every_volunteer_into_one_entry_per_family(): void
     {
         $organization = OrganizationFactory::createOne();
-        $fiscalYear = $this->year2025($organization);
+        $fiscalYear = $this->year2025AtPublishedBareme($organization);
 
         // Three volunteers, 2 h each at the default 12,00 €/h.
         foreach (['2025-02-01', '2025-05-01', '2025-09-01'] as $date) {
@@ -71,13 +70,10 @@ final class LedgerSummaryTest extends KernelTestCase
     public function waived_travel_books_six_lines_and_balances_every_account(): void
     {
         $organization = OrganizationFactory::createOne();
-        $fiscalYear = $this->year2025($organization);
+        $fiscalYear = $this->year2025AtPublishedBareme($organization);
         $this->lineOn($organization, '2025-06-21', [
+            ...DeclarationActionFactory::WAIVED_TRAVEL,
             'workHours' => '4.00',
-            'ownVehicle' => true,
-            'fiscalPower' => FiscalPower::FIVE_CV,
-            'journeys' => 2,
-            'distanceKm' => 34,
         ]);
 
         $summary = $this->summaryOf($fiscalYear);
@@ -105,7 +101,7 @@ final class LedgerSummaryTest extends KernelTestCase
     public function every_line_is_dated_on_the_close_of_the_exercice(): void
     {
         $organization = OrganizationFactory::createOne();
-        $fiscalYear = $this->year2025($organization);
+        $fiscalYear = $this->year2025AtPublishedBareme($organization);
         $this->lineOn($organization, '2025-03-15', ['workHours' => '1.00']);
 
         foreach ($this->summaryOf($fiscalYear)->entries() as $entry) {
@@ -121,13 +117,10 @@ final class LedgerSummaryTest extends KernelTestCase
     public function the_two_families_are_kept_apart(): void
     {
         $organization = OrganizationFactory::createOne();
-        $fiscalYear = $this->year2025($organization);
+        $fiscalYear = $this->year2025AtPublishedBareme($organization);
         $this->lineOn($organization, '2025-06-21', [
+            ...DeclarationActionFactory::WAIVED_TRAVEL,
             'workHours' => '4.00',
-            'ownVehicle' => true,
-            'fiscalPower' => FiscalPower::FIVE_CV,
-            'journeys' => 2,
-            'distanceKm' => 34,
         ]);
 
         $summary = $this->summaryOf($fiscalYear);
@@ -148,7 +141,7 @@ final class LedgerSummaryTest extends KernelTestCase
     public function kilometres_that_waive_nothing_are_not_counted(): void
     {
         $organization = OrganizationFactory::createOne();
-        $fiscalYear = $this->year2025($organization);
+        $fiscalYear = $this->year2025AtPublishedBareme($organization);
         $this->lineOn($organization, '2025-06-21', [
             'workHours' => '1.00',
             'ownVehicle' => false,
@@ -166,7 +159,7 @@ final class LedgerSummaryTest extends KernelTestCase
     #[Test]
     public function an_exercice_with_nothing_validated_is_empty(): void
     {
-        $summary = $this->summaryOf($this->year2025(OrganizationFactory::createOne()));
+        $summary = $this->summaryOf($this->year2025AtPublishedBareme(OrganizationFactory::createOne()));
 
         self::assertTrue($summary->isEmpty());
         self::assertSame([], $summary->entries());
@@ -190,7 +183,7 @@ final class LedgerSummaryTest extends KernelTestCase
         self::fail(sprintf('No balance for account %s.', $account->value));
     }
 
-    private function year2025(Organization $organization): FiscalYear
+    private function year2025AtPublishedBareme(Organization $organization): FiscalYear
     {
         return FiscalYearFactory::new()->for($organization)->calendarYear(2025)
             ->withPublishedBareme()->create();

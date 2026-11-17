@@ -10,12 +10,13 @@ use App\Entity\Organization;
 use App\Entity\Person;
 use App\Entity\Task;
 use App\Factory\OrganizationFactory;
-use App\Factory\UserFactory;
 use App\Form\Declaration\DeclarationDraft;
 use App\State\DeclarationActionState;
 use App\State\DeclarationState;
+use App\Tests\Support\LogsInAdmins;
+use App\Tests\Support\ReloadsEntities;
 use App\Tests\Support\ResetsRateLimiters;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Tests\Support\WalksDeclarationFlow;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -35,9 +36,11 @@ use Zenstruck\Foundry\Test\ResetDatabase;
 final class DeclarationFlowTest extends WebTestCase
 {
     use Factories;
+    use LogsInAdmins;
+    use ReloadsEntities;
     use ResetDatabase;
     use ResetsRateLimiters;
-    private const string FORM = 'declaration_flow';
+    use WalksDeclarationFlow;
 
     private KernelBrowser $client;
 
@@ -95,7 +98,7 @@ final class DeclarationFlowTest extends WebTestCase
     {
         OrganizationFactory::new()->inactive()->create(['slug' => 'fermee']);
         $mine = OrganizationFactory::createOne(['slug' => 'les-jardins']);
-        $this->client->loginUser(UserFactory::new()->admin($mine)->create());
+        $this->loginAsAdminOf($mine);
 
         $this->client->request('GET', '/a/'.$slug.'/declaration');
 
@@ -168,7 +171,7 @@ final class DeclarationFlowTest extends WebTestCase
         self::assertSelectorTextContains('h1', 'Vérifiez votre boîte mail');
         $this->assertPageContainsText('jean.dupont@example.test');
 
-        $entityManager = $this->entityManager();
+        $entityManager = $this->freshEntityManager();
         $people = $entityManager->getRepository(Person::class)->findAll();
         self::assertCount(1, $people);
         $person = reset($people);
@@ -213,12 +216,12 @@ final class DeclarationFlowTest extends WebTestCase
     public function the_chosen_task_survives_the_session_round_trip(): void
     {
         $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
-        $typesBefore = $this->entityManager()->getRepository(Task::class)->count(['organization' => $organization]);
+        $typesBefore = $this->freshEntityManager()->getRepository(Task::class)->count(['organization' => $organization]);
 
         $this->completeFlow();
         $this->client->followRedirect();
 
-        $entityManager = $this->entityManager();
+        $entityManager = $this->freshEntityManager();
         // No stray copy of the type was created by the round trip.
         self::assertSame(
             $typesBefore,
@@ -249,7 +252,7 @@ final class DeclarationFlowTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         $this->assertPageContainsText('Vous devez confirmer renoncer au remboursement de vos frais.');
-        self::assertCount(0, $this->entityManager()->getRepository(Declaration::class)->findAll());
+        self::assertCount(0, $this->freshEntityManager()->getRepository(Declaration::class)->findAll());
     }
 
     #[Test]
@@ -264,7 +267,7 @@ final class DeclarationFlowTest extends WebTestCase
         // not duplicated.
         $this->completeFlow(['email' => 'Jean.Dupont@Example.TEST', 'addressStreet' => 'quai de la Fosse']);
 
-        $entityManager = $this->entityManager();
+        $entityManager = $this->freshEntityManager();
         self::assertCount(1, $entityManager->getRepository(Person::class)->findAll());
         self::assertCount(2, $entityManager->getRepository(Declaration::class)->findAll());
     }
@@ -286,7 +289,7 @@ final class DeclarationFlowTest extends WebTestCase
 
         $this->completeFlow(['firstName' => 'Quelqu\'un', 'lastName' => 'D\'autre', 'addressStreet' => 'quai de la Fosse']);
 
-        $entityManager = $this->entityManager();
+        $entityManager = $this->freshEntityManager();
         $entityManager->clear();
         $second = $entityManager->getRepository(Declaration::class)->findOneBy([], ['id' => 'DESC']);
         self::assertNotNull($second);
@@ -359,7 +362,7 @@ final class DeclarationFlowTest extends WebTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
         $this->assertPageContainsText('Trop de déclarations pour cette adresse');
         self::assertEmailCount(0);
-        self::assertCount(5, $this->entityManager()->getRepository(Declaration::class)->findAll());
+        self::assertCount(5, $this->freshEntityManager()->getRepository(Declaration::class)->findAll());
 
         // Another address is not affected.
         $this->completeFlow(['email' => 'marie.curie@example.test']);
@@ -426,72 +429,6 @@ final class DeclarationFlowTest extends WebTestCase
     }
 
     /**
-     * @param array<string, string> $overrides
-     *
-     * @return array<string, string>
-     */
-    private function personStep(array $overrides = []): array
-    {
-        $values = [
-            'firstName' => 'Jean',
-            'lastName' => 'Dupont',
-            'email' => 'jean.dupont@example.test',
-            'addressNumber' => '12',
-            'addressStreet' => 'rue des Jardins',
-            'addressPostcode' => '44000',
-            'addressCity' => 'Nantes',
-            'addressCountry' => 'FR',
-            ...$overrides,
-        ];
-
-        $fields = [];
-        foreach ($values as $name => $value) {
-            $fields[self::FORM.'[person]['.$name.']'] = $value;
-        }
-
-        return $fields;
-    }
-
-    /**
-     * @param array<string, string> $personOverrides
-     */
-    private function reachLegalStep(array $personOverrides = []): void
-    {
-        $this->client->request('GET', '/a/les-jardins/declaration');
-
-        // Advancing a step renders the next one directly; FormFlow does not do
-        // POST-redirect-GET between steps (it guards against a POST reload itself
-        // via isCurrentStepSubmitted()). Only the final submit redirects.
-        $this->client->submitForm('Suivant', $this->personStep($personOverrides));
-
-        // The task is a database row now, not an enum value, so the submitted
-        // value is its id — taken from the rendered select rather than hardcoded, so
-        // the test breaks if the option ever stops being offered.
-        $this->client->submitForm('Suivant', [
-            self::FORM.'[actions][actions][0][task]' => $this->firstTaskId(),
-            self::FORM.'[actions][actions][0][title]' => 'Régate du printemps',
-            self::FORM.'[actions][actions][0][date]' => '2026-05-10',
-            self::FORM.'[actions][actions][0][consecutiveDays]' => '2',
-            self::FORM.'[actions][actions][0][workHours]' => '6.5',
-            self::FORM.'[actions][actions][0][distanceKm]' => '12',
-            self::FORM.'[actions][actions][0][journeys]' => '2',
-        ]);
-    }
-
-    /**
-     * @param array<string, string> $personOverrides
-     */
-    private function completeFlow(array $personOverrides = []): void
-    {
-        $this->reachLegalStep($personOverrides);
-
-        $this->client->submitForm('Enregistrer ma déclaration', [
-            self::FORM.'[legal][accuracyAttested]' => '1',
-            self::FORM.'[legal][expensesWaived]' => '1',
-        ]);
-    }
-
-    /**
      * Asserts on the page's decoded text rather than its raw HTML: Twig escapes
      * apostrophes to &#039;, so a raw-string assertion on a French message with an
      * apostrophe fails for the wrong reason.
@@ -504,27 +441,5 @@ final class DeclarationFlowTest extends WebTestCase
     private function assertPageDoesNotContainText(string $needle): void
     {
         self::assertStringNotContainsString($needle, $this->client->getCrawler()->filter('body')->text());
-    }
-
-    /**
-     * The id of the first task the form actually offers.
-     */
-    private function firstTaskId(): string
-    {
-        $option = $this->client->getCrawler()
-            ->filter('select[name="'.self::FORM.'[actions][actions][0][task]"] option[value!=""]')
-            ->first();
-
-        self::assertGreaterThan(0, $option->count(), 'The actions step offers no task.');
-
-        return (string) $option->attr('value');
-    }
-
-    private function entityManager(): EntityManagerInterface
-    {
-        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
-        $entityManager->clear();
-
-        return $entityManager;
     }
 }

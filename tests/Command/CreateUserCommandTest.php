@@ -7,7 +7,7 @@ namespace App\Tests\Command;
 use App\Entity\User;
 use App\Factory\OrganizationFactory;
 use App\Security\Role;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Tests\Support\ReloadsEntities;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -28,6 +28,7 @@ use Zenstruck\Foundry\Test\ResetDatabase;
 final class CreateUserCommandTest extends KernelTestCase
 {
     use Factories;
+    use ReloadsEntities;
     use ResetDatabase;
 
     private const string PASSWORD = 'correct horse battery staple';
@@ -259,10 +260,5 @@ final class CreateUserCommandTest extends KernelTestCase
         self::assertNotNull($user);
 
         return $user;
-    }
-
-    private function entityManager(): EntityManagerInterface
-    {
-        return self::getContainer()->get(EntityManagerInterface::class);
     }
 }

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Controller;
 
 use App\Factory\OrganizationFactory;
-use App\Factory\UserFactory;
+use App\Tests\Support\LogsInAdmins;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -22,6 +22,7 @@ use function sprintf;
 final class HomeTest extends WebTestCase
 {
     use Factories;
+    use LogsInAdmins;
     use ResetDatabase;
 
     private KernelBrowser $client;
@@ -97,11 +98,11 @@ final class HomeTest extends WebTestCase
         $this->client->request(Request::METHOD_GET, '/espace');
         self::assertResponseRedirects('http://localhost/login');
 
-        $this->client->loginUser(UserFactory::new()->superAdmin()->create());
+        $this->loginAsSuperAdmin();
         $this->client->request(Request::METHOD_GET, '/espace');
         self::assertResponseRedirects('/platform');
 
-        $this->client->loginUser(UserFactory::new()->admin(OrganizationFactory::createOne())->create());
+        $this->loginAsAdminOf(OrganizationFactory::createOne());
         $this->client->request(Request::METHOD_GET, '/espace');
         self::assertResponseRedirects('/admin');
     }

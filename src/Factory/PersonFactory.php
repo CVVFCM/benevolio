@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Factory;
 
+use App\Entity\Organization;
 use App\Entity\Person;
 use App\ValueObject\Address;
 use App\ValueObject\Email;
@@ -17,6 +18,11 @@ final class PersonFactory extends PersistentObjectFactory
     public static function class(): string
     {
         return Person::class;
+    }
+
+    public function for(Organization $organization): self
+    {
+        return $this->with(['organization' => $organization]);
     }
 
     /**

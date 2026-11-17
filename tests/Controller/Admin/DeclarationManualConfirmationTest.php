@@ -9,7 +9,6 @@ use App\Declaration\Exception\DeclarationNotConfirmableException;
 use App\Doctrine\Filter\OrganizationFilter;
 use App\Entity\Declaration;
 use App\Entity\Organization;
-use App\Entity\User;
 use App\Factory\DeclarationActionFactory;
 use App\Factory\DeclarationFactory;
 use App\Factory\OrganizationFactory;
@@ -17,6 +16,9 @@ use App\Factory\PersonFactory;
 use App\Factory\UserFactory;
 use App\State\DeclarationActionState;
 use App\State\DeclarationState;
+use App\Tests\Support\LogsInAdmins;
+use App\Tests\Support\ReadsAdminPages;
+use App\Tests\Support\ReloadsEntities;
 use App\ValueObject\Address;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
@@ -37,6 +39,9 @@ use Zenstruck\Foundry\Test\ResetDatabase;
 final class DeclarationManualConfirmationTest extends WebTestCase
 {
     use Factories;
+    use LogsInAdmins;
+    use ReadsAdminPages;
+    use ReloadsEntities;
     use ResetDatabase;
 
     private KernelBrowser $client;
@@ -89,8 +94,7 @@ final class DeclarationManualConfirmationTest extends WebTestCase
     public function a_differing_identity_is_flagged_and_applied_only_by_the_confirmation(): void
     {
         $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
-        $person = PersonFactory::createOne([
-            'organization' => $organization,
+        $person = PersonFactory::new()->for($organization)->create([
             'firstName' => 'Jeanne',
             'lastName' => 'Martin',
             'address' => new Address('3', 'rue des Lilas', '44000', 'Nantes', 'FR'),
@@ -129,7 +133,7 @@ final class DeclarationManualConfirmationTest extends WebTestCase
         $declaration = $this->unconfirmedDeclarationWithLines($organization, 1);
         $this->loginAsAdminOf($organization);
 
-        $crawler = $this->client->request(Request::METHOD_GET, $this->detailUrl($declaration));
+        $crawler = $this->client->request(Request::METHOD_GET, self::detailUrl('/admin/declaration', $declaration->getId()));
 
         $button = $crawler->filter('form[action*="confirm-manually"] button');
         self::assertCount(1, $button);
@@ -145,7 +149,7 @@ final class DeclarationManualConfirmationTest extends WebTestCase
         $declaration = DeclarationFactory::new()->for($organization)->confirmed()->create();
         $this->loginAsAdminOf($organization);
 
-        $crawler = $this->client->request(Request::METHOD_GET, $this->detailUrl($declaration));
+        $crawler = $this->client->request(Request::METHOD_GET, self::detailUrl('/admin/declaration', $declaration->getId()));
 
         self::assertResponseIsSuccessful();
         self::assertCount(0, $crawler->filter('form[action*="confirm-manually"]'));
@@ -281,39 +285,15 @@ final class DeclarationManualConfirmationTest extends WebTestCase
 
     private function confirmForm(Declaration $declaration): Form
     {
-        $crawler = $this->client->request(Request::METHOD_GET, $this->detailUrl($declaration));
+        $crawler = $this->client->request(Request::METHOD_GET, self::detailUrl('/admin/declaration', $declaration->getId()));
         self::assertResponseIsSuccessful();
 
         return $crawler->filter('form[action*="confirm-manually"]')->form();
     }
 
-    private function loginAsAdminOf(Organization $organization): User
-    {
-        $admin = UserFactory::new()->admin($organization)->create();
-        $this->client->loginUser($admin);
-
-        return $admin;
-    }
-
-    private function detailUrl(Declaration $declaration): string
-    {
-        return '/admin/declaration/'.$declaration->getId()->toRfc4122();
-    }
-
     private function confirmUrl(Declaration $declaration): string
     {
-        return $this->detailUrl($declaration).'/confirm-manually';
-    }
-
-    private function reload(Declaration $declaration): Declaration
-    {
-        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
-        $entityManager->clear();
-
-        $reloaded = $entityManager->getRepository(Declaration::class)->find($declaration->getId());
-        self::assertNotNull($reloaded);
-
-        return $reloaded;
+        return self::detailUrl('/admin/declaration', $declaration->getId()).'/confirm-manually';
     }
 
     /**
@@ -327,10 +307,5 @@ final class DeclarationManualConfirmationTest extends WebTestCase
         if ($filters->isEnabled(OrganizationFilter::NAME)) {
             $filters->disable(OrganizationFilter::NAME);
         }
-    }
-
-    private function bodyText(): string
-    {
-        return $this->client->getCrawler()->filter('body')->text();
     }
 }

@@ -39,7 +39,7 @@ final class DeclarationFactory extends PersistentObjectFactory
     {
         return $this->with([
             'organization' => $organization,
-            'person' => PersonFactory::new()->with(['organization' => $organization]),
+            'person' => PersonFactory::new()->for($organization),
         ]);
     }
 

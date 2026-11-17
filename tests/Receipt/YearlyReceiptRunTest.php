@@ -7,7 +7,6 @@ namespace App\Tests\Receipt;
 use App\Entity\Organization;
 use App\Entity\Person;
 use App\Entity\Receipt;
-use App\Enum\FiscalPower;
 use App\Factory\DeclarationActionFactory;
 use App\Factory\DeclarationFactory;
 use App\Factory\FiscalYearFactory;
@@ -62,8 +61,8 @@ final class YearlyReceiptRunTest extends KernelTestCase
     public function every_declaration_of_a_year_lands_on_one_receipt(): void
     {
         $organization = $this->association();
-        $this->exercice($organization, 2025);
-        $person = PersonFactory::createOne(['organization' => $organization]);
+        $this->yearAtPublishedBareme($organization, 2025);
+        $person = PersonFactory::new()->for($organization)->create();
 
         // Four separate declarations, 34 km each in the volunteer's own vehicle at the 5 CV
         // rate of 0,636 → 4 × 43,25 € = 173,00 €. (68 km per declaration: 2 journeys of 34.)
@@ -90,7 +89,7 @@ final class YearlyReceiptRunTest extends KernelTestCase
     public function a_year_spanning_two_exercices_is_priced_from_both(): void
     {
         $organization = $this->association();
-        $person = PersonFactory::createOne(['organization' => $organization]);
+        $person = PersonFactory::new()->for($organization)->create();
 
         // September-to-August exercices, so 2025 falls across two of them — and they carry
         // different rates, so the amount proves which one priced what.
@@ -123,9 +122,9 @@ final class YearlyReceiptRunTest extends KernelTestCase
     public function only_the_chosen_year_is_counted(): void
     {
         $organization = $this->association();
-        $this->exercice($organization, 2024);
-        $this->exercice($organization, 2025);
-        $person = PersonFactory::createOne(['organization' => $organization]);
+        $this->yearAtPublishedBareme($organization, 2024);
+        $this->yearAtPublishedBareme($organization, 2025);
+        $person = PersonFactory::new()->for($organization)->create();
 
         $this->waivedLine($person, '2024-06-21');
         $this->waivedLine($person, '2025-06-21');
@@ -141,17 +140,13 @@ final class YearlyReceiptRunTest extends KernelTestCase
     public function a_volunteer_who_waived_nothing_is_skipped_with_a_reason(): void
     {
         $organization = $this->association();
-        $this->exercice($organization, 2025);
-        $person = PersonFactory::createOne(['organization' => $organization]);
+        $this->yearAtPublishedBareme($organization, 2025);
+        $person = PersonFactory::new()->for($organization)->create();
 
         $declaration = DeclarationFactory::new()->forPerson($person)->confirmed()->create();
-        DeclarationActionFactory::new()->forDeclaration($declaration)->validated()->create([
+        DeclarationActionFactory::new()->forDeclaration($declaration)->validated()->onFoot()->create([
             'date' => new DateTimeImmutable('2025-06-21'),
             'workHours' => '7.00',
-            'journeys' => 0,
-            'distanceKm' => 0,
-            'ownVehicle' => false,
-            'fiscalPower' => null,
         ]);
 
         $report = $this->run->run($organization, 2025);
@@ -167,8 +162,8 @@ final class YearlyReceiptRunTest extends KernelTestCase
     public function a_line_no_exercice_covers_is_left_out_and_reported(): void
     {
         $organization = $this->association();
-        $this->exercice($organization, 2025);
-        $person = PersonFactory::createOne(['organization' => $organization]);
+        $this->yearAtPublishedBareme($organization, 2025);
+        $person = PersonFactory::new()->for($organization)->create();
 
         $this->waivedLine($person, '2025-06-21');
         // 2026 has no exercice, but this is the 2026 run — so the only line it has cannot be
@@ -189,8 +184,8 @@ final class YearlyReceiptRunTest extends KernelTestCase
     public function an_association_without_a_siren_issues_nothing(): void
     {
         $organization = OrganizationFactory::createOne();
-        $this->exercice($organization, 2025);
-        $person = PersonFactory::createOne(['organization' => $organization]);
+        $this->yearAtPublishedBareme($organization, 2025);
+        $person = PersonFactory::new()->for($organization)->create();
         $this->waivedLine($person, '2025-06-21');
 
         $report = $this->run->run($organization, 2025);
@@ -211,8 +206,8 @@ final class YearlyReceiptRunTest extends KernelTestCase
     public function an_association_whose_address_does_not_validate_issues_nothing(): void
     {
         $organization = OrganizationFactory::new()->withCerfaIdentity()->create(['addressPostcode' => '7500']);
-        $this->exercice($organization, 2025);
-        $person = PersonFactory::createOne(['organization' => $organization]);
+        $this->yearAtPublishedBareme($organization, 2025);
+        $person = PersonFactory::new()->for($organization)->create();
         $this->waivedLine($person, '2025-06-21');
 
         $report = $this->run->run($organization, 2025);
@@ -233,10 +228,10 @@ final class YearlyReceiptRunTest extends KernelTestCase
     {
         $run = $this->runWhoseRendererFailsAfter(1);
         $organization = $this->association();
-        $this->exercice($organization, 2025);
-        $first = PersonFactory::createOne(['organization' => $organization, 'lastName' => 'Premier']);
-        $second = PersonFactory::createOne(['organization' => $organization, 'lastName' => 'Deuxième']);
-        $third = PersonFactory::createOne(['organization' => $organization, 'lastName' => 'Troisième']);
+        $this->yearAtPublishedBareme($organization, 2025);
+        $first = PersonFactory::new()->for($organization)->create(['lastName' => 'Premier']);
+        $second = PersonFactory::new()->for($organization)->create(['lastName' => 'Deuxième']);
+        $third = PersonFactory::new()->for($organization)->create(['lastName' => 'Troisième']);
         $this->waivedLine($first, '2025-02-10');
         $this->waivedLine($second, '2025-03-10');
         $this->waivedLine($third, '2025-04-10');
@@ -262,8 +257,8 @@ final class YearlyReceiptRunTest extends KernelTestCase
     public function a_failed_receipt_takes_no_number(): void
     {
         $organization = $this->association();
-        $this->exercice($organization, 2025);
-        $this->waivedLine(PersonFactory::createOne(['organization' => $organization]), '2025-02-10');
+        $this->yearAtPublishedBareme($organization, 2025);
+        $this->waivedLine(PersonFactory::new()->for($organization)->create(), '2025-02-10');
 
         $report = $this->runWhoseRendererFailsAfter(0)->run($organization, 2025);
 
@@ -291,17 +286,13 @@ final class YearlyReceiptRunTest extends KernelTestCase
     public function a_volunteer_owed_nothing_is_still_skipped_after_the_run_stopped(): void
     {
         $organization = $this->association();
-        $this->exercice($organization, 2025);
-        $this->waivedLine(PersonFactory::createOne(['organization' => $organization]), '2025-02-10');
-        $hoursOnly = PersonFactory::createOne(['organization' => $organization, 'lastName' => 'Heures']);
+        $this->yearAtPublishedBareme($organization, 2025);
+        $this->waivedLine(PersonFactory::new()->for($organization)->create(), '2025-02-10');
+        $hoursOnly = PersonFactory::new()->for($organization)->create(['lastName' => 'Heures']);
         $declaration = DeclarationFactory::new()->forPerson($hoursOnly)->confirmed()->create();
-        DeclarationActionFactory::new()->forDeclaration($declaration)->validated()->create([
+        DeclarationActionFactory::new()->forDeclaration($declaration)->validated()->onFoot()->create([
             'date' => new DateTimeImmutable('2025-06-21'),
             'workHours' => '7.00',
-            'journeys' => 0,
-            'distanceKm' => 0,
-            'ownVehicle' => false,
-            'fiscalPower' => null,
         ]);
 
         $report = $this->runWhoseRendererFailsAfter(0)->run($organization, 2025);
@@ -319,8 +310,8 @@ final class YearlyReceiptRunTest extends KernelTestCase
     public function running_a_year_twice_issues_a_second_receipt(): void
     {
         $organization = $this->association();
-        $this->exercice($organization, 2025);
-        $person = PersonFactory::createOne(['organization' => $organization]);
+        $this->yearAtPublishedBareme($organization, 2025);
+        $person = PersonFactory::new()->for($organization)->create();
         $this->waivedLine($person, '2025-06-21');
 
         $first = $this->firstIssued($this->run->run($organization, 2025));
@@ -341,10 +332,10 @@ final class YearlyReceiptRunTest extends KernelTestCase
     {
         $mine = $this->association();
         $theirs = $this->association();
-        $this->exercice($mine, 2025);
-        $this->exercice($theirs, 2025);
+        $this->yearAtPublishedBareme($mine, 2025);
+        $this->yearAtPublishedBareme($theirs, 2025);
 
-        $theirVolunteer = PersonFactory::createOne(['organization' => $theirs]);
+        $theirVolunteer = PersonFactory::new()->for($theirs)->create();
         $this->waivedLine($theirVolunteer, '2025-06-21');
 
         $report = $this->run->run($mine, 2025);
@@ -356,9 +347,8 @@ final class YearlyReceiptRunTest extends KernelTestCase
     public function the_object_key_carries_the_year_and_the_number(): void
     {
         $organization = $this->association();
-        $this->exercice($organization, 2025);
-        $person = PersonFactory::createOne([
-            'organization' => $organization,
+        $this->yearAtPublishedBareme($organization, 2025);
+        $person = PersonFactory::new()->for($organization)->create([
             'firstName' => 'Camille',
             'lastName' => 'Berthier',
         ]);
@@ -412,7 +402,7 @@ final class YearlyReceiptRunTest extends KernelTestCase
         return OrganizationFactory::new()->withCerfaIdentity()->withSignature()->create();
     }
 
-    private function exercice(Organization $organization, int $year): void
+    private function yearAtPublishedBareme(Organization $organization, int $year): void
     {
         FiscalYearFactory::new()->for($organization)->calendarYear($year)
             ->withPublishedBareme()->create();
@@ -426,13 +416,9 @@ final class YearlyReceiptRunTest extends KernelTestCase
     {
         $declaration = DeclarationFactory::new()->forPerson($person)->confirmed()->create();
 
-        DeclarationActionFactory::new()->forDeclaration($declaration)->validated()->create([
+        DeclarationActionFactory::new()->forDeclaration($declaration)->validated()->withWaivedTravel()->create([
             'date' => new DateTimeImmutable($date),
             'workHours' => '2.00',
-            'journeys' => 2,
-            'distanceKm' => 34,
-            'ownVehicle' => true,
-            'fiscalPower' => FiscalPower::FIVE_CV,
         ]);
     }
 }

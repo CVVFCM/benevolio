@@ -101,9 +101,13 @@ final class UserFactory extends PersistentObjectFactory
      */
     protected function defaults(): array
     {
+        // An admin needs an association (User's ADMIN_NEEDS_ORGANIZATION), so the
+        // default account is one, with its own. Lazy: admin(), owner() and
+        // superAdmin() override it, and then no association is created.
         return [
             'email' => self::faker()->unique()->safeEmail(),
             'roles' => [Role::ADMIN->value],
+            'organization' => OrganizationFactory::new(),
         ];
     }
 

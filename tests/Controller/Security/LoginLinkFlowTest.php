@@ -7,6 +7,8 @@ namespace App\Tests\Controller\Security;
 use App\Entity\User;
 use App\Factory\OrganizationFactory;
 use App\Factory\UserFactory;
+use App\Tests\Support\LogsInAdmins;
+use App\Tests\Support\ReloadsEntities;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -27,6 +29,8 @@ use const PHP_URL_QUERY;
 final class LoginLinkFlowTest extends WebTestCase
 {
     use Factories;
+    use LogsInAdmins;
+    use ReloadsEntities;
     use ResetDatabase;
 
     private const string NEW_PASSWORD = 'un mot de passe neuf';
@@ -149,7 +153,7 @@ final class LoginLinkFlowTest extends WebTestCase
     #[Test]
     public function an_ordinary_password_login_is_not_sent_to_choose_password(): void
     {
-        $this->client->loginUser(UserFactory::new()->admin(OrganizationFactory::createOne())->create());
+        $this->loginAsAdminOf(OrganizationFactory::createOne());
 
         $this->client->request(Request::METHOD_GET, '/admin/declaration');
 
@@ -262,7 +266,7 @@ final class LoginLinkFlowTest extends WebTestCase
         $user = UserFactory::new()->admin(OrganizationFactory::createOne())->invited()->create();
 
         // A session as it was opened by the link, before any password existed.
-        $this->client->loginUser($this->reload($user));
+        $this->loginAs($this->reload($user));
         $this->client->request(Request::METHOD_GET, '/admin');
         self::assertResponseRedirects('/mot-de-passe');
 
@@ -330,16 +334,5 @@ final class LoginLinkFlowTest extends WebTestCase
 
         return $handler->createLoginLink($this->reload($user), null, $lifetime)
             ->getUrl();
-    }
-
-    private function reload(User $user): User
-    {
-        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
-        $entityManager->clear();
-
-        $reloaded = $entityManager->getRepository(User::class)->find($user->getId());
-        self::assertNotNull($reloaded);
-
-        return $reloaded;
     }
 }

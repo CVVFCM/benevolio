@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\DataFixtures;
 
 use App\Entity\Organization;
-use App\Enum\FiscalPower;
 use App\Factory\DeclarationActionFactory;
 use App\Factory\DeclarationFactory;
 use App\Factory\FiscalYearFactory;
@@ -122,13 +121,10 @@ final class AppFixtures extends Fixture
             DeclarationActionFactory::new()
                 ->forDeclaration($hoursOnly)
                 ->validated()
+                ->onFoot()
                 ->create([
                     'date' => new DateTimeImmutable(sprintf('%d-03-15', $year)),
                     'workHours' => '7.25',
-                    'journeys' => 0,
-                    'distanceKm' => 0,
-                    'ownVehicle' => false,
-                    'fiscalPower' => null,
                 ]);
 
             // Hours and travel in the volunteer's own vehicle: the line that produces
@@ -137,13 +133,10 @@ final class AppFixtures extends Fixture
             DeclarationActionFactory::new()
                 ->forDeclaration($withTravel)
                 ->validated()
+                ->withWaivedTravel()
                 ->create([
                     'date' => new DateTimeImmutable(sprintf('%d-06-21', $year)),
                     'workHours' => '5.50',
-                    'journeys' => 2,
-                    'distanceKm' => 34,
-                    'ownVehicle' => true,
-                    'fiscalPower' => FiscalPower::FIVE_CV,
                 ]);
         }
     }

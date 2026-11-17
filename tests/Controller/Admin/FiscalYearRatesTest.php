@@ -10,8 +10,9 @@ use App\Entity\Organization;
 use App\Entity\Task;
 use App\Factory\FiscalYearFactory;
 use App\Factory\OrganizationFactory;
-use App\Factory\UserFactory;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Tests\Support\LogsInAdmins;
+use App\Tests\Support\ReadsAdminPages;
+use App\Tests\Support\ReloadsEntities;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -29,6 +30,9 @@ use Zenstruck\Foundry\Test\ResetDatabase;
 final class FiscalYearRatesTest extends WebTestCase
 {
     use Factories;
+    use LogsInAdmins;
+    use ReadsAdminPages;
+    use ReloadsEntities;
     use ResetDatabase;
 
     private KernelBrowser $client;
@@ -39,12 +43,12 @@ final class FiscalYearRatesTest extends WebTestCase
     }
 
     #[Test]
-    public function a_task_rate_can_be_entered_on_the_exercice(): void
+    public function a_task_rate_can_be_entered_on_the_calendar_year2026(): void
     {
         $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
-        $fiscalYear = $this->exercice($organization);
+        $fiscalYear = $this->calendarYear2026($organization);
         $task = $this->aTaskOf($organization);
-        $this->loginAdminOf($organization);
+        $this->loginAsAdminOf($organization);
 
         $crawler = $this->client->request('GET', $this->editUrl($fiscalYear));
         self::assertResponseIsSuccessful();
@@ -85,8 +89,8 @@ final class FiscalYearRatesTest extends WebTestCase
         $mine = OrganizationFactory::createOne(['slug' => 'les-jardins']);
         $theirs = OrganizationFactory::createOne(['slug' => 'les-voiles']);
         $theirTask = $this->aTaskOf($theirs);
-        $fiscalYear = $this->exercice($mine);
-        $this->loginAdminOf($mine);
+        $fiscalYear = $this->calendarYear2026($mine);
+        $this->loginAsAdminOf($mine);
 
         $crawler = $this->client->request('GET', $this->editUrl($fiscalYear));
 
@@ -104,18 +108,18 @@ final class FiscalYearRatesTest extends WebTestCase
     public function the_detail_page_shows_the_rates(): void
     {
         $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
-        $fiscalYear = $this->exercice($organization);
+        $fiscalYear = $this->calendarYear2026($organization);
         new FiscalYearTaskRate($fiscalYear, $this->aTaskOf($organization))->setHourlyRateCents(1850);
         $this->entityManager()->flush();
-        $this->loginAdminOf($organization);
+        $this->loginAsAdminOf($organization);
 
         $this->client->request('GET', '/admin/fiscal-year/'.$fiscalYear->getId()->toRfc4122());
 
         self::assertResponseIsSuccessful();
-        self::assertStringContainsString('18,50', $this->client->getCrawler()->filter('body')->text());
+        self::assertStringContainsString('18,50', $this->bodyText());
     }
 
-    private function exercice(Organization $organization): FiscalYear
+    private function calendarYear2026(Organization $organization): FiscalYear
     {
         return FiscalYearFactory::new()->for($organization)->calendarYear(2026)->create();
     }
@@ -136,15 +140,5 @@ final class FiscalYearRatesTest extends WebTestCase
     private function editUrl(FiscalYear $fiscalYear): string
     {
         return '/admin/fiscal-year/'.$fiscalYear->getId()->toRfc4122().'/edit';
-    }
-
-    private function loginAdminOf(Organization $organization): void
-    {
-        $this->client->loginUser(UserFactory::new()->admin($organization)->create());
-    }
-
-    private function entityManager(): EntityManagerInterface
-    {
-        return self::getContainer()->get(EntityManagerInterface::class);
     }
 }

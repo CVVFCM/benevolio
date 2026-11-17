@@ -6,12 +6,12 @@ namespace App\Tests\Controller\Admin;
 
 use App\Entity\FiscalYear;
 use App\Entity\Organization;
-use App\Enum\FiscalPower;
 use App\Factory\DeclarationActionFactory;
 use App\Factory\DeclarationFactory;
 use App\Factory\FiscalYearFactory;
 use App\Factory\OrganizationFactory;
-use App\Factory\UserFactory;
+use App\Tests\Support\LogsInAdmins;
+use App\Tests\Support\ReadsAdminPages;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
@@ -37,6 +37,8 @@ use function substr_count;
 final class FiscalYearLedgerTest extends WebTestCase
 {
     use Factories;
+    use LogsInAdmins;
+    use ReadsAdminPages;
     use ResetDatabase;
 
     private KernelBrowser $client;
@@ -50,9 +52,9 @@ final class FiscalYearLedgerTest extends WebTestCase
     public function the_detail_lists_a_validated_line_of_the_exercice(): void
     {
         $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
-        $fiscalYear = $this->year2025($organization);
+        $fiscalYear = $this->year2025AtDefaultRates($organization);
         $this->lineOn($organization, '2025-06-15', validated: true, title: 'Régate du printemps');
-        $this->loginAdminOf($organization);
+        $this->loginAsAdminOf($organization);
 
         $text = $this->detailText($fiscalYear);
 
@@ -66,9 +68,9 @@ final class FiscalYearLedgerTest extends WebTestCase
     public function it_excludes_a_line_that_is_not_validated(): void
     {
         $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
-        $fiscalYear = $this->year2025($organization);
+        $fiscalYear = $this->year2025AtDefaultRates($organization);
         $this->lineOn($organization, '2025-06-15', validated: false, title: 'Pas encore statué');
-        $this->loginAdminOf($organization);
+        $this->loginAsAdminOf($organization);
 
         // In the period, but nobody has ruled on it, so it is not bookable.
         self::assertStringNotContainsString('Pas encore statué', $this->detailText($fiscalYear));
@@ -78,9 +80,9 @@ final class FiscalYearLedgerTest extends WebTestCase
     public function it_excludes_a_validated_line_outside_the_exercice(): void
     {
         $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
-        $fiscalYear = $this->year2025($organization);
+        $fiscalYear = $this->year2025AtDefaultRates($organization);
         $this->lineOn($organization, '2024-06-15', validated: true, title: 'Exercice précédent');
-        $this->loginAdminOf($organization);
+        $this->loginAsAdminOf($organization);
 
         self::assertStringNotContainsString('Exercice précédent', $this->detailText($fiscalYear));
     }
@@ -95,10 +97,10 @@ final class FiscalYearLedgerTest extends WebTestCase
     {
         $mine = OrganizationFactory::createOne(['slug' => 'les-jardins']);
         $theirs = OrganizationFactory::createOne(['slug' => 'les-voiles']);
-        $fiscalYear = $this->year2025($mine);
+        $fiscalYear = $this->year2025AtDefaultRates($mine);
         $this->lineOn($mine, '2025-06-15', validated: true, title: 'Mon chantier');
         $this->lineOn($theirs, '2025-06-15', validated: true, title: 'Leur secret');
-        $this->loginAdminOf($mine);
+        $this->loginAsAdminOf($mine);
 
         $text = $this->detailText($fiscalYear);
 
@@ -111,8 +113,8 @@ final class FiscalYearLedgerTest extends WebTestCase
     {
         $mine = OrganizationFactory::createOne(['slug' => 'les-jardins']);
         $theirs = OrganizationFactory::createOne(['slug' => 'les-voiles']);
-        $theirYear = $this->year2025($theirs);
-        $this->loginAdminOf($mine);
+        $theirYear = $this->year2025AtDefaultRates($theirs);
+        $this->loginAsAdminOf($mine);
 
         // The test and the controller share one EntityManager, so $theirYear is already
         // in the identity map and find() would hand it back without ever running the
@@ -137,12 +139,9 @@ final class FiscalYearLedgerTest extends WebTestCase
         $fiscalYear = FiscalYearFactory::new()->for($organization)->calendarYear(2025)
             ->withPublishedBareme()->create();
         $this->lineOn($organization, '2025-06-15', validated: true, title: 'Convoyage', attributes: [
-            'ownVehicle' => true,
-            'fiscalPower' => FiscalPower::FIVE_CV,
-            'journeys' => 2,
-            'distanceKm' => 34,
+            ...DeclarationActionFactory::WAIVED_TRAVEL,
         ]);
-        $this->loginAdminOf($organization);
+        $this->loginAsAdminOf($organization);
 
         $text = $this->ledgerText($fiscalYear);
 
@@ -167,13 +166,10 @@ final class FiscalYearLedgerTest extends WebTestCase
         // Two volunteers, two hours each at the default 12,00 €/h, and travel for one.
         $this->lineOn($organization, '2025-03-15', validated: true, title: 'Chantier', attributes: ['workHours' => '2.00']);
         $this->lineOn($organization, '2025-06-15', validated: true, title: 'Convoyage', attributes: [
+            ...DeclarationActionFactory::WAIVED_TRAVEL,
             'workHours' => '2.00',
-            'ownVehicle' => true,
-            'fiscalPower' => FiscalPower::FIVE_CV,
-            'journeys' => 2,
-            'distanceKm' => 34,
         ]);
-        $this->loginAdminOf($organization);
+        $this->loginAsAdminOf($organization);
 
         $text = $this->ledgerText($fiscalYear);
 
@@ -199,13 +195,10 @@ final class FiscalYearLedgerTest extends WebTestCase
         $fiscalYear = FiscalYearFactory::new()->for($organization)->calendarYear(2025)
             ->withPublishedBareme()->create();
         $this->lineOn($organization, '2025-06-15', validated: true, title: 'Convoyage', attributes: [
+            ...DeclarationActionFactory::WAIVED_TRAVEL,
             'workHours' => '4.00',
-            'ownVehicle' => true,
-            'fiscalPower' => FiscalPower::FIVE_CV,
-            'journeys' => 2,
-            'distanceKm' => 34,
         ]);
-        $this->loginAdminOf($organization);
+        $this->loginAsAdminOf($organization);
 
         $text = $this->ledgerText($fiscalYear);
 
@@ -219,8 +212,8 @@ final class FiscalYearLedgerTest extends WebTestCase
     {
         $mine = OrganizationFactory::createOne(['slug' => 'les-jardins']);
         $theirs = OrganizationFactory::createOne(['slug' => 'les-voiles']);
-        $theirYear = $this->year2025($theirs);
-        $this->loginAdminOf($mine);
+        $theirYear = $this->year2025AtDefaultRates($theirs);
+        $this->loginAsAdminOf($mine);
 
         // Same identity-map caveat as the summary test above.
         $id = $theirYear->getId();
@@ -235,13 +228,13 @@ final class FiscalYearLedgerTest extends WebTestCase
     public function an_exercice_with_nothing_validated_says_so(): void
     {
         $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
-        $fiscalYear = $this->year2025($organization);
-        $this->loginAdminOf($organization);
+        $fiscalYear = $this->year2025AtDefaultRates($organization);
+        $this->loginAsAdminOf($organization);
 
         self::assertStringContainsString('Aucune action validée', $this->ledgerText($fiscalYear));
     }
 
-    private function year2025(Organization $organization): FiscalYear
+    private function year2025AtDefaultRates(Organization $organization): FiscalYear
     {
         return FiscalYearFactory::new()->for($organization)->calendarYear(2025)->create();
     }
@@ -263,11 +256,6 @@ final class FiscalYearLedgerTest extends WebTestCase
         $factory->create([...$attributes, 'date' => new DateTimeImmutable($date), 'title' => $title]);
     }
 
-    private function loginAdminOf(Organization $organization): void
-    {
-        $this->client->loginUser(UserFactory::new()->admin($organization)->create());
-    }
-
     private function ledgerUrl(FiscalYear $fiscalYear): string
     {
         return '/admin/fiscal-year/'.$fiscalYear->getId()->toRfc4122().'/ledger';
@@ -281,13 +269,5 @@ final class FiscalYearLedgerTest extends WebTestCase
     private function detailText(FiscalYear $fiscalYear): string
     {
         return $this->textOf($this->ledgerUrl($fiscalYear).'/detail');
-    }
-
-    private function textOf(string $url): string
-    {
-        $this->client->request('GET', $url);
-        self::assertResponseIsSuccessful();
-
-        return $this->client->getCrawler()->filter('body')->text();
     }
 }

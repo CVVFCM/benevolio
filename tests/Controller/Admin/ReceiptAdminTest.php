@@ -7,16 +7,16 @@ namespace App\Tests\Controller\Admin;
 use App\Entity\Organization;
 use App\Entity\Person;
 use App\Entity\Receipt;
-use App\Enum\FiscalPower;
 use App\Factory\DeclarationActionFactory;
 use App\Factory\DeclarationFactory;
 use App\Factory\FiscalYearFactory;
 use App\Factory\OrganizationFactory;
 use App\Factory\PersonFactory;
-use App\Factory\UserFactory;
 use App\Tests\Support\FailingGotenberg;
+use App\Tests\Support\LogsInAdmins;
+use App\Tests\Support\ReadsAdminPages;
+use App\Tests\Support\ReloadsEntities;
 use DateTimeImmutable;
-use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -37,6 +37,9 @@ final class ReceiptAdminTest extends WebTestCase
 {
     use Factories;
     use FailingGotenberg;
+    use LogsInAdmins;
+    use ReadsAdminPages;
+    use ReloadsEntities;
     use ResetDatabase;
 
     private KernelBrowser $client;
@@ -51,7 +54,7 @@ final class ReceiptAdminTest extends WebTestCase
     {
         $organization = $this->association();
         $this->volunteerWithWaivedTravel($organization, '2025-06-21');
-        $this->loginAdminOf($organization);
+        $this->loginAsAdminOf($organization);
 
         $crawler = $this->client->request('GET', '/admin/receipt/batch/choose-year');
 
@@ -76,7 +79,7 @@ final class ReceiptAdminTest extends WebTestCase
     {
         $organization = $this->association();
         $this->volunteerWithWaivedTravel($organization, '2025-06-21');
-        $this->loginAdminOf($organization);
+        $this->loginAsAdminOf($organization);
 
         $crawler = $this->client->request('GET', '/admin/receipt/batch/choose-year');
 
@@ -93,12 +96,12 @@ final class ReceiptAdminTest extends WebTestCase
     {
         $organization = $this->association();
         $this->volunteerWithWaivedTravel($organization, '2025-06-21');
-        $this->loginAdminOf($organization);
+        $this->loginAsAdminOf($organization);
 
         $this->submitYear(2025);
 
         self::assertResponseIsSuccessful();
-        $text = $this->client->getCrawler()->filter('body')->text();
+        $text = $this->bodyText();
         // 68 km at the 5 CV rate of 0,636 → 43,25 €.
         self::assertStringContainsString('0001', $text);
         self::assertStringContainsString('43,25', $text);
@@ -118,7 +121,7 @@ final class ReceiptAdminTest extends WebTestCase
         $this->volunteerWithWaivedTravel($organization, '2025-02-10', 'Premier');
         $this->volunteerWithWaivedTravel($organization, '2025-03-10', 'Deuxième', sameExercice: true);
         $this->volunteerWithWaivedTravel($organization, '2025-04-10', 'Troisième', sameExercice: true);
-        $this->loginAdminOf($organization);
+        $this->loginAsAdminOf($organization);
         // One kernel for the whole test, or the stand-in is lost with the first reboot.
         $this->client->disableReboot();
         self::gotenbergFailsAfter(1);
@@ -152,7 +155,7 @@ final class ReceiptAdminTest extends WebTestCase
         $organization = $this->association();
         $currentYear = (int) new DateTimeImmutable()->format('Y');
         $this->volunteerWithWaivedTravel($organization, sprintf('%d-06-21', $currentYear));
-        $this->loginAdminOf($organization);
+        $this->loginAsAdminOf($organization);
 
         $this->submitYear($currentYear, acknowledge: false);
 
@@ -173,7 +176,7 @@ final class ReceiptAdminTest extends WebTestCase
     public function generation_refuses_a_get(): void
     {
         $organization = $this->association();
-        $this->loginAdminOf($organization);
+        $this->loginAsAdminOf($organization);
 
         $this->client->request('GET', '/admin/receipt/batch/generate');
 
@@ -185,7 +188,7 @@ final class ReceiptAdminTest extends WebTestCase
     {
         $organization = $this->association();
         $this->volunteerWithWaivedTravel($organization, '2025-06-21');
-        $this->loginAdminOf($organization);
+        $this->loginAsAdminOf($organization);
         $this->submitYear(2025);
 
         $this->client->request('GET', '/admin/receipt/'.$this->onlyReceipt()->getId()->toRfc4122().'/download');
@@ -200,14 +203,14 @@ final class ReceiptAdminTest extends WebTestCase
     {
         $theirs = $this->association();
         $this->volunteerWithWaivedTravel($theirs, '2025-06-21');
-        $this->loginAdminOf($theirs);
+        $this->loginAsAdminOf($theirs);
         $this->submitYear(2025);
 
         $id = $this->onlyReceipt()->getId();
 
         // A different association's admin, and a fresh manager: the identity map would
         // otherwise hand back a row the filtered SQL never returned.
-        $this->loginAdminOf($this->association());
+        $this->loginAsAdminOf($this->association());
         $this->entityManager()->clear();
 
         $this->client->request('GET', '/admin/receipt/'.$id->toRfc4122().'/download');
@@ -220,14 +223,14 @@ final class ReceiptAdminTest extends WebTestCase
     {
         $organization = OrganizationFactory::createOne();
         $this->volunteerWithWaivedTravel($organization, '2025-06-21');
-        $this->loginAdminOf($organization);
+        $this->loginAsAdminOf($organization);
 
         $this->submitYear(2025);
 
         self::assertResponseIsSuccessful();
         self::assertStringContainsString(
             'SIREN',
-            $this->client->getCrawler()->filter('body')->text(),
+            $this->bodyText(),
         );
         self::assertCount(0, $this->entityManager()->getRepository(Receipt::class)->findAll());
     }
@@ -236,7 +239,7 @@ final class ReceiptAdminTest extends WebTestCase
     public function the_dashboard_links_to_the_form(): void
     {
         $organization = $this->association();
-        $this->loginAdminOf($organization);
+        $this->loginAsAdminOf($organization);
 
         $crawler = $this->client->request('GET', '/admin');
 
@@ -294,24 +297,15 @@ final class ReceiptAdminTest extends WebTestCase
                 ->create();
         }
 
-        $person = PersonFactory::createOne(['organization' => $organization] + (null === $lastName ? [] : ['lastName' => $lastName]));
+        $person = PersonFactory::new()->for($organization)->create(null === $lastName ? [] : ['lastName' => $lastName]);
         $declaration = DeclarationFactory::new()->forPerson($person)->confirmed()->create();
 
-        DeclarationActionFactory::new()->forDeclaration($declaration)->validated()->create([
+        DeclarationActionFactory::new()->forDeclaration($declaration)->validated()->withWaivedTravel()->create([
             'date' => new DateTimeImmutable($date),
             'workHours' => '2.00',
-            'journeys' => 2,
-            'distanceKm' => 34,
-            'ownVehicle' => true,
-            'fiscalPower' => FiscalPower::FIVE_CV,
         ]);
 
         return $person;
-    }
-
-    private function loginAdminOf(Organization $organization): void
-    {
-        $this->client->loginUser(UserFactory::new()->admin($organization)->create());
     }
 
     /**
@@ -324,10 +318,5 @@ final class ReceiptAdminTest extends WebTestCase
         self::assertCount(1, $receipts);
 
         return $receipts[0];
-    }
-
-    private function entityManager(): EntityManagerInterface
-    {
-        return self::getContainer()->get(EntityManagerInterface::class);
     }
 }

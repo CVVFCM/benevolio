@@ -8,7 +8,7 @@ use App\Entity\Organization;
 use App\Entity\Task;
 use App\Factory\OrganizationFactory;
 use App\Organization\DefaultTasks;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Tests\Support\ReloadsEntities;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -28,6 +28,7 @@ use function count;
 final class CreateOrganizationCommandTest extends KernelTestCase
 {
     use Factories;
+    use ReloadsEntities;
     use ResetDatabase;
 
     private CommandTester $command;
@@ -88,10 +89,5 @@ final class CreateOrganizationCommandTest extends KernelTestCase
 
         self::assertSame(Command::FAILURE, $exitCode);
         self::assertCount(1, $this->entityManager()->getRepository(Organization::class)->findAll());
-    }
-
-    private function entityManager(): EntityManagerInterface
-    {
-        return self::getContainer()->get(EntityManagerInterface::class);
     }
 }

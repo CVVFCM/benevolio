@@ -8,10 +8,12 @@ use App\Entity\Declaration;
 use App\Factory\DeclarationActionFactory;
 use App\Factory\DeclarationFactory;
 use App\Factory\OrganizationFactory;
-use App\Factory\UserFactory;
 use App\State\DeclarationState;
+use App\Tests\Support\LogsInAdmins;
+use App\Tests\Support\ReloadsEntities;
+use App\Tests\Support\ResetsRateLimiters;
+use App\Tests\Support\WalksDeclarationFlow;
 use DateTimeImmutable;
-use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -32,14 +34,18 @@ use Zenstruck\Foundry\Test\ResetDatabase;
 final class DeclarationConfirmationTest extends WebTestCase
 {
     use Factories;
+    use LogsInAdmins;
+    use ReloadsEntities;
     use ResetDatabase;
-    private const string FORM = 'declaration_flow';
+    use ResetsRateLimiters;
+    use WalksDeclarationFlow;
 
     private KernelBrowser $client;
 
     protected function setUp(): void
     {
         $this->client = self::createClient();
+        self::resetRateLimiters();
     }
 
     #[Test]
@@ -125,7 +131,7 @@ final class DeclarationConfirmationTest extends WebTestCase
         $token = \App\Declaration\ConfirmationToken::generate();
         $declaration->issueConfirmationToken($token, new DateTimeImmutable('+7 days'));
         $this->entityManager()->flush();
-        $this->client->loginUser(UserFactory::new()->admin($organization)->create());
+        $this->loginAsAdminOf($organization);
 
         $this->client->request('GET', '/a/does-not-exist/declaration/confirmer/'.$token->value);
 
@@ -203,80 +209,13 @@ final class DeclarationConfirmationTest extends WebTestCase
     }
 
     /**
-     * Reads the declaration whatever tenant the last request left armed.
-     *
-     * The organization filter is request-scoped, so after a request to another
-     * association's URL a plain findAll() returns nothing — which is the filter
-     * doing its job, but makes a test helper lie about the database.
+     * The one declaration the flow filed, read back from the database.
      */
     private function reloadDeclaration(): Declaration
     {
-        $entityManager = $this->entityManager();
-        $entityManager->clear();
-
-        $filters = $entityManager->getFilters();
-        if ($filters->isEnabled('organization')) {
-            $filters->disable('organization');
-        }
-
-        $declarations = $entityManager->getRepository(Declaration::class)->findAll();
+        $declarations = $this->findAllOf(Declaration::class);
         self::assertCount(1, $declarations);
 
         return $declarations[0];
-    }
-
-    private function entityManager(): EntityManagerInterface
-    {
-        return self::getContainer()->get(EntityManagerInterface::class);
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private function personStep(): array
-    {
-        $values = [
-            'firstName' => 'Jean',
-            'lastName' => 'Dupont',
-            'email' => 'jean.dupont@example.test',
-            'addressNumber' => '12',
-            'addressStreet' => 'rue des Jardins',
-            'addressPostcode' => '44000',
-            'addressCity' => 'Nantes',
-            'addressCountry' => 'FR',
-        ];
-
-        $fields = [];
-        foreach ($values as $name => $value) {
-            $fields[self::FORM.'[person]['.$name.']'] = $value;
-        }
-
-        return $fields;
-    }
-
-    private function completeFlow(): void
-    {
-        $this->client->request('GET', '/a/les-jardins/declaration');
-        $this->client->submitForm('Suivant', $this->personStep());
-
-        $option = $this->client->getCrawler()
-            ->filter('select[name="'.self::FORM.'[actions][actions][0][task]"] option[value!=""]')
-            ->first();
-        self::assertGreaterThan(0, $option->count());
-
-        $this->client->submitForm('Suivant', [
-            self::FORM.'[actions][actions][0][task]' => (string) $option->attr('value'),
-            self::FORM.'[actions][actions][0][title]' => 'Régate du printemps',
-            self::FORM.'[actions][actions][0][date]' => new DateTimeImmutable('-30 days')->format('Y-m-d'),
-            self::FORM.'[actions][actions][0][consecutiveDays]' => '2',
-            self::FORM.'[actions][actions][0][workHours]' => '6.5',
-            self::FORM.'[actions][actions][0][distanceKm]' => '12',
-            self::FORM.'[actions][actions][0][journeys]' => '2',
-        ]);
-
-        $this->client->submitForm('Enregistrer ma déclaration', [
-            self::FORM.'[legal][accuracyAttested]' => '1',
-            self::FORM.'[legal][expensesWaived]' => '1',
-        ]);
     }
 }

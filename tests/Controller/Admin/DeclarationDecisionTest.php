@@ -10,11 +10,12 @@ use App\Entity\Organization;
 use App\Factory\DeclarationActionFactory;
 use App\Factory\DeclarationFactory;
 use App\Factory\OrganizationFactory;
-use App\Factory\UserFactory;
 use App\Security\AdminActionToken;
 use App\State\DeclarationActionState;
 use App\State\DeclarationState;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Tests\Support\LogsInAdmins;
+use App\Tests\Support\ReadsAdminPages;
+use App\Tests\Support\ReloadsEntities;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -31,6 +32,9 @@ use function sprintf;
 final class DeclarationDecisionTest extends WebTestCase
 {
     use Factories;
+    use LogsInAdmins;
+    use ReadsAdminPages;
+    use ReloadsEntities;
     use ResetDatabase;
 
     private const string ACTIONS_URL = '/admin/declaration-action';
@@ -55,7 +59,7 @@ final class DeclarationDecisionTest extends WebTestCase
         DeclarationActionFactory::new()->forDeclaration($declaration)->many(2)->create();
         $this->loginAsAdminOf($organization);
 
-        $this->client->request('GET', $this->detailUrl($declaration));
+        $this->client->request('GET', self::detailUrl('/admin/declaration', $declaration->getId()));
 
         self::assertResponseIsSuccessful();
         self::assertStringContainsString('En attente de confirmation', $this->bodyText());
@@ -76,7 +80,7 @@ final class DeclarationDecisionTest extends WebTestCase
         $declaration = $this->declarationWithLines($organization, 3);
         $this->loginAsAdminOf($organization);
 
-        $this->submitButton($this->detailUrl($declaration), $this->validateAllUrl($declaration));
+        $this->submitButton(self::detailUrl('/admin/declaration', $declaration->getId()), $this->validateAllUrl($declaration));
 
         self::assertResponseRedirects();
         $this->client->followRedirect();
@@ -100,10 +104,10 @@ final class DeclarationDecisionTest extends WebTestCase
         $declaration = $this->declarationWithLines($organization, 1);
         $this->loginAsAdminOf($organization);
 
-        $this->client->request('GET', $this->detailUrl($declaration));
+        $this->client->request('GET', self::detailUrl('/admin/declaration', $declaration->getId()));
         self::assertStringContainsString('Valider tout', $this->bodyText());
 
-        $this->submitButton($this->detailUrl($declaration), $this->validateAllUrl($declaration));
+        $this->submitButton(self::detailUrl('/admin/declaration', $declaration->getId()), $this->validateAllUrl($declaration));
         $this->client->followRedirect();
 
         self::assertStringNotContainsString('Valider tout', $this->bodyText());
@@ -124,13 +128,13 @@ final class DeclarationDecisionTest extends WebTestCase
         // Taken while the button is still offered: once the basket is mixed the
         // page no longer renders it, and a token is needed to get past the CSRF
         // check to the refusal this test is about.
-        $token = $this->tokenOf($this->detailUrl($declaration), $this->validateAllUrl($declaration));
+        $token = $this->actionTokenOn(self::detailUrl('/admin/declaration', $declaration->getId()), $this->validateAllUrl($declaration));
 
         $this->submitButton(self::ACTIONS_URL, $this->actionUrl($this->lineAt($declaration, 0), 'validate'));
         $this->submitButton(self::ACTIONS_URL, $this->actionUrl($this->lineAt($declaration, 1), 'refuse'));
 
         // Neither bulk verdict applies now, so neither button is offered…
-        $this->client->request('GET', $this->detailUrl($declaration));
+        $this->client->request('GET', self::detailUrl('/admin/declaration', $declaration->getId()));
         self::assertStringNotContainsString('Valider tout', $this->bodyText());
 
         // …and reaching the URL directly is refused rather than half-applied.
@@ -170,7 +174,7 @@ final class DeclarationDecisionTest extends WebTestCase
         $declaration = $this->declarationWithLines($organization, 1);
         $this->loginAsAdminOf($organization);
 
-        foreach ([$this->validateAllUrl($declaration), $this->detailUrl($declaration).'/refuse-all'] as $url) {
+        foreach ([$this->validateAllUrl($declaration), self::detailUrl('/admin/declaration', $declaration->getId()).'/refuse-all'] as $url) {
             $this->client->request('GET', $url);
             self::assertFalse($this->client->getResponse()->isRedirection(), $url);
         }
@@ -214,7 +218,7 @@ final class DeclarationDecisionTest extends WebTestCase
         $second = $this->declarationWithLines($organization, 1);
         $this->loginAsAdminOf($organization);
 
-        $token = $this->tokenOf($this->detailUrl($first), $this->validateAllUrl($first));
+        $token = $this->actionTokenOn(self::detailUrl('/admin/declaration', $first->getId()), $this->validateAllUrl($first));
         $this->client->request('POST', $this->validateAllUrl($second), [AdminActionToken::FIELD => $token]);
 
         self::assertSame(DeclarationState::SUBMITTED, $this->reload($second)->getState());
@@ -246,19 +250,9 @@ final class DeclarationDecisionTest extends WebTestCase
         return $reloaded;
     }
 
-    private function loginAsAdminOf(Organization $organization): void
-    {
-        $this->client->loginUser(UserFactory::new()->admin($organization)->create());
-    }
-
-    private function detailUrl(Declaration $declaration): string
-    {
-        return '/admin/declaration/'.$declaration->getId()->toRfc4122();
-    }
-
     private function validateAllUrl(Declaration $declaration): string
     {
-        return $this->detailUrl($declaration).'/validate-all';
+        return self::detailUrl('/admin/declaration', $declaration->getId()).'/validate-all';
     }
 
     /**
@@ -270,15 +264,6 @@ final class DeclarationDecisionTest extends WebTestCase
         $crawler = $this->client->request('GET', $pageUrl);
 
         $this->client->submit($crawler->filter(sprintf('form[action="%s"]', $actionUrl))->form());
-    }
-
-    private function tokenOf(string $pageUrl, string $actionUrl): string
-    {
-        $crawler = $this->client->request('GET', $pageUrl);
-
-        return (string) $crawler
-            ->filter(sprintf('form[action="%s"] input[name="%s"]', $actionUrl, AdminActionToken::FIELD))
-            ->attr('value');
     }
 
     private function actionUrl(DeclarationAction $action, string $transition): string
@@ -298,21 +283,5 @@ final class DeclarationDecisionTest extends WebTestCase
         self::assertArrayHasKey($index, $lines);
 
         return $lines[$index];
-    }
-
-    private function reload(Declaration $declaration): Declaration
-    {
-        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
-        $entityManager->clear();
-
-        $reloaded = $entityManager->getRepository(Declaration::class)->find($declaration->getId());
-        self::assertNotNull($reloaded);
-
-        return $reloaded;
-    }
-
-    private function bodyText(): string
-    {
-        return $this->client->getCrawler()->filter('body')->text();
     }
 }
