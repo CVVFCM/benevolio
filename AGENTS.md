@@ -247,12 +247,15 @@ to claim to be *soumise* before the volunteer had clicked anything.
 `App\State\Listener\DeclarationConfirmationCascade` listens for the declaration's
 `confirm` and moves every line with it.
 
-**TRAP when adding a state to either enum:** `isDecided()` must stay
-*validated-or-refused*, spelled out. It was `SUBMITTED !== $this` on the action, which
-the moment a state existed *before* SUBMITTED started calling an unconfirmed line
-decided. Same reason `DeclarationActionCrudController` builds its badge map from
-`::cases()` rather than by hand — the hardcoded version would have left the new state
-with no badge and nothing to say so.
+Both enums share their behaviour through **`App\State\DeclarationLifecycle`**:
+`isAwaitingConfirmation()`, `isDecided()`, `label()`, `badgeStyle()`, and the two maps
+EasyAdmin wants, `choices()` and `badgeStyles()`, built from `::cases()`. Each enum keeps
+only its cases and its transitions. A state added to one must be added to the other, or
+the trait's `match` arms stop matching.
+
+**TRAP when adding a state:** `isDecided()` must stay *validated-or-refused*, spelled
+out. `SUBMITTED !== $this` would call an unconfirmed line decided the moment a state
+exists *before* SUBMITTED. `tests/State/DeclarationLifecycleTest` pins both enums.
 
 **TRAP in fixtures and tests:** the cascade only moves the lines that exist when the
 declaration is confirmed, so a line attached to an **already-confirmed** declaration

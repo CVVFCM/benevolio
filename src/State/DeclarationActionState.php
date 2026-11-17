@@ -16,17 +16,16 @@ use Finite\Transition\Transition;
  * There is no draft state: until the volunteer finishes the multi-step form the
  * declaration exists only in their session, never in the database.
  *
- * A line starts unconfirmed, in step with its Declaration. It used to start
- * SUBMITTED while the declaration it belonged to was still AWAITING_CONFIRMATION,
- * so every line claimed to be *soumise* before the volunteer had clicked anything.
- * App\State\Listener\DeclarationConfirmationCascade moves the lines when the
- * declaration is confirmed.
+ * A line starts unconfirmed, in step with its Declaration: it is not *soumise* before
+ * the volunteer has clicked anything. App\State\Listener\DeclarationConfirmationCascade
+ * moves the lines when the declaration is confirmed.
  *
- * Behaviour lives on the enum as methods rather than as state tests scattered
- * through the domain — the finite 2 idiom.
+ * Behaviour is shared with DeclarationState through App\State\DeclarationLifecycle.
  */
 enum DeclarationActionState: string implements State
 {
+    use DeclarationLifecycle;
+
     case AWAITING_CONFIRMATION = 'awaiting_confirmation';
     case SUBMITTED = 'submitted';
     case VALIDATED = 'validated';
@@ -46,43 +45,5 @@ enum DeclarationActionState: string implements State
             new Transition(self::TRANSITION_VALIDATE, [self::SUBMITTED], self::VALIDATED),
             new Transition(self::TRANSITION_REFUSE, [self::SUBMITTED], self::REFUSED),
         ];
-    }
-
-    /**
-     * A treasurer has ruled on this line, one way or the other.
-     *
-     * Spelled out, never `SUBMITTED !== $this`: with a state before SUBMITTED that
-     * shortcut calls an unconfirmed line *decided*.
-     * Mirrors App\State\DeclarationState::isDecided().
-     */
-    public function isDecided(): bool
-    {
-        return self::VALIDATED === $this || self::REFUSED === $this;
-    }
-
-    /** The volunteer has not clicked the confirmation link yet. */
-    public function isAwaitingConfirmation(): bool
-    {
-        return self::AWAITING_CONFIRMATION === $this;
-    }
-
-    public function label(): string
-    {
-        return match ($this) {
-            self::AWAITING_CONFIRMATION => 'En attente de confirmation',
-            self::SUBMITTED => 'Soumise',
-            self::VALIDATED => 'Validée',
-            self::REFUSED => 'Refusée',
-        };
-    }
-
-    public function badgeStyle(): string
-    {
-        return match ($this) {
-            self::AWAITING_CONFIRMATION => 'secondary',
-            self::SUBMITTED => 'warning',
-            self::VALIDATED => 'success',
-            self::REFUSED => 'danger',
-        };
     }
 }
