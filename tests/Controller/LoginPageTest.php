@@ -40,6 +40,23 @@ final class LoginPageTest extends WebTestCase
     }
 
     /**
+     * The login token is stateless, checked by Symfony's SameOriginCsrfTokenManager. Once a
+     * session has passed a form with the double-submit cookie, every later stateless form
+     * must send one too — and only csrf_protection_controller.js sets it, a Stimulus
+     * controller loaded where an element asks for it. Without the attribute, logging in
+     * after the public form or any back-office form answered « Jeton CSRF invalide ».
+     */
+    #[Test]
+    public function the_token_field_loads_the_double_submit_script(): void
+    {
+        $client = self::createClient();
+
+        $crawler = $client->request('GET', '/login');
+
+        self::assertCount(1, $crawler->filter('input[name="_csrf_token"][data-controller="csrf-protection"]'));
+    }
+
+    /**
      * The hooks app.css styles. Asserted because a renamed class would leave the
      * page silently unstyled again, which is the bug this lot fixed.
      */
