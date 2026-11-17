@@ -10,6 +10,7 @@ use App\Declaration\Exception\DeclarationNotConfirmableException;
 use App\Declaration\Exception\DeclarationNotDecidableException;
 use App\Entity\Declaration;
 use App\Entity\User;
+use App\Security\AdminActionToken;
 use App\State\DeclarationState;
 use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminRoute;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
@@ -80,17 +81,27 @@ final class DeclarationCrudController extends AbstractCrudController
             ->setEntityLabelInSingular('Déclaration')
             ->setEntityLabelInPlural('Déclarations')
             ->setDefaultSort(['submittedAt' => 'DESC'])
-            ->setSearchFields(['person.firstName', 'person.lastName', 'person.email']);
+            ->setSearchFields(['person.firstName', 'person.lastName', 'person.email'])
+            // Inlined: the dropdown renders its own <form> and ignores an action's
+            // template, so the verdict buttons would post without their CSRF token.
+            ->showEntityActionsInlined();
     }
 
     public function configureActions(Actions $actions): Actions
     {
         $validateAll = Action::new(self::ACTION_VALIDATE_ALL, 'Valider tout', 'fa fa-check')
             ->linkToCrudAction(self::ACTION_VALIDATE_ALL)
+            // POST with a token, never a link: see post_with_token.html.twig.
+            ->renderAsForm()
+            ->setTemplatePath('admin/action/post_with_token.html.twig')
             ->displayIf(fn (Declaration $declaration): bool => $this->decider->canValidateAll($declaration));
 
         $refuseAll = Action::new(self::ACTION_REFUSE_ALL, 'Refuser tout', 'fa fa-xmark')
             ->linkToCrudAction(self::ACTION_REFUSE_ALL)
+            ->renderAsForm()
+            ->setTemplatePath('admin/action/post_with_token.html.twig')
+            ->asDangerAction()
+            ->askConfirmation('Refuser toute cette déclaration ?', 'Refuser tout')
             ->displayIf(fn (Declaration $declaration): bool => $this->decider->canRefuseAll($declaration));
 
         $confirmManually = Action::new(self::ACTION_CONFIRM_MANUALLY, 'Confirmer à la place du bénévole', 'fa fa-user-check')
@@ -136,7 +147,13 @@ final class DeclarationCrudController extends AbstractCrudController
         yield TextField::new('person.address', 'Adresse postale')
             // Address is an embeddable, so it needs telling how to read: reuse its
             // own readable line rather than reassembling the parts here.
-            ->formatValue(static fn (mixed $value, Declaration $declaration): string => (string) $declaration->getPerson()->getAddress())
+            //
+            // ESCAPED BY HAND, and it has to be. EasyAdmin wraps whatever string a
+            // formatValue() callback returns in a Twig Markup and prints it raw — the
+            // callback is trusted to return HTML. The address was typed on the public
+            // form by anyone at all, so unescaped it ran as script in the treasurer's
+            // session. Any formatValue() returning text a person typed must do this.
+            ->formatValue(static fn (mixed $value, Declaration $declaration): string => htmlspecialchars((string) $declaration->getPerson()->getAddress()))
             ->onlyOnDetail();
 
         yield DateTimeField::new('submittedAt', 'Déposée le');
@@ -212,19 +229,19 @@ final class DeclarationCrudController extends AbstractCrudController
      *
      * @param AdminContext<Declaration> $context
      */
-    #[AdminRoute(path: '/{entityId}/validate-all', name: 'validate_all', options: ['methods' => ['GET']])]
+    #[AdminRoute(path: '/{entityId}/validate-all', name: 'validate_all', options: ['methods' => ['POST']])]
     public function validateAll(AdminContext $context): Response
     {
-        return $this->decide($context, decide: true);
+        return $this->decide($context, self::ACTION_VALIDATE_ALL, decide: true);
     }
 
     /**
      * @param AdminContext<Declaration> $context
      */
-    #[AdminRoute(path: '/{entityId}/refuse-all', name: 'refuse_all', options: ['methods' => ['GET']])]
+    #[AdminRoute(path: '/{entityId}/refuse-all', name: 'refuse_all', options: ['methods' => ['POST']])]
     public function refuseAll(AdminContext $context): Response
     {
-        return $this->decide($context, decide: false);
+        return $this->decide($context, self::ACTION_REFUSE_ALL, decide: false);
     }
 
     /**
@@ -274,7 +291,7 @@ final class DeclarationCrudController extends AbstractCrudController
     /**
      * @param AdminContext<Declaration> $context
      */
-    private function decide(AdminContext $context, bool $decide): Response
+    private function decide(AdminContext $context, string $actionName, bool $decide): Response
     {
         // Declaration IS TenantAware, so OrganizationFilter already makes another
         // tenant's row unloadable — the instance simply comes back null. That is a
@@ -284,6 +301,15 @@ final class DeclarationCrudController extends AbstractCrudController
 
         if (!$declaration instanceof Declaration) {
             throw new NotFoundHttpException('Declaration not found.');
+        }
+
+        $token = $context->getRequest()->request->getString(AdminActionToken::FIELD);
+
+        if (!$this->isCsrfTokenValid(AdminActionToken::id($actionName, $declaration->getId()), $token)) {
+            // Most likely a page left open past the session; nothing has changed.
+            $this->addFlash('danger', 'La page a expiré. Rechargez-la et recommencez.');
+
+            return $this->redirectToDetail($declaration);
         }
 
         try {

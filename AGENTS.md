@@ -466,6 +466,41 @@ error followed them.
 action posts without it. Both user CRUDs call `showEntityActionsInlined()` for that reason;
 « Renvoyer l'invitation » was broken on `/admin`'s list until this was found.
 
+### EasyAdmin prints three things raw — escape what people typed
+
+EasyAdmin treats three values as HTML and prints them unescaped. All three were fed text
+someone typed, and each was a stored XSS:
+
+- **The string a `formatValue()` callback returns.** `CommonPostConfigurator` wraps it in a
+  Twig `Markup`, overwriting the escaping `TextField` had already applied. A volunteer's
+  address — typed on the anonymous public form — ran as script when a treasurer opened the
+  declaration. **A `formatValue()` returning typed text must `htmlspecialchars()` it**; one
+  returning a number or an enum label needs nothing.
+- **Every flash message** (`{{ flash_message|raw }}` in the vendor template).
+  `templates/bundles/EasyAdminBundle/flash_messages.html.twig` is a copy that escapes, so no
+  `addFlash()` has to remember. A flash therefore cannot carry a link or bold text. On an
+  EasyAdmin upgrade, re-diff the copy against the vendor file.
+- **The dashboard title.** `/admin` uses the association's name, which any of its admins can
+  edit — and a platform super-admin impersonating that association loads it too, with the
+  exit-impersonation form and its token in the page. `Admin\DashboardController` escapes it.
+
+`tests/Controller/Admin/NoRawUserTextTest` seeds one association with a marker tag in every
+free-text field and walks every `/admin` page and flash. **A new page under `/admin` goes in
+its list**, and a new free-text field in its `setUp()`.
+
+### Verdicts are POSTs with a token
+
+« Valider », « Refuser », « Valider tout » and « Refuser tout » were GET links: any page a
+treasurer had open, or a mail scanner following a link, could have ruled on a declaration,
+and validated lines feed the tax receipts. They are forms now
+(`templates/admin/action/post_with_token.html.twig`), carrying a token whose id is
+`App\Security\AdminActionToken::id()` — action name plus row id, so a token minted for one
+row decides no other. The two refusals ask for confirmation.
+
+Both CRUDs call `showEntityActionsInlined()`, for the reason given under *Impersonation*:
+the dropdown would render its own form and drop the token. Any new button that changes
+something uses the same template and the same helper.
+
 ## Layout
 
 - `src/Entity/` — domain model
