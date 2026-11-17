@@ -8,6 +8,10 @@ data:
   APP_ENV: {{ .Values.app.env | quote }}
   APP_DEBUG: {{ .Values.app.debug | quote }}
   SERVER_NAME: {{ .Values.app.serverName | quote }}
+  # HSTS, here and not in the Caddyfile: the same file serves https://localhost in
+  # development, where the header would pin every local project to HTTPS for a year.
+  # One year, this host only — no includeSubDomains, no preload.
+  CADDY_SERVER_EXTRA_DIRECTIVES: 'header Strict-Transport-Security "max-age=31536000"'
   DEFAULT_URI: {{ .Values.app.defaultUri | default (printf "https://%s" .Values.host) | quote }}
   {{- $mailFrom := required "app.mailFrom is required (the sender address, which must be a verified sender at the mail provider)" .Values.app.mailFrom }}
   {{- if not (regexMatch "^[^@[:space:]]+@[^@[:space:]]+\\.[^@[:space:]]+$" $mailFrom) }}

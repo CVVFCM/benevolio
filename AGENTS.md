@@ -184,6 +184,29 @@ number: **PCG codes are numeric strings and PHP turns the key `'864'` into the i
 864**, so a keyed array of them cannot be typed honestly at PHPStan max, let alone read back
 by code that thinks in strings.
 
+### What a volunteer types stays on the declaration until it is confirmed
+
+The public form is anonymous and recognises a returning volunteer by **email alone**. A
+submission used to overwrite that volunteer's name and address at once — so anyone who
+knew a volunteer's email could rewrite the identity printed on their next CERFA, without
+clicking anything.
+
+A `Declaration` now carries the name and address **as typed**
+(`submittedFirstName`, `submittedLastName`, embedded `submittedAddress`).
+`DeclarationSubmitter` never touches an existing `Person`;
+`App\State\Listener\ApplySubmittedIdentityOnConfirmation` copies the typed identity to the
+`Person` on the `confirm` transition — so the volunteer's click and the manual
+confirmation both apply it, and nothing else does.
+
+- The columns are **never null**: the constructor starts them from the `Person`, and
+  `declareIdentity()` overrides them. Nullable "pending" columns cannot work — Doctrine
+  hydrates an embeddable without its constructor, and `Address` has no nullable property.
+- `/admin` shows « Coordonnées saisies » on the declaration, with a warning while they
+  differ from the record (`Declaration::hasPendingIdentityChange()`): confirming by hand
+  is what applies them, so the admin must see what they are vouching for.
+- A **new** email still creates its `Person` at submission, with what was typed. There is
+  no earlier record to protect, and `Declaration::$person` is not nullable.
+
 ### Double opt-in — a declaration is not final when it is submitted
 
 Submitting stores the declaration in **`awaiting_confirmation`** and emails the
@@ -249,8 +272,8 @@ to work one way.
 Dark values live once, as `--dark-*` on `:root`; the two blocks below hold only the
 mapping, so tuning a colour stays a one-line change.
 
-`base.html.twig` carries **the only inline script in the project**, and it has to be
-inline and blocking: the choice lives in `localStorage`, so only JavaScript knows it,
+`base.html.twig` carries **the only inline script in the project** (with the CSP nonce —
+see *Security headers*), and it has to be inline and blocking: the choice lives in `localStorage`, so only JavaScript knows it,
 and anything deferred runs after first paint — which is a white flash on every page
 for anyone who chose dark. `assets/controllers/theme_controller.js` handles the
 clicks; `auto` **removes** the key rather than storing the word, so the OS keeps
@@ -259,6 +282,36 @@ answering. The storage key `benevolio-theme` appears in both and must match.
 The switcher ships `hidden` and its controller reveals it, so it never shows where it
 would not work. It covers **the public pages and login only** — EasyAdmin has its own
 switcher inside `/admin` and `/platform`.
+
+## Security headers, and the script policy
+
+Two layers, because two things can answer a request:
+
+- **Caddy, on every response** (`.infra/docker/php/Caddyfile`): `X-Content-Type-Options`,
+  `Referrer-Policy`, and `Content-Security-Policy: frame-ancestors 'none'` as a **default**
+  (`?`), so the back offices cannot be framed. **HSTS is not in the Caddyfile**: the same
+  file serves `https://localhost`, where it would pin every local project to HTTPS for a
+  year. The chart adds it (`CADDY_SERVER_EXTRA_DIRECTIVES` in the ConfigMap).
+- **Symfony, on every page outside `/admin` and `/platform`**
+  (`App\Security\ContentSecurityPolicyListener`): `script-src 'self' 'nonce-…'`, plus
+  `object-src`, `base-uri` and `frame-ancestors`. EasyAdmin's pages are full of inline
+  scripts and get no script policy.
+
+What that asks of a public template:
+
+- **Every `<script>` carries `nonce="{{ csp_nonce() }}"`**, the import map included
+  (`importmap('app', {nonce: csp_nonce()})`). One without it does not run, and only the
+  browser console says so. `ContentSecurityPolicyTest` checks every script on four pages.
+- **Never `import` a stylesheet from JavaScript.** AssetMapper maps it to a
+  `data:application/javascript,` module, which the policy refuses — and allowing `data:`
+  scripts would allow any injected `<script src="data:…">`. `app.css` is a `<link>` in
+  `base.html.twig`.
+- The nonce is per request and lives in `App\Security\ContentSecurityPolicy`, tagged
+  `kernel.reset` for the same worker-mode reason as `TenantContext`.
+- The listener reads no token, so the home page keeps its public cache.
+
+In development the web profiler appends its own nonce and `'unsafe-inline'` to the header;
+browsers ignore `'unsafe-inline'` once a nonce is present.
 
 ### Deferred — do not assume these exist
 
@@ -907,6 +960,12 @@ derived from `host` — this address has to be a *verified sender* at the relay,
 one the chart invented for itself would not be, so the mail would be accepted here
 and dropped there. The template refuses an empty value and refuses a
 `Name <addr>` form.
+
+**The access log redacts two URLs that are credentials** (`log` block of the Caddyfile):
+the `hash` of a login link, and the token of a declaration's confirmation link — in the
+request URI and in the `Referer` header, where the same URL reappears on the next request.
+Anyone able to read the pod's log could otherwise replay an invitation nobody had opened
+yet. A new link that authenticates by its URL needs adding to that regexp.
 
 **Kubernetes probes `/health`** (`App\Controller\HealthController`). There was nothing
 else safe to probe: `/` was not routed then, so the chart's original probe on it 404'd

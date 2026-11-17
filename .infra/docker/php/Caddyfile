@@ -13,10 +13,14 @@
 {$SERVER_NAME:localhost} {
 	log {
 		{$CADDY_SERVER_LOG_OPTIONS}
+		# Two URLs are credentials and must not sit in the pod's log: a login link
+		# (its `hash` signs the account in, for 7 days on an invitation) and a
+		# declaration's confirmation link (the token is the last path segment).
+		# One regexp for both, because a field takes a single filter.
 		format filter {
-			request>uri query {
-				replace authorization REDACTED
-			}
+			request>uri regexp "(hash=)[^&]+|(/declaration/confirmer/)[A-Za-z0-9_-]+" "${1}${2}REDACTED"
+			# The same URL comes back as the Referer of whatever the page loads next.
+			request>headers>Referer regexp "(hash=)[^&]+|(/declaration/confirmer/)[A-Za-z0-9_-]+" "${1}${2}REDACTED"
 		}
 	}
 
@@ -27,6 +31,20 @@
 
 	# Disable Topics tracking if not enabled explicitly: https://github.com/jkarlin/topics
 	header ?Permissions-Policy "browsing-topics=()"
+
+	# On every response, whatever produced it. `frame-ancestors` is the default only
+	# (`?`): the public pages answer with a fuller policy of their own, which already
+	# contains it — see App\Security\ContentSecurityPolicyListener. The back offices
+	# keep this one, so they cannot be framed by another site.
+	#
+	# No Strict-Transport-Security here: it would pin `localhost` to HTTPS in a
+	# developer's browser for a year, every other local project included. Production
+	# adds it through the chart (CADDY_SERVER_EXTRA_DIRECTIVES).
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		?Content-Security-Policy "frame-ancestors 'none'"
+	}
 
 	@phpRoute {
 		not path /.well-known/mercure*

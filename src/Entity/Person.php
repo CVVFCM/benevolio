@@ -130,7 +130,10 @@ class Person implements TenantAware
     }
 
     /**
-     * Called when the same person declares again, possibly having moved.
+     * Called when a declaration stating a different name or address is CONFIRMED —
+     * by App\State\Listener\ApplySubmittedIdentityOnConfirmation, and by nothing
+     * else. Not at submission: the form is anonymous, so until the link is opened
+     * the new identity is only a claim by someone who knew this email address.
      */
     public function updateIdentity(string $firstName, string $lastName, Address $address): void
     {

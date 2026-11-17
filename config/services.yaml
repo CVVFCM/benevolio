@@ -57,5 +57,10 @@ services:
         tags:
             - { name: kernel.reset, method: reset }
 
+    # One nonce per request: see the class. Same worker-mode reasoning as above.
+    App\Security\ContentSecurityPolicy:
+        tags:
+            - { name: kernel.reset, method: reset }
+
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
