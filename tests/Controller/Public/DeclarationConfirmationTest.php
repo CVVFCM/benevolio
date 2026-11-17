@@ -8,6 +8,7 @@ use App\Entity\Declaration;
 use App\Factory\DeclarationActionFactory;
 use App\Factory\DeclarationFactory;
 use App\Factory\OrganizationFactory;
+use App\Factory\UserFactory;
 use App\State\DeclarationState;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
@@ -108,6 +109,28 @@ final class DeclarationConfirmationTest extends WebTestCase
         $this->client->request('GET', '/a/les-jardins/declaration/confirmer/'.str_repeat('a', 43));
 
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    /**
+     * A link is good under its own association's address only — including for that
+     * association's admin, whose account must not stand in for an address that
+     * resolves nothing.
+     */
+    #[Test]
+    public function a_logged_in_admin_cannot_confirm_through_an_unknown_address(): void
+    {
+        $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
+        $declaration = DeclarationFactory::new()->for($organization)->create();
+        DeclarationActionFactory::new()->forDeclaration($declaration)->create();
+        $token = \App\Declaration\ConfirmationToken::generate();
+        $declaration->issueConfirmationToken($token, new DateTimeImmutable('+7 days'));
+        $this->entityManager()->flush();
+        $this->client->loginUser(UserFactory::new()->admin($organization)->create());
+
+        $this->client->request('GET', '/a/does-not-exist/declaration/confirmer/'.$token->value);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        self::assertSame(DeclarationState::AWAITING_CONFIRMATION, $this->reloadDeclaration()->getState());
     }
 
     #[Test]

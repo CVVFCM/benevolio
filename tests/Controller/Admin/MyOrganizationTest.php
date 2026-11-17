@@ -8,6 +8,7 @@ use App\Entity\Organization;
 use App\Entity\OrganizationSignature;
 use App\Factory\OrganizationFactory;
 use App\Factory\UserFactory;
+use App\ValueObject\Address;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -16,12 +17,14 @@ use Symfony\Component\DomCrawler\Field\ChoiceFormField;
 use Symfony\Component\DomCrawler\Field\FileFormField;
 use Symfony\Component\DomCrawler\Field\FormField;
 use Symfony\Component\DomCrawler\Form;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 use Zenstruck\Foundry\Test\Factories;
 use Zenstruck\Foundry\Test\ResetDatabase;
 
 use function file_put_contents;
 use function sprintf;
+use function str_repeat;
 use function sys_get_temp_dir;
 
 /**
@@ -60,6 +63,52 @@ final class MyOrganizationTest extends WebTestCase
         $text = $this->client->getCrawler()->filter('body')->text();
         self::assertStringContainsString('Les Jardins Partagés', $text);
         self::assertStringContainsString('W083001234', $text);
+    }
+
+    /**
+     * The association's address ends up in App\ValueObject\Address when a receipt is
+     * made, so the form holds it to the same rules — here, five digits for a French
+     * postcode — instead of saving what the receipt run will later choke on.
+     */
+    #[Test]
+    public function an_address_the_receipt_could_not_carry_is_refused_on_the_form(): void
+    {
+        $organization = OrganizationFactory::new()->withCerfaIdentity()->create();
+        $this->loginAdminOf($organization);
+
+        $crawler = $this->client->request('GET', $this->detailUrl($organization).'/edit');
+        $form = $crawler->selectButton('Enregistrer')->form([
+            'Organization[addressPostcode]' => '7500',
+            'Organization[addressStreet]' => str_repeat('a', Address::STREET_MAX_LENGTH + 1),
+        ]);
+        $this->client->submit($form);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSelectorTextContains('body', 'Un code postal français comporte 5 chiffres.');
+
+        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
+        $entityManager->clear();
+        $stored = $entityManager->getRepository(Organization::class)->find($organization->getId());
+        self::assertSame('08000', $stored?->getAddressPostcode());
+    }
+
+    /**
+     * Outside France there is no five-digit rule to apply.
+     */
+    #[Test]
+    public function a_foreign_postcode_is_accepted(): void
+    {
+        $organization = OrganizationFactory::new()->withCerfaIdentity()->create();
+        $this->loginAdminOf($organization);
+
+        $crawler = $this->client->request('GET', $this->detailUrl($organization).'/edit');
+        $this->client->submit($crawler->selectButton('Enregistrer')->form([
+            'Organization[addressPostcode]' => '1000',
+            'Organization[addressCity]' => 'Bruxelles',
+            'Organization[addressCountry]' => 'BE',
+        ]));
+
+        self::assertResponseRedirects();
     }
 
     /**

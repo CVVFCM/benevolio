@@ -1,7 +1,7 @@
 {% extends '@EasyAdmin/page/content.html.twig' %}
 
 {#
-    What a run did, volunteer by volunteer.
+    What a run did, volunteer by volunteer — including a run that stopped part-way.
 
     Skips are listed as prominently as issues. A run that quietly did nothing for half the
     association would otherwise look exactly like one that worked — and "no receipt" is
@@ -22,6 +22,27 @@
             pour cette année une fois validées.
         </p>
     {% else %}
+        {% if report.isInterrupted %}
+            {#
+                First on the page, and an alert: the summary below is true but partial, and a
+                treasurer reading only "3 reçus émis" would take the year for done.
+            #}
+            <p class="admin-warning" role="alert">
+                <strong>La génération s'est arrêtée avant la fin.</strong>
+                {{ report.failure.failureReason }}
+                {% if report.notAttempted is not empty %}
+                    {{ report.notAttempted|length > 1
+                        ? report.notAttempted|length ~ ' autres bénévoles n\'ont pas été traités.'
+                        : 'Un autre bénévole n\'a pas été traité.' }}
+                {% endif %}
+                {% if report.issued is not empty %}
+                    Les reçus listés ci-dessous ont bien été émis et envoyés.
+                {% endif %}
+                Réessayez plus tard : relancer l'année émet un nouveau reçu, sous un nouveau
+                numéro, pour chaque bénévole{{ report.issued is not empty ? ', y compris ceux déjà servis' : '' }}.
+            </p>
+        {% endif %}
+
         <p class="receipt-run__summary">
             <strong>{{ report.issuedCount }}</strong>
             {{ report.issuedCount > 1 ? 'reçus émis' : 'reçu émis' }}
@@ -64,6 +85,33 @@
                                 <td>{{ outcome.person.fullName }}</td>
                                 <td class="is-numeric">{{ outcome.receipt.amountCents|euros }}</td>
                                 <td>{{ outcome.person.email.value }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+        {% endif %}
+
+        {% if report.isInterrupted %}
+            <section class="receipt-run__section">
+                <h2>Non émis</h2>
+
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Bénévole</th>
+                            <th>Raison</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>{{ report.failure.person.fullName }}</td>
+                            <td>{{ report.failure.failureReason }}</td>
+                        </tr>
+                        {% for outcome in report.notAttempted %}
+                            <tr>
+                                <td>{{ outcome.person.fullName }}</td>
+                                <td>Non traité : la génération s'était arrêtée.</td>
                             </tr>
                         {% endfor %}
                     </tbody>

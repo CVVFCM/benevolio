@@ -14,11 +14,13 @@ use App\Factory\FiscalYearFactory;
 use App\Factory\OrganizationFactory;
 use App\Factory\PersonFactory;
 use App\Factory\UserFactory;
+use App\Tests\Support\FailingGotenberg;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\DomCrawler\Field\ChoiceFormField;
 use Zenstruck\Foundry\Test\Factories;
 use Zenstruck\Foundry\Test\ResetDatabase;
@@ -34,6 +36,7 @@ use function sprintf;
 final class ReceiptAdminTest extends WebTestCase
 {
     use Factories;
+    use FailingGotenberg;
     use ResetDatabase;
 
     private KernelBrowser $client;
@@ -101,6 +104,42 @@ final class ReceiptAdminTest extends WebTestCase
         self::assertStringContainsString('43,25', $text);
 
         self::assertSame(2025, $this->onlyReceipt()->getYear());
+    }
+
+    /**
+     * Gotenberg down in the middle of a run. The page used to be a 500 — with receipts
+     * already issued and mailed, and nothing to say which. It is the report now, and
+     * it says first that the year is not done.
+     */
+    #[Test]
+    public function a_run_that_stops_part_way_still_shows_its_report(): void
+    {
+        $organization = $this->association();
+        $this->volunteerWithWaivedTravel($organization, '2025-02-10', 'Premier');
+        $this->volunteerWithWaivedTravel($organization, '2025-03-10', 'Deuxième', sameExercice: true);
+        $this->volunteerWithWaivedTravel($organization, '2025-04-10', 'Troisième', sameExercice: true);
+        $this->loginAdminOf($organization);
+        // One kernel for the whole test, or the stand-in is lost with the first reboot.
+        $this->client->disableReboot();
+        self::gotenbergFailsAfter(1);
+
+        $this->submitYear(2025);
+
+        self::assertResponseIsSuccessful();
+        self::assertSelectorTextContains('[role="alert"]', 'La génération s\'est arrêtée avant la fin.');
+        self::assertSelectorTextContains('[role="alert"]', 'Un autre bénévole n\'a pas été traité.');
+        self::assertSelectorTextContains('[role="alert"]', 'y compris ceux déjà servis');
+
+        $rows = $this->client->getCrawler()->filter('table.data-table')->each(
+            static fn (Crawler $table): string => $table->text(),
+        );
+        self::assertCount(2, $rows);
+        self::assertStringContainsString('Premier', $rows[0]);
+        self::assertStringContainsString('0001', $rows[0]);
+        self::assertStringContainsString('Deuxième', $rows[1]);
+        self::assertStringContainsString('erreur technique', $rows[1]);
+        self::assertStringContainsString('Troisième', $rows[1]);
+        self::assertStringContainsString('Non traité', $rows[1]);
     }
 
     /**
@@ -238,14 +277,24 @@ final class ReceiptAdminTest extends WebTestCase
      * A volunteer with one validated line of waived travel: 2 journeys of 34 km in their own
      * vehicle, which at the 5 CV rate is 43,25 €.
      */
-    private function volunteerWithWaivedTravel(Organization $organization, string $date): Person
-    {
-        FiscalYearFactory::new()->for($organization)
-            ->calendarYear((int) new DateTimeImmutable($date)->format('Y'))
-            ->withPublishedBareme()
-            ->create();
+    /**
+     * @param bool $sameExercice true for a second volunteer in a year an earlier call
+     *                           already created the exercice of — two would overlap
+     */
+    private function volunteerWithWaivedTravel(
+        Organization $organization,
+        string $date,
+        ?string $lastName = null,
+        bool $sameExercice = false,
+    ): Person {
+        if (!$sameExercice) {
+            FiscalYearFactory::new()->for($organization)
+                ->calendarYear((int) new DateTimeImmutable($date)->format('Y'))
+                ->withPublishedBareme()
+                ->create();
+        }
 
-        $person = PersonFactory::createOne(['organization' => $organization]);
+        $person = PersonFactory::createOne(['organization' => $organization] + (null === $lastName ? [] : ['lastName' => $lastName]));
         $declaration = DeclarationFactory::new()->forPerson($person)->confirmed()->create();
 
         DeclarationActionFactory::new()->forDeclaration($declaration)->validated()->create([

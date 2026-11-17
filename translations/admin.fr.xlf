@@ -14,9 +14,9 @@
                 <target>Associations</target>
             </segment>
         </unit>
-        <unit id="menu.users">
+        <unit id="menu.platform_users">
             <segment>
-                <source>menu.users</source>
+                <source>menu.platform_users</source>
                 <target>Comptes administrateurs</target>
             </segment>
         </unit>
@@ -83,10 +83,10 @@
             </segment>
         </unit>
 
-        <unit id="dashboard.no_sections_yet">
+        <unit id="dashboard.intro">
             <segment>
-                <source>dashboard.no_sections_yet</source>
-                <target>Aucune section n'est encore disponible. La gestion des bénévoles et des contributions arrivera dans une prochaine version.</target>
+                <source>dashboard.intro</source>
+                <target>Les déclarations, les bénévoles, les exercices et les reçus fiscaux se gèrent depuis le menu.</target>
             </segment>
         </unit>
         <unit id="dashboard.platform_title">

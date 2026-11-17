@@ -12,6 +12,7 @@ use App\Factory\DeclarationFactory;
 use App\Factory\FiscalYearFactory;
 use App\Factory\OrganizationFactory;
 use App\Factory\PersonFactory;
+use App\Tests\Support\FailingGotenberg;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
@@ -35,6 +36,7 @@ use Zenstruck\Foundry\Test\ResetDatabase;
 final class GenerateReceiptsCommandTest extends KernelTestCase
 {
     use Factories;
+    use FailingGotenberg;
     use ResetDatabase;
 
     private CommandTester $command;
@@ -183,20 +185,58 @@ final class GenerateReceiptsCommandTest extends KernelTestCase
         self::assertStringContainsString('SIREN', $this->command->getDisplay());
     }
 
+    /**
+     * A run cut short is a failure for whoever scripted it, however many receipts went
+     * out before — and the output still lists them, since they are real.
+     */
+    #[Test]
+    public function a_run_that_stops_part_way_fails_and_says_what_was_issued(): void
+    {
+        self::ensureKernelShutdown();
+        $kernel = self::bootKernel();
+        self::gotenbergFailsAfter(1);
+        $command = new CommandTester(new Application($kernel)->find('app:receipts:generate'));
+
+        $organization = $this->association('les-jardins');
+        $this->volunteerWithWaivedTravel($organization, '2025-02-10', 'Premier');
+        $this->volunteerWithWaivedTravel($organization, '2025-03-10', 'Deuxième', sameExercice: true);
+
+        $command->setInputs(['yes']);
+        $exitCode = $command->execute(['year' => '2025', '--organization' => 'les-jardins']);
+
+        self::assertSame(Command::FAILURE, $exitCode);
+        $display = $command->getDisplay();
+        self::assertStringContainsString('0001', $display);
+        self::assertStringContainsString('Premier', $display);
+        self::assertStringContainsString('Non émis', $display);
+        self::assertStringContainsString('Deuxième', $display);
+        self::assertStringContainsString('arrêtée avant la fin', $display);
+    }
+
     private function association(string $slug): Organization
     {
         return OrganizationFactory::new()->withCerfaIdentity()->withSignature()
             ->create(['slug' => $slug]);
     }
 
-    private function volunteerWithWaivedTravel(Organization $organization, string $date): void
-    {
-        FiscalYearFactory::new()->for($organization)
-            ->calendarYear((int) new DateTimeImmutable($date)->format('Y'))
-            ->withPublishedBareme()
-            ->create();
+    /**
+     * @param bool $sameExercice true for a second volunteer in a year an earlier call
+     *                           already created the exercice of — two would overlap
+     */
+    private function volunteerWithWaivedTravel(
+        Organization $organization,
+        string $date,
+        ?string $lastName = null,
+        bool $sameExercice = false,
+    ): void {
+        if (!$sameExercice) {
+            FiscalYearFactory::new()->for($organization)
+                ->calendarYear((int) new DateTimeImmutable($date)->format('Y'))
+                ->withPublishedBareme()
+                ->create();
+        }
 
-        $person = PersonFactory::createOne(['organization' => $organization]);
+        $person = PersonFactory::createOne(['organization' => $organization] + (null === $lastName ? [] : ['lastName' => $lastName]));
         $declaration = DeclarationFactory::new()->forPerson($person)->confirmed()->create();
 
         DeclarationActionFactory::new()->forDeclaration($declaration)->validated()->create([

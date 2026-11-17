@@ -9,6 +9,9 @@ use App\Entity\Person;
 use DateTimeImmutable;
 use RuntimeException;
 
+use function min;
+use function sprintf;
+
 /**
  * One volunteer's waived expenses over a civil year, accumulated line by line.
  *
@@ -30,6 +33,8 @@ final class WaivedYear
 
     public function __construct(
         public readonly Person $person,
+        /** The civil year being receipted: the date printed must fall inside it. */
+        private readonly int $year,
     ) {
     }
 
@@ -56,7 +61,12 @@ final class WaivedYear
         // The latest day the volunteer actually incurred waived expenses. The lines arrive
         // in date order, so this is a comparison and not a sort — see
         // DeclarationActionRepository::findValidatedInCivilYear().
-        $end = $action->getEndDate();
+        //
+        // Capped at 31 December. A line belongs wholly to the year it starts in, so one
+        // begun on 30 December for three days is on this receipt — and its true last day
+        // is in January. A receipt for 2025 stating a donation made in 2026 contradicts
+        // itself on the one line a tax office reads the year from.
+        $end = min($action->getEndDate(), new DateTimeImmutable(sprintf('%d-12-31', $this->year)));
 
         if (null === $this->lastWaivedDay || $end > $this->lastWaivedDay) {
             $this->lastWaivedDay = $end;

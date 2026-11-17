@@ -368,6 +368,14 @@ Two resolvers run in priority order, first match wins:
    anonymous public forms.
 2. `UserTenantResolver` — the logged-in account, for `/admin`.
 
+**The account is never a fallback for an address.** `UserTenantResolver` returns nothing
+for a request whose route carries `organizationSlug`: when that slug is unknown or the
+association inactive, the answer is "no tenant" and the page is a 404. It used to fall
+through, so a logged-in admin opening a mistyped public address got their own
+association's form and filed the declaration there. A resolver cannot claim a request
+and answer "none" — the next one is tried regardless — so any future strategy that must
+not stand in for another has to say so itself, the same way.
+
 ### Non-negotiables
 
 - **Every new business entity uses `TenantAwareTrait` and ships an isolation
@@ -717,10 +725,35 @@ put the wrong figure on a tax return.
 
 **Refusals are ordinary outcomes, and they are reported.**
 `App\Receipt\ReceiptEligibility` answers the association-level question **once per run** —
-no SIREN/RNA, no postal address, and nothing is attempted at all. A volunteer who waived
-nothing is skipped with a reason. Both land on the report page and in the command's output:
-a run that quietly did nothing for half the association would look exactly like one that
-worked.
+no SIREN/RNA, no postal address, an address `App\ValueObject\Address` rejects — and
+nothing is attempted at all. A volunteer who waived nothing is skipped with a reason. Both
+land on the report page and in the command's output: a run that quietly did nothing for
+half the association would look exactly like one that worked.
+
+**The association's address is held to `Address`'s rules where it is typed.** It is stored
+as loose columns on `Organization` (a nullable embeddable cannot be hydrated) and only
+becomes an `Address` when a receipt is made, so the columns carry `Address`'s lengths and
+its French-postcode rule as constraints, by reference to its constants. Every part stays
+optional: half an address is "incomplete", which is a refusal and not an error.
+
+**A receipt that cannot be made stops the run, and the run still reports.** Gotenberg,
+qpdf, storage or the database failing for one volunteer ends the run there:
+`ReceiptRunOutcome` has four endings — issued, skipped, **failed**, **not attempted** — and
+the page and the command print all of them, the command exiting non-zero. Stopping rather
+than carrying on is deliberate: what fails here is almost always down for everyone, and
+the rolled-back transaction has closed the EntityManager. Letting the exception out would
+be worse than either — a 500 with receipts already issued and mailed, and nothing saying
+which. **Running the year again re-issues everyone**, the volunteers already served
+included (next paragraph); there is no "resume".
+
+**The date printed is the last day of waived travel, capped at 31 December.** A line
+belongs to the year it starts in, so one begun on 30 December for three days is on that
+year's receipt; its real last day is in January, and a receipt must not state a donation
+dated outside the year it covers. `WaivedYear` does the capping.
+
+**An inactive association can still issue receipts**, by decision: `app:receipts:generate`
+looks the slug up without the *active* filter. An association that stopped taking
+declarations may still owe last year's receipts.
 
 **Re-running a year issues new receipts with new numbers**, and the previous ones stay in
 the database — that is what a rectificatif is. The object key carries the number, so the
@@ -1250,6 +1283,16 @@ Also: `Foundry`'s `defaults()` is evaluated whether or not the caller overrides
 the keys it sets. Creating an entity in there to make two attributes consistent
 produces one orphan per object built — `DeclarationActionFactory` learned this the
 expensive way and now exposes `for()` / `forDeclaration()` instead.
+
+And a **factory instance** used for two keys is created twice. `DeclarationFactory`
+handed one `OrganizationFactory::new()` to both the declaration and its person, which
+filed them under two associations. When two defaults must agree, share a
+`memoize(...)`d value — lazy, so nothing is created when the caller overrides both.
+
+To test what happens when Gotenberg goes down part-way, `App\Tests\Support\FailingGotenberg`
+swaps in a client that renders N documents and then cannot connect. `GotenbergClient` is
+public **in the test environment only** (`when@test` in `services.yaml`) for that: the
+container otherwise inlines it where nothing can replace it.
 
 Run `make reset-test` once, then `make test`.
 

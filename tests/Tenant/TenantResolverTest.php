@@ -107,6 +107,22 @@ final class TenantResolverTest extends KernelTestCase
         self::assertNull(new UserTenantResolver($tokenStorage)->resolve(new Request()));
     }
 
+    /**
+     * An address that names an association is answered by that address alone. If the
+     * slug resolves nothing, the account must not step in: a logged-in admin opening
+     * a mistyped or closed public address would get their own association's form.
+     */
+    #[Test]
+    public function user_resolver_stays_out_of_a_request_whose_address_names_an_association(): void
+    {
+        $admin = UserFactory::new()->admin(OrganizationFactory::createOne())->create();
+
+        $request = $this->requestWithCredentials();
+        $request->attributes->set(UrlPrefixTenantResolver::ROUTE_ATTRIBUTE, 'does-not-exist');
+
+        self::assertNull($this->userResolver($admin)->resolve($request));
+    }
+
     #[Test]
     public function user_resolver_refuses_an_admin_of_an_inactive_organization(): void
     {

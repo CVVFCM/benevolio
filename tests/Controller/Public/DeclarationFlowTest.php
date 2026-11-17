@@ -10,11 +10,13 @@ use App\Entity\Organization;
 use App\Entity\Person;
 use App\Entity\Task;
 use App\Factory\OrganizationFactory;
+use App\Factory\UserFactory;
 use App\Form\Declaration\DeclarationDraft;
 use App\State\DeclarationActionState;
 use App\State\DeclarationState;
 use App\Tests\Support\ResetsRateLimiters;
 use Doctrine\ORM\EntityManagerInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -79,6 +81,34 @@ final class DeclarationFlowTest extends WebTestCase
         $this->client->request('GET', '/a/fermee/declaration');
 
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    /**
+     * The address names the association, and nothing else may. A logged-in admin
+     * used to be handed their own association's form under any unknown or closed
+     * address — the account stepped in when the slug resolved nothing — and the
+     * declaration was then filed there.
+     */
+    #[Test]
+    #[DataProvider('addressesThatResolveNothing')]
+    public function a_logged_in_admin_gets_a_404_too_not_their_own_associations_form(string $slug): void
+    {
+        OrganizationFactory::new()->inactive()->create(['slug' => 'fermee']);
+        $mine = OrganizationFactory::createOne(['slug' => 'les-jardins']);
+        $this->client->loginUser(UserFactory::new()->admin($mine)->create());
+
+        $this->client->request('GET', '/a/'.$slug.'/declaration');
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function addressesThatResolveNothing(): iterable
+    {
+        yield 'unknown' => ['does-not-exist'];
+        yield 'inactive' => ['fermee'];
     }
 
     /**
