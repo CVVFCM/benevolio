@@ -1,6 +1,6 @@
 {% extends 'public/layout.html.twig' %}
 
-{% set expired = result.name == 'EXPIRED' %}
+{% set expired = result is same as constant('App\\Declaration\\DeclarationConfirmationResult::EXPIRED') %}
 
 {% block title %}
     {{ expired ? 'Lien expiré' : 'Déclaration confirmée' }} — {{ organization.name }}

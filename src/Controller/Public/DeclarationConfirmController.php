@@ -6,6 +6,7 @@ namespace App\Controller\Public;
 
 use App\Declaration\DeclarationConfirmationResult;
 use App\Declaration\DeclarationConfirmer;
+use App\Exception\UnknownOrganizationException;
 use App\Tenant\TenantContext;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -44,7 +45,7 @@ final readonly class DeclarationConfirmController
         $organization = $this->tenantContext->tryGetOrganization();
 
         if (null === $organization) {
-            throw new NotFoundHttpException('Cette association n\'existe pas ou n\'accepte plus de déclarations.');
+            throw new UnknownOrganizationException();
         }
 
         $outcome = $this->confirmer->confirm($token);

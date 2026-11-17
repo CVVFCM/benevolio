@@ -52,9 +52,9 @@ final class DeclarationActionFactory extends PersistentObjectFactory
      *
      * One of this or for() must be called: defaults() deliberately supplies neither
      * `declaration` nor `task`, because an action and its task have to share a
-     * tenant and nothing in the mapping enforces it. An earlier version guessed in
-     * defaults() and produced an orphan organization per action, because Foundry
-     * evaluates the defaults whether or not the caller overrides them.
+     * tenant and nothing in the mapping enforces it. Guessing in defaults() would
+     * create an orphan organization per action: Foundry evaluates the defaults
+     * whether or not the caller overrides them.
      */
     public function forDeclaration(Declaration $declaration): self
     {

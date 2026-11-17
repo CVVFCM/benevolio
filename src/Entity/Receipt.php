@@ -16,8 +16,8 @@ use Symfony\Component\Uid\Uuid;
 /**
  * A CERFA 2041-RD issued to a volunteer for one **civil year**.
  *
- * Not per declaration, which is what lot 7 did and what could not work: a volunteer files
- * several declarations a year, and the figure they carry to their income-tax return is the
+ * Not per declaration, which could not work: a volunteer files several declarations a
+ * year, and the figure they carry to their income-tax return is the
  * year's total (CGI art. 200 applies to the *revenus* of a calendar year). Four numbered
  * documents for one year are unusable, and none of them could be issued before the year
  * ended anyway.
@@ -50,10 +50,7 @@ class Receipt implements TenantAware
     use TenantAwareTrait;
 
     /**
-     * The number is a bare sequence now — `0001` — so this is generous rather than
-     * derived. It used to be `FiscalYear::NAME_MAX_LENGTH + 5`, back when the number
-     * carried the exercice's name, which stopped meaning anything once the receipt became
-     * a civil year and the exercice need not be one.
+     * The number is a bare sequence — `0001` — so this is generous rather than derived.
      */
     public const int NUMBER_MAX_LENGTH = 20;
 

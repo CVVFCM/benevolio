@@ -65,7 +65,6 @@ clean: ## Stop the containers and remove all the data
 		.infra/docker/tls/cert.* \
 		.php-cs-fixer.cache \
 		.phpunit.cache \
-		.twig-cs-fixer.cache \
 		assets/vendor \
 		node_modules \
 		public/assets \
@@ -106,7 +105,3 @@ lint: ## Lint the container, YAML, Twig and translation files
 
 .PHONY: qa
 qa: cs-check lint stan test ## Run every check the CI runs
-
-.PHONY: mate
-mate: ## Run the mate command
-	@$(DOCKER_COMPOSE) exec php ./vendor/bin/mate serve --force-keep-alive

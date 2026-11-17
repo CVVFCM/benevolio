@@ -20,14 +20,13 @@ use Symfony\Component\Validator\Constraints as Assert;
  * *arbitrage*, and whatever else the association runs.
  *
  * Named for the work, not the occasion: a valuation rate attaches to a kind of
- * work, not to a kind of gathering, which is why `EventType` was the wrong noun.
- * The rate itself lives on App\Entity\FiscalYear — it holds for a financial year,
- * not forever. The occasion keeps its own free-text title on the line
- * (`DeclarationAction::$title`).
+ * work, not to a kind of gathering. The rate itself lives on App\Entity\FiscalYear —
+ * it holds for a financial year, not forever. The occasion keeps its own free-text
+ * title on the line (`DeclarationAction::$title`).
  *
- * This used to be a backed enum. It became an entity so each association manages
- * its own list: a sailing club and a neighbourhood association have nothing in
- * common here, and adding one should not need a deployment.
+ * An entity, not an enum, so each association manages its own list: a sailing club and
+ * a neighbourhood association have nothing in common here, and adding one should not
+ * need a deployment.
  *
  * Tenant-scoped, so `OrganizationFilter` restricts every query. A new association
  * gets a starter list from App\Organization\DefaultTasks.

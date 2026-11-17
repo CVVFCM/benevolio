@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Public;
 
 use App\Declaration\DeclarationSubmitter;
+use App\Exception\UnknownOrganizationException;
 use App\Form\Declaration\DeclarationDraft;
 use App\Form\Declaration\DeclarationFlowType;
 use App\Tenant\TenantContext;
@@ -14,7 +15,6 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\Session;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -57,7 +57,7 @@ final readonly class DeclarationController
         $organization = $this->tenantContext->tryGetOrganization();
 
         if (null === $organization) {
-            throw new NotFoundHttpException('Cette association n\'existe pas ou n\'accepte plus de déclarations.');
+            throw new UnknownOrganizationException();
         }
 
         // A data object is required up front: the flow reads the current step off

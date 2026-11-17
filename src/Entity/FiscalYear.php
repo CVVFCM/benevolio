@@ -267,8 +267,7 @@ class FiscalYear implements TenantAware
      *
      * THE ONE PLACE the hourly fallback lives. Reading a rate any other way gets the
      * default when an override exists, which is a wrong figure rather than a missing
-     * one — the mistake Task::resolveHourlyRateCents() had to be documented against
-     * before the rates moved here.
+     * one.
      */
     public function hourlyRateCentsFor(Task $task): int
     {
