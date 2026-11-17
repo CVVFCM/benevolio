@@ -63,7 +63,14 @@
             <h2 class="form__legend" id="step-heading">{{ ('declaration.step.' ~ current_step)|trans }}</h2>
 
             {% if current_step == 'actions' %}
+                {# Errors about the list as a whole — none, or too many — land on the
+                   step, not on a row. They used to reach the page only by accident,
+                   through form_rest() below, and only when the list was empty: with
+                   rows present the step counted as rendered and the message was
+                   dropped, leaving a refused form that named no reason. #}
+                {{ form_errors(flow.actions) }}
                 {{ include('public/declaration/_actions.html.twig', {actions: flow.actions.actions}) }}
+                {% do flow.actions.setRendered() %}
             {% elseif current_step == 'person' %}
                 <div class="form__grid form__grid--person">
                     {{ form_row(flow.person.firstName, {row_attr: {class: 'field field--span-2'}}) }}

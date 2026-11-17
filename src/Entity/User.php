@@ -11,6 +11,7 @@ use App\Validator\OneOwnerPerOrganization;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
+use Symfony\Component\Security\Core\User\EquatableInterface;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Uid\Uuid;
@@ -35,7 +36,7 @@ use function in_array;
 #[ORM\Table(name: 'app_user')]
 #[UniqueEntity(fields: ['email'], message: 'Cette adresse électronique est déjà utilisée.')]
 #[OneOwnerPerOrganization]
-class User implements UserInterface, PasswordAuthenticatedUserInterface
+class User implements UserInterface, PasswordAuthenticatedUserInterface, EquatableInterface
 {
     public const int EMAIL_MAX_LENGTH = 180;
     public const int PASSWORD_MIN_LENGTH = 8;
@@ -68,6 +69,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      */
     #[Assert\Length(min: self::PASSWORD_MIN_LENGTH)]
     private ?string $plainPassword = null;
+
+    #[ORM\Column(options: ['default' => 0])]
+    private int $loginLinkVersion = 0;
 
     /**
      * Stored as the string values of App\Security\Role. Kept as strings rather
@@ -157,6 +161,47 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      * False while the invitation is pending: the account exists but its holder has
      * not chosen a password yet.
      */
+    /**
+     * Part of every login link's signature (config/packages/security.yaml), so
+     * bumping it invalidates all the links this account was ever sent.
+     */
+    public function getLoginLinkVersion(): int
+    {
+        return $this->loginLinkVersion;
+    }
+
+    /**
+     * Called when a login link is used: that link, and any other still in a mailbox,
+     * stop working. A link is a one-time key, not a week-long one.
+     */
+    public function invalidateLoginLinks(): void
+    {
+        ++$this->loginLinkVersion;
+    }
+
+    /**
+     * Whether a session opened as $user may go on being this account.
+     *
+     * Symfony asks on every request and logs the session out on "no". Its own
+     * comparison skips the password when the session's copy has none — which is
+     * every session opened by an invitation link. Two people on one invitation
+     * (a shared mailbox, a forwarded mail) therefore both stayed logged in after the
+     * first chose a password, and the second could then choose another. Comparing
+     * the password here, null included, ends every other session the moment one is
+     * set or changed.
+     *
+     * NOT the login-link version: using a link bumps it, and comparing it would log
+     * out the very session the link just opened.
+     */
+    public function isEqualTo(UserInterface $user): bool
+    {
+        return $user instanceof self
+            && $this->id->equals($user->id)
+            && $this->email === $user->email
+            && $this->password === $user->password
+            && $this->getRoles() === $user->getRoles();
+    }
+
     public function hasPassword(): bool
     {
         return null !== $this->password;

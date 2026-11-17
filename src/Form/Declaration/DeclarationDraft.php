@@ -25,6 +25,8 @@ use Symfony\Component\Validator\Constraints as Assert;
  */
 final class DeclarationDraft
 {
+    public const int MAX_ACTIONS = 50;
+
     public const string STEP_PERSON = 'person';
     public const string STEP_ACTIONS = 'actions';
     public const string STEP_LEGAL = 'legal';
@@ -84,7 +86,11 @@ final class DeclarationDraft
      */
     #[Assert\Count(
         min: 1,
+        // A ceiling nobody reaches by hand. Without one a single request could
+        // file thousands of lines and a confirmation mail listing them all.
+        max: self::MAX_ACTIONS,
         minMessage: 'Ajoutez au moins une action bénévole.',
+        maxMessage: 'Une déclaration contient au plus {{ limit }} actions : envoyez-en une seconde pour les suivantes.',
         groups: [self::STEP_ACTIONS],
     )]
     #[Assert\Valid(groups: [self::STEP_ACTIONS])]

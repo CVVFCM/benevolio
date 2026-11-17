@@ -1,0 +1,20 @@
+# Limits that need no client address.
+#
+# Each is keyed on the EMAIL ADDRESS a request names, never on the visitor's IP: behind
+# Cloudflare and the cluster's Gateway the application may see an edge address shared
+# by many visitors, and a per-IP limit would then throttle strangers together. Per-IP
+# limits (and login throttling, which is per IP too) wait until that is checked.
+framework:
+    rate_limiter:
+        # « Mot de passe oublié »: how many reset mails one address can be sent. Over
+        # the limit the same neutral page is shown and nothing is mailed.
+        forgot_password:
+            policy: fixed_window
+            limit: 3
+            interval: '1 hour'
+        # The public form mails whatever address is typed. This caps how many
+        # confirmation mails one address can receive from one association in a day.
+        declaration_recipient:
+            policy: fixed_window
+            limit: 5
+            interval: '1 day'

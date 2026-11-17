@@ -15,6 +15,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Twig\Environment;
@@ -44,6 +45,7 @@ final readonly class DeclarationController
         private DeclarationSubmitter $submitter,
         private TenantContext $tenantContext,
         private UrlGeneratorInterface $urlGenerator,
+        private RateLimiterFactoryInterface $declarationRecipientLimiter,
     ) {
     }
 
@@ -69,6 +71,17 @@ final readonly class DeclarationController
         if ($flow->isFinished()) {
             $draft = $flow->getData();
             assert($draft instanceof DeclarationDraft);
+
+            // The form mails whatever address was typed, to anyone. One address gets
+            // a handful of confirmation mails a day from one association, no more.
+            $recipient = $organization->getId()->toRfc4122().'|'.mb_strtolower((string) $draft->email);
+
+            if (!$this->declarationRecipientLimiter->create($recipient)->consume()->isAccepted()) {
+                return new Response(
+                    $this->twig->render('public/declaration/too_many.html.twig', ['organization' => $organization]),
+                    Response::HTTP_TOO_MANY_REQUESTS,
+                );
+            }
 
             $declaration = $this->submitter->submit($organization, $draft);
 

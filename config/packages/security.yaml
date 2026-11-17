@@ -34,12 +34,20 @@ security:
                 default_target_path: backoffice
             # Accounts are created without a password and are emailed one of these
             # instead, as is anyone who forgot theirs — see App\User\LoginLinkMailer.
-            # Signed with the password hash, so a link dies the moment a password is
-            # set or changed. No max_uses: it needs a cache shared by every pod, and a
-            # mail scanner prefetching the URL would burn it before the user clicks.
+            #
+            # SINGLE USE. The signature covers the password hash AND the account's
+            # loginLinkVersion, a counter App\Security\LoginLinkSuccessHandler bumps on
+            # every link login — so using one link kills every link issued for that
+            # account, and so does setting a password. Not Symfony's max_uses, which
+            # needs a cache shared by every pod.
+            #
+            # check_post_only: the emailed URL only shows a page with one button
+            # (App\Controller\Security\LoginLinkCheckController); the button's POST is
+            # what logs in. A mail scanner prefetching the URL therefore burns nothing.
             login_link:
                 check_route: login_link_check
-                signature_properties: [id, email, password]
+                check_post_only: true
+                signature_properties: [id, email, password, loginLinkVersion]
                 # The forgotten-password lifetime; invitations override it per link.
                 lifetime: 3600
                 success_handler: App\Security\LoginLinkSuccessHandler

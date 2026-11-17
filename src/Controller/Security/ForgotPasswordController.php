@@ -10,6 +10,7 @@ use App\User\LoginLinkMailer;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Twig\Environment;
 
@@ -35,6 +36,7 @@ final readonly class ForgotPasswordController
         private FormFactoryInterface $formFactory,
         private UserRepository $users,
         private LoginLinkMailer $mailer,
+        private RateLimiterFactoryInterface $forgotPasswordLimiter,
     ) {
     }
 
@@ -47,9 +49,12 @@ final readonly class ForgotPasswordController
             $email = $form->get('email')->getData();
             assert(is_string($email));
 
-            $user = $this->users->findOneBy(['email' => $email]);
+            // Counted for every address, known or not, and before the lookup: the
+            // limit must not become a way to tell which addresses have an account.
+            // Over it, the page below is shown all the same and nothing is sent.
+            $allowed = $this->forgotPasswordLimiter->create(mb_strtolower($email))->consume()->isAccepted();
 
-            if (null !== $user) {
+            if ($allowed && null !== $user = $this->users->findOneBy(['email' => $email])) {
                 $this->mailer->sendPasswordReset($user);
             }
 

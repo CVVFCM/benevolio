@@ -10,8 +10,10 @@ use App\Entity\Organization;
 use App\Entity\Person;
 use App\Entity\Task;
 use App\Factory\OrganizationFactory;
+use App\Form\Declaration\DeclarationDraft;
 use App\State\DeclarationActionState;
 use App\State\DeclarationState;
+use App\Tests\Support\ResetsRateLimiters;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -32,6 +34,7 @@ final class DeclarationFlowTest extends WebTestCase
 {
     use Factories;
     use ResetDatabase;
+    use ResetsRateLimiters;
     private const string FORM = 'declaration_flow';
 
     private KernelBrowser $client;
@@ -39,6 +42,7 @@ final class DeclarationFlowTest extends WebTestCase
     protected function setUp(): void
     {
         $this->client = self::createClient();
+        self::resetRateLimiters();
     }
 
     #[Test]
@@ -302,6 +306,93 @@ final class DeclarationFlowTest extends WebTestCase
             '',
             $crawler->filter('input[name="'.self::FORM.'[person][firstName]"]')->attr('value') ?? '',
         );
+    }
+
+    /**
+     * The form mails whatever address is typed, to anyone. One address receives five
+     * confirmation mails a day from one association; the sixth submission is refused
+     * and files nothing.
+     */
+    #[Test]
+    public function one_address_can_be_sent_five_confirmation_mails_a_day(): void
+    {
+        OrganizationFactory::createOne(['slug' => 'les-jardins']);
+
+        for ($sent = 0; $sent < 5; ++$sent) {
+            $this->completeFlow();
+            self::assertResponseRedirects();
+        }
+
+        // Case is not a way round it: the address is the same mailbox.
+        $this->completeFlow(['email' => 'Jean.Dupont@Example.TEST']);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
+        $this->assertPageContainsText('Trop de déclarations pour cette adresse');
+        self::assertEmailCount(0);
+        self::assertCount(5, $this->entityManager()->getRepository(Declaration::class)->findAll());
+
+        // Another address is not affected.
+        $this->completeFlow(['email' => 'marie.curie@example.test']);
+        self::assertResponseRedirects();
+    }
+
+    /**
+     * The three integers bind to non-nullable ints. Left blank they used to submit
+     * null, and writing null into an int was a TypeError: a 500 on the public form.
+     */
+    #[Test]
+    public function blank_journey_fields_are_zero_not_a_crash(): void
+    {
+        OrganizationFactory::createOne(['slug' => 'les-jardins']);
+        $this->client->request('GET', '/a/les-jardins/declaration');
+        $this->client->submitForm('Suivant', $this->personStep());
+
+        $this->client->submitForm('Suivant', [
+            self::FORM.'[actions][actions][0][task]' => $this->firstTaskId(),
+            self::FORM.'[actions][actions][0][title]' => 'Régate du printemps',
+            self::FORM.'[actions][actions][0][date]' => '2026-05-10',
+            self::FORM.'[actions][actions][0][consecutiveDays]' => '',
+            self::FORM.'[actions][actions][0][workHours]' => '6.5',
+            self::FORM.'[actions][actions][0][distanceKm]' => '',
+            self::FORM.'[actions][actions][0][journeys]' => '',
+        ]);
+
+        self::assertResponseIsSuccessful();
+        $this->assertPageContainsText('Enregistrer ma déclaration');
+    }
+
+    /**
+     * A ceiling nobody reaches by hand: without one, a single request could file
+     * thousands of lines and a confirmation mail listing them all.
+     */
+    #[Test]
+    public function a_declaration_holds_at_most_fifty_actions(): void
+    {
+        OrganizationFactory::createOne(['slug' => 'les-jardins']);
+        $this->client->request('GET', '/a/les-jardins/declaration');
+        $crawler = $this->client->submitForm('Suivant', $this->personStep());
+
+        $form = $crawler->selectButton('Suivant')->form();
+        $action = [
+            'task' => $this->firstTaskId(),
+            'title' => 'Régate du printemps',
+            'date' => '2026-05-10',
+            'consecutiveDays' => '1',
+            'workHours' => '1',
+            'distanceKm' => '0',
+            'journeys' => '0',
+        ];
+
+        // Sent raw: the page renders one row, and DomCrawler refuses fields it
+        // cannot see.
+        $this->client->request('POST', $form->getUri(), [self::FORM => [
+            'actions' => ['actions' => array_fill(0, DeclarationDraft::MAX_ACTIONS + 1, $action)],
+            '_token' => $form->getValues()[self::FORM.'[_token]'] ?? '',
+            'next' => '',
+        ]]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        $this->assertPageContainsText('au plus 50 actions');
     }
 
     /**

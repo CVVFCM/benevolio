@@ -317,8 +317,8 @@ browsers ignore `'unsafe-inline'` once a nonce is present.
 
 Not built yet, by explicit decision: accounting entries and their export, tax
 receipts, valuation rates and mission types, resending a confirmation link, and
-purging declarations never confirmed. On accounts: no rate limit on « Mot de passe
-oublié », no ownership transfer, no email change. When you add them, update this file.
+purging declarations never confirmed. On accounts: no login throttling and no per-IP
+limit (see *Rate limits*), no ownership transfer, no email change. When you add them, update this file.
 
 ## Stack
 
@@ -456,14 +456,31 @@ still takes a password, because bootstrapping and `composer reset` cannot wait o
 - **The link is Symfony's `login_link`, not symfonycasts/reset-password-bundle**, which
   has no tagged release supporting Symfony 8 (only `dev-main`). Swap if one appears.
   `App\User\LoginLinkMailer` sends both mails: **invitation 7 days, forgotten
-  password 1 hour**, per link via `createLoginLink($user, null, $lifetime)`.
+  password 1 hour**, per link via `createLoginLink($user, null, $lifetime)`. Both are
+  single-use — see below.
 - **It injects `security.authenticator.login_link_handler.main` by id.** The
   autowired `LoginLinkHandlerInterface` is firewall-aware: it picks the firewall from
   the current request and throws without one — so in a test, or any CLI path.
-- **Signed with `[id, email, password]`, no `max_uses`.** Setting or changing the
-  password kills every link issued before; until then a link is reusable within its
-  lifetime. `max_uses` would need a cache shared by every pod, and a mail scanner
-  prefetching the URL would burn it before the person clicks.
+- **A link works once.** It is signed with `[id, email, password, loginLinkVersion]`, and
+  `LoginLinkSuccessHandler` bumps `User::$loginLinkVersion` on every link login: the link
+  just used, and any other still in a mailbox for that account, are dead. Setting a
+  password kills them too. Not Symfony's `max_uses`, which needs a cache shared by every
+  pod. Someone who uses their link and leaves without choosing a password asks for another
+  through « Mot de passe oublié », which mails accounts that have none.
+- **The emailed URL logs nobody in; a button does.** `login_link.check_post_only` makes the
+  firewall accept the link on a POST only. `LoginLinkCheckController` answers the GET with
+  one button, « Continuer », posting the link's own parameters back. Mail scanners fetch
+  every URL in a message before its reader does, and would otherwise burn a single-use
+  link. That page sends `Referrer-Policy: no-referrer`: its URL is the credential.
+- **No « remember me » from a link.** Symfony's login-link authenticator attaches the
+  remember-me badge to every login and enables it on a `_remember_me` parameter, query
+  string included. `App\Security\NoRememberMeOnLoginLink` switches it off — a request
+  carrying only that cookie has no session, so no « must choose a password » flag.
+- **`User` is `EquatableInterface`, and compares the password itself.** Symfony's own
+  check skips the password when the session's copy has none, i.e. for every session an
+  invitation opened: two people on one invitation both stayed logged in after the first
+  chose a password. `isEqualTo()` deliberately ignores `loginLinkVersion` — using a link
+  bumps it, and comparing it would log out the session the link just opened.
 - **A link logs in, then forces « Choisissez votre mot de passe ».**
   `App\Security\LoginLinkSuccessHandler` sets a session flag and redirects there;
   `App\Security\ChoosePasswordEnforcer` (kernel.request, priority 0, after the
@@ -480,8 +497,27 @@ still takes a password, because bootstrapping and `composer reset` cannot wait o
   `HealthTest` said so. **Anything running on every request must not read the token
   unconditionally.**
 - « Mot de passe oublié » (`/mot-de-passe-oublie`) answers **the same page whatever
-  the address**, so it does not reveal who has an account. It is **not rate-limited**,
-  by decision for now.
+  the address**, so it does not reveal who has an account — including over its rate
+  limit, which is counted before the account is looked up.
+
+### Rate limits — keyed on the address, not the visitor
+
+`config/packages/rate_limiter.yaml`:
+
+- **`forgot_password`**: three reset mails per address per hour.
+- **`declaration_recipient`**: five confirmation mails per address, per association, per
+  day. The public form mails whatever address is typed; the sixth submission answers 429
+  and files nothing.
+- A declaration holds at most `DeclarationDraft::MAX_ACTIONS` (50) lines.
+
+**None is per IP, and login is not throttled yet**, on purpose: behind Cloudflare and the
+Gateway the application may see an edge address shared by many visitors, and a per-IP
+limit would throttle strangers together. Symfony's `login_throttling` counts per IP too.
+Both wait until what `Request::getClientIp()` returns in production has been checked.
+
+The counts live in the `cache.rate_limiter` pool, on disk, so they hold across requests —
+and across tests. A test that submits either form uses
+`App\Tests\Support\ResetsRateLimiters` in `setUp()`.
 
 ### Impersonation — « Se connecter en tant que »
 
