@@ -189,14 +189,17 @@ body {
 }
 
 .public__header {
+    border-bottom: 1px solid var(--rule);
+    background-color: var(--surface-raised);
+}
+
+.public__bar {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2) var(--space-4);
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
-    padding: var(--space-4) var(--space-5);
-    border-bottom: 1px solid var(--rule);
-    background-color: var(--surface-raised);
+    padding: var(--space-3) var(--space-5);
 }
 
 .public__org {
@@ -206,39 +209,56 @@ body {
     letter-spacing: -0.01em;
 }
 
-/* The volunteer space: « Se connecter », or the account's pages and « Se déconnecter ». */
+/* « Se connecter », or the volunteer's name and « Se déconnecter ». */
 .public__account {
     display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2) var(--space-4);
-    align-items: baseline;
+    gap: var(--space-3);
+    align-items: center;
     font-size: 0.9375rem;
 }
 
+.public__account form {
+    margin: 0;
+}
+
 .public__who {
-    color: var(--ink-faint);
+    color: var(--ink-muted);
 }
 
-.public__logout {
-    display: inline;
-    margin: 0;
+/* The volunteer space's pages. On a narrow screen they scroll sideways rather than
+   wrapping into a pile; the current one is underlined in the accent colour. */
+.public__tabs {
+    display: flex;
+    gap: var(--space-1);
+    padding-inline: var(--space-3);
+    overflow-x: auto;
+    border-top: 1px solid var(--rule);
+    scrollbar-width: none;
 }
 
-.link-button {
-    padding: 0;
-    border: 0;
-    background: none;
-    color: var(--accent);
-    font: inherit;
-    text-decoration: underline;
-    cursor: pointer;
+.public__tab {
+    flex-shrink: 0;
+    padding: var(--space-3) var(--space-3) calc(var(--space-3) - 2px);
+    border-bottom: 2px solid transparent;
+    color: var(--ink-muted);
+    font-size: 0.9375rem;
+    font-weight: 550;
+    text-decoration: none;
+    white-space: nowrap;
 }
 
-.public__app {
-    margin: 0;
-    color: var(--ink-faint);
-    font-size: 0.8125rem;
-    font-weight: 500;
+.public__tab:hover {
+    color: var(--ink);
+}
+
+.public__tab[aria-current="page"] {
+    border-bottom-color: var(--accent);
+    color: var(--ink);
+}
+
+.public__tab:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: -2px;
 }
 
 .public__main {
@@ -672,6 +692,12 @@ body {
 .button--quiet:hover {
     border-color: var(--ink-faint);
     background-color: var(--surface-sunken);
+}
+
+.button--small {
+    min-height: 2rem;
+    padding-inline: var(--space-3);
+    font-size: 0.875rem;
 }
 
 .button--danger {
@@ -1290,4 +1316,145 @@ body {
 .contact .contact__address {
     margin: var(--space-3) 0 0;
     font-size: 0.875rem;
+}
+
+/* -------------------------------------------------------- volunteer space -- */
+
+/* Plain links in the page body take the accent, visited or not; buttons styled as
+   links carry a class and keep their own colours. */
+.public__main a:not([class]) {
+    color: var(--accent);
+    text-underline-offset: 2px;
+}
+
+.page-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3) var(--space-4);
+    align-items: center;
+    justify-content: space-between;
+    margin-block-end: var(--space-6);
+}
+
+.public__main .page-head h1 {
+    margin: 0;
+}
+
+.back-link {
+    margin-block: 0 var(--space-3);
+    font-size: 0.9375rem;
+}
+
+.empty-state {
+    padding: var(--space-6);
+    border: 1px dashed var(--rule-strong);
+    border-radius: var(--radius-lg);
+    color: var(--ink-muted);
+    text-align: center;
+}
+
+.muted {
+    color: var(--ink-faint);
+}
+
+.summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-block: 0 var(--space-6);
+}
+
+.summary div {
+    min-width: 8rem;
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    background-color: var(--surface-raised);
+}
+
+.summary dt {
+    color: var(--ink-faint);
+    font-size: 0.8125rem;
+}
+
+.summary dd {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Tables on the public pages: the back office has its own, in admin.css. */
+.public__main .data-table {
+    width: 100%;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-lg);
+    border-collapse: separate;
+    border-spacing: 0;
+    background-color: var(--surface-raised);
+    font-size: 0.9375rem;
+}
+
+.public__main .data-table th,
+.public__main .data-table td {
+    padding: var(--space-3) var(--space-4);
+    vertical-align: top;
+    text-align: start;
+}
+
+.public__main .data-table thead th {
+    border-bottom: 1px solid var(--rule);
+    color: var(--ink-faint);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.public__main .data-table tbody tr + tr td {
+    border-top: 1px solid var(--rule);
+}
+
+.public__main .data-table .is-numeric {
+    font-variant-numeric: tabular-nums;
+    text-align: end;
+    white-space: nowrap;
+}
+
+/* A state, as the back office shows it: the style names come from
+   App\State\DeclarationLifecycle::badgeStyle(). */
+.state-badge {
+    display: inline-block;
+    padding: 0.125rem var(--space-2);
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.state-badge--secondary {
+    background-color: var(--surface-sunken);
+    color: var(--ink-muted);
+}
+
+.state-badge--warning {
+    background-color: var(--marker-tint);
+    color: var(--marker);
+}
+
+.state-badge--success {
+    background-color: var(--success-tint);
+    color: var(--success);
+}
+
+.state-badge--danger {
+    background-color: var(--danger-tint);
+    color: var(--danger);
+}
+
+/* A table wider than a phone scrolls inside its own frame rather than the page. */
+@media (width < 40rem) {
+    .public__main .data-table {
+        display: block;
+        overflow-x: auto;
+    }
 }

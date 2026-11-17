@@ -8,6 +8,7 @@ use App\Entity\Declaration;
 use App\Entity\Organization;
 use App\Entity\Person;
 use App\Enum\FiscalPower;
+use App\Factory\DeclarationActionFactory;
 use App\Factory\DeclarationFactory;
 use App\Factory\OrganizationFactory;
 use App\Factory\PersonFactory;
@@ -25,6 +26,7 @@ use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Zenstruck\Foundry\Test\Factories;
@@ -317,6 +319,65 @@ final class VolunteerAccountTest extends WebTestCase
 
         $this->client->request(Request::METHOD_GET, '/a/les-jardins/mes-declarations');
         self::assertResponseRedirects('/a/les-jardins/connexion');
+    }
+
+    #[Test]
+    public function my_declarations_lists_declarations_not_lines(): void
+    {
+        $organization = $this->association('les-jardins');
+        $person = $this->loginVolunteer($organization, 'connu@example.test');
+        $declaration = DeclarationFactory::new()->forPerson($person)->confirmed()->create();
+        DeclarationActionFactory::new()->forDeclaration($declaration)->confirmed()->create(['title' => 'Régate de printemps', 'workHours' => '2.50']);
+        DeclarationActionFactory::new()->forDeclaration($declaration)->confirmed()->create(['title' => 'Chantier', 'workHours' => '1.00']);
+
+        $crawler = $this->client->request(Request::METHOD_GET, '/a/les-jardins/mes-declarations');
+
+        // loginVolunteer() gave them an earlier, empty one: two declarations, two rows.
+        self::assertCount(2, $crawler->filter('main tbody tr'));
+        self::assertStringContainsString("3,50\u{a0}h", $crawler->filter('main tbody')->text());
+        self::assertStringNotContainsString('Régate de printemps', $crawler->filter('main')->text());
+    }
+
+    #[Test]
+    public function a_declarations_page_shows_its_lines_and_only_to_its_volunteer(): void
+    {
+        $organization = $this->association('les-jardins');
+        $person = $this->loginVolunteer($organization, 'connu@example.test');
+        $mine = DeclarationFactory::new()->forPerson($person)->confirmed()->create();
+        DeclarationActionFactory::new()->forDeclaration($mine)->confirmed()->create(['title' => 'Régate de printemps']);
+        $theirs = DeclarationFactory::new()->forPerson($this->volunteerOf($organization, 'autre@example.test'))->confirmed()->create();
+
+        $crawler = $this->client->request(Request::METHOD_GET, '/a/les-jardins/mes-declarations/'.$mine->getId()->toRfc4122());
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('Régate de printemps', $crawler->filter('main')->text());
+
+        $this->client->request(Request::METHOD_GET, '/a/les-jardins/mes-declarations/'.$theirs->getId()->toRfc4122());
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    #[Test]
+    public function the_header_has_the_spaces_tabs_and_marks_the_current_one(): void
+    {
+        $organization = $this->association('les-jardins');
+        $person = $this->loginVolunteer($organization, 'connu@example.test');
+        $declaration = DeclarationFactory::new()->forPerson($person)->confirmed()->create();
+
+        $crawler = $this->client->request(Request::METHOD_GET, '/a/les-jardins/mes-declarations/'.$declaration->getId()->toRfc4122());
+
+        self::assertSame(['Déclarer', 'Mes déclarations', 'Mes reçus', 'Mon profil'], $crawler->filter('.public__tab')->each(static fn (Crawler $tab): string => $tab->text()));
+        self::assertSame('Mes déclarations', $crawler->filter('.public__tab[aria-current="page"]')->text());
+        self::assertStringContainsString($person->getFullName(), $crawler->filter('.public__bar')->text());
+    }
+
+    #[Test]
+    public function an_anonymous_header_offers_only_to_log_in(): void
+    {
+        $this->association('les-jardins');
+
+        $crawler = $this->client->request(Request::METHOD_GET, '/a/les-jardins/declaration');
+
+        self::assertCount(0, $crawler->filter('.public__tabs'));
+        self::assertSame('Se connecter', trim($crawler->filter('.public__account')->text()));
     }
 
     private function association(string $slug): Organization

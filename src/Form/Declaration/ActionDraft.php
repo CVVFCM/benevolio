@@ -147,11 +147,26 @@ final class ActionDraft
         $draft = new self();
 
         if (null !== $volunteer) {
-            $draft->distanceKm = $volunteer->getDistanceKm() ?? 0;
-            $draft->fiscalPower = $volunteer->getFiscalPower();
-            $draft->electricVehicle = $volunteer->isElectricVehicle();
+            $draft->fillBlanksFrom($volunteer);
         }
 
         return $draft;
+    }
+
+    /**
+     * The profile's distance and vehicle, where the line has none yet: a distance of 0, no
+     * fiscal power. The electric flag goes with the fiscal power — a line with a power
+     * chosen already has its own answer. « Véhicule personnel » is never touched.
+     */
+    public function fillBlanksFrom(Person $volunteer): void
+    {
+        if (0 === $this->distanceKm) {
+            $this->distanceKm = $volunteer->getDistanceKm() ?? 0;
+        }
+
+        if (null === $this->fiscalPower) {
+            $this->fiscalPower = $volunteer->getFiscalPower();
+            $this->electricVehicle = $volunteer->isElectricVehicle();
+        }
     }
 }

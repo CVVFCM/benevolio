@@ -533,6 +533,34 @@ final class DeclarationFlowTest extends WebTestCase
         self::assertCount(0, $this->freshEntityManager()->getRepository(Declaration::class)->findAll());
     }
 
+    /**
+     * The draft is deep-cloned into the session, detaching the task each line holds; going
+     * back to the actions step then refused it as unmanaged and answered 500.
+     */
+    #[Test]
+    public function going_back_to_the_actions_step_keeps_the_chosen_task(): void
+    {
+        OrganizationFactory::createOne(['slug' => 'les-jardins']);
+        $this->client->request('GET', '/a/les-jardins/declaration');
+        $this->client->submitForm('Suivant', $this->personStep());
+        $chosen = $this->firstTaskId();
+        $this->client->submitForm('Suivant', [
+            self::FORM.'[actions][actions][0][task]' => $chosen,
+            self::FORM.'[actions][actions][0][title]' => 'Régate du printemps',
+            self::FORM.'[actions][actions][0][date]' => new DateTimeImmutable('-30 days')->format('Y-m-d'),
+            self::FORM.'[actions][actions][0][consecutiveDays]' => '1',
+            self::FORM.'[actions][actions][0][workHours]' => '2',
+            self::FORM.'[actions][actions][0][distanceKm]' => '0',
+            self::FORM.'[actions][actions][0][journeys]' => '0',
+        ]);
+        self::assertSelectorExists('[name="'.self::FORM.'[legal][accuracyAttested]"]');
+
+        $crawler = $this->client->submitForm('Précédent');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame($chosen, $crawler->filter('[name="'.self::FORM.'[actions][actions][0][task]"] option[selected]')->attr('value'));
+    }
+
     private function assertPageContainsText(string $needle): void
     {
         self::assertStringContainsString($needle, $this->client->getCrawler()->filter('body')->text());
