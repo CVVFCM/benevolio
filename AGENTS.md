@@ -22,15 +22,13 @@ similar and are accounted for completely differently:
 | **abandon de frais** — expenses the volunteer paid and waives reimbursement of (mileage, tolls, supplies) | A real flow: debit the charge by nature (**6251** *Voyages et déplacements*) / credit **4681** *Frais des bénévoles*, then debit **4681** / credit **75412** *Abandons de frais par les bénévoles* (art. 141-4) | **Yes** — this is what generates a CERFA. |
 | **dons en nature** — goods or services given | Off-balance-sheet **870** *Dons en nature* / **871** *Prestations en nature*, or **754x** when there is a real flow | Depends on which of the two it is. |
 
-**CORRECTED — this project had two of these wrong.** Règlement ANC 2018-06 **swapped**
-two numbers from the old 99-01, where 870 was *Bénévolat* and 875 *Dons en nature*. It
-is now the other way round: **bénévolat credits 875**, and 870 is *dons en nature*.
-Anything citing 864/870 for volunteer hours — including earlier versions of this
-file — is quoting the superseded text. The codes live in
+**Bénévolat credits 875, not 870.** Règlement ANC 2018-06 swapped two numbers from the
+old 99-01, where 870 was *Bénévolat* and 875 *Dons en nature*. Anything citing 864/870
+for volunteer hours is quoting the superseded text. The codes live in
 `App\Accounting\PcgAccount`, so no account number is written as a bare string.
 
-The receipt is **CERFA n°11580\*05**, form **2041-RD**. Numbering must be
-continuous per financial year and never reused.
+The receipt is **CERFA n°11580\*05**, form **2041-RD**. Numbering is continuous and
+never reused — see *The CERFA*.
 
 Two consequences that are easy to get wrong:
 
@@ -40,8 +38,7 @@ Two consequences that are easy to get wrong:
   n° 2022-1157 amended CGI art. 200, 1 ter so that from revenus 2022 a volunteer uses
   the **general salaried barème** (CGI ann. IV art. 6 B, *arrêté du 27 mars 2023*)
   — by puissance fiscale **and** distance band. The old flat 0,324 €/km bénévole
-  rate is abolished, and earlier versions of this file were wrong to call it a lower
-  scale of its own.
+  rate is abolished.
   **BOFiP BOI-IR-RICI-250-20 is stale**: still the 12/09/2012 version, still printing
   the old flat rate. Cite it for the conditions (§170), the justificatifs (§210) and
   the renonciation wording (§240) — never for figures.
@@ -51,8 +48,7 @@ Two consequences that are easy to get wrong:
   every association they drive for**, which nothing here can see: one association's
   records are not the volunteer's total. A flag computed from local kilometres would claim
   knowledge that does not exist. The band-1 rate is applied to what is declared, and the
-  volunteer's own situation is theirs to settle. (An earlier version carried a
-  `beyondFirstBand` flag and a warning on the ledger; both are gone.)
+  volunteer's own situation is theirs to settle.
 
 **Volunteers have no account.** They are not `User`s. They identify themselves by
 filling the first step of the public form under `/a/{organizationSlug}/declaration`.
@@ -75,21 +71,20 @@ differently, so never sum them together:
 | `journeys` | Number of **one-way** journeys — a return trip is two. Total distance is `distanceKm × journeys`. |
 | `fiscalPower` | An enum of the *barème* brackets (≤3 CV, 4, 5, 6, ≥7 CV), because the scale distinguishes only those. Required exactly when `ownVehicle` is true. **No euro rates anywhere**: the scale is republished yearly and belongs with valuation, keyed by financial year. |
 | `consecutiveDays` | The action may span several days from `date`. The action must be **over**: `DeclarationAction::endDateFor()` is the shared arithmetic, applied on the DTO *and* the entity, and it normalises to midnight — an end date of "today at 17:30" would otherwise read as later than "today". |
-| `task` | The *tâche effectuée* — a per-association **entity**, not an enum, carrying an optional hourly rate. See below. |
+| `task` | The *tâche effectuée* — a per-association **entity**, not an enum. Its hourly rate lives on the exercice, not on it. See below. |
 
 **Tasks are rows, not code.** `Task` is `TenantAware`; each association
 manages its own list in `/admin`. `App\Organization\DefaultTasks` seeds five
-starters (*Travaux, Régate, Encadrement, Arbitrage, Autre*) and is called from the
-**two** places an organization is born — the platform CRUD and
-`OrganizationFactory`. A `postPersist` listener would be one place instead of two,
-but persisting from inside `postPersist` needs a second flush and is fragile; the
-cost is that a third creation path would silently skip seeding, which
-`DefaultTasksTest` exists to catch.
+starters (*Travaux, Régate, Encadrement, Arbitrage, Autre*) and is called
+**explicitly** from the **three** places an organization is born — the platform CRUD,
+`app:organization:create` and `OrganizationFactory`. A `postPersist` listener would be
+one place instead of three, but persisting from inside `postPersist` needs a second
+flush and is fragile; the cost is that a fourth creation path would silently skip
+seeding, which `DefaultTasksTest` exists to catch.
 
-It was called `EventType` until it carried a rate, at which point "type of event"
-became the wrong noun: a rate belongs to a kind of *work*, not a kind of gathering.
-The occasion keeps its own free-text title on the line (`DeclarationAction::$title`),
-which is why *"Intitulé de l'événement"* is still the right label there.
+A task is a kind of *work*, not a kind of gathering: the occasion keeps its own free-text
+title on the line (`DeclarationAction::$title`), which is why *"Intitulé de l'événement"*
+is the label there.
 
 Deleting a task an action references is refused by the FK: a filed declaration must
 not lose the label it was filed under. Retire one with `active` instead — it
@@ -127,9 +122,9 @@ on plain integers; the int getters forms bind to (`getHourlyRateCents()`,
 
 `App\Entity\FiscalYear` owns them, because they change: the barème is republished by
 the state and an association revisits what an hour is worth. A rate on the `Task` would
-silently rewrite years already closed — lot 5 did exactly that and lot 6 undid it.
+silently rewrite years already closed.
 
-Each rate is a **default plus optional per-type overrides**, held as rows
+Each rate is a **default plus optional per-task or per-bracket overrides**, held as rows
 (`FiscalYearTaskRate`, `FiscalYearMileageRate`) rather than columns, so the override set
 stays sparse and adding a `FiscalPower` bracket needs no migration.
 `FiscalYear::hourlyRateFor()` and `::mileageRateFor()` are **the only places
@@ -164,10 +159,9 @@ both and be counted twice. That needs a repository lookup, so it is
 entity must not reach for a repository. Adjacent years are fine.
 
 A contribution belongs to an exercice by its **own start date**
-(`FiscalYear::contains()`), so a line spanning a year boundary belongs wholly to the
-year it began in. A line no
-exercice covers is stored and listed but **unvalued**: without a barème for the period
-there is no figure to state.
+(`FiscalYear::contains()`; the repository's SQL mirrors it), so a line spanning a year
+boundary belongs wholly to the year it began in. A line no exercice covers is stored and
+listed but **unvalued**: without a barème for the period there is no figure to state.
 
 ### Two accounting pages, and what each is for
 
@@ -196,12 +190,11 @@ by code that thinks in strings.
 
 ### What a volunteer types stays on the declaration until it is confirmed
 
-The public form is anonymous and recognises a returning volunteer by **email alone**. A
-submission used to overwrite that volunteer's name and address at once — so anyone who
-knew a volunteer's email could rewrite the identity printed on their next CERFA, without
-clicking anything.
+The public form is anonymous and recognises a returning volunteer by **email alone**. If a
+submission overwrote that volunteer's name and address at once, anyone who knew their
+email could rewrite the identity printed on their next CERFA without clicking anything.
 
-A `Declaration` now carries the name and address **as typed**
+So a `Declaration` carries the name and address **as typed**
 (`submittedFirstName`, `submittedLastName`, embedded `submittedAddress`).
 `DeclarationSubmitter` never touches an existing `Person`;
 `App\State\Listener\ApplySubmittedIdentityOnConfirmation` copies the typed identity to the
@@ -246,16 +239,35 @@ to.
   reachable from a pasted or prefetched link. The modal body is set
   through `data-action-confirmation-content`, which EasyAdmin's script reads for any
   action although only DELETE sets it natively.
-- `DeclarationState::isDecided()` means validated-or-refused. Awaiting confirmation
-  is *undecided but not actionable*, so anything asking "can a verdict be applied"
-  must check `isAwaitingConfirmation()` too — `DeclarationDecider` does.
 
-### Both state machines start unconfirmed
+### The two state machines
 
-`DeclarationAction` starts in `awaiting_confirmation` too, not `submitted` — it used
-to claim to be *soumise* before the volunteer had clicked anything.
-`App\State\Listener\DeclarationConfirmationCascade` listens for the declaration's
-`confirm` and moves every line with it.
+`Declaration` and each `DeclarationAction` run the same machine, separately:
+
+    awaiting_confirmation --confirm--> submitted --validate--> validated
+                                                 --refuse----> refused
+
+Both start unconfirmed: a line is not *soumise* before the volunteer has clicked
+anything. `App\State\Listener\DeclarationConfirmationCascade` listens for the
+declaration's `confirm` and moves every line with it. `validate` and `refuse` name
+`submitted` as their only source, so an unconfirmed declaration is undecidable without
+any guard.
+
+`isDecided()` means validated-or-refused. Awaiting confirmation is *undecided but not
+actionable*, so anything asking "can a verdict be applied" must check
+`isAwaitingConfirmation()` too — `DeclarationDecider` does.
+
+Nothing structural stops the two machines disagreeing, so
+`App\State\Listener\DeclarationTransitionGuard` blocks the whole-declaration verdict
+until every line already agrees with it. **Known consequence, accepted:** a genuinely
+mixed basket — one line validated, one refused — has no terminal state and stays
+*soumise*. If that becomes a problem the fix is a `partially_validated` state or a derived
+status, **not** weakening the guard. `{refused, submitted}` is *not* mixed: refusing the
+rest is still a coherent verdict, and `DeclarationDecider::refuseAll()` does it.
+
+`DeclarationDecider` is the only thing that applies a bulk verdict. It refuses an
+impossible one **up front** rather than discovering it mid-loop: a transaction would roll
+the database back, but the in-memory entities would already be mutated.
 
 Both enums share their behaviour through **`App\State\DeclarationLifecycle`**:
 `isAwaitingConfirmation()`, `isDecided()`, `label()`, `badgeStyle()`, and the two maps
@@ -328,10 +340,10 @@ browsers ignore `'unsafe-inline'` once a nonce is present.
 
 ### Deferred — do not assume these exist
 
-Not built yet, by explicit decision: accounting entries and their export, tax
-receipts, valuation rates and mission types, resending a confirmation link, and
-purging declarations never confirmed. On accounts: no login throttling and no per-IP
-limit (see *Rate limits*), no ownership transfer, no email change. When you add them, update this file.
+Not built yet, by explicit decision: exporting the écritures to accounting software,
+resending a confirmation link, purging declarations never confirmed, login throttling
+and any per-IP limit (see *Rate limits*), transferring ownership of an association, and
+changing an account's email. When you add one, update this file.
 
 ## Stack
 
@@ -383,9 +395,9 @@ Two resolvers run in priority order, first match wins:
 
 **The account is never a fallback for an address.** `UserTenantResolver` returns nothing
 for a request whose route carries `organizationSlug`: when that slug is unknown or the
-association inactive, the answer is "no tenant" and the page is a 404. It used to fall
-through, so a logged-in admin opening a mistyped public address got their own
-association's form and filed the declaration there. A resolver cannot claim a request
+association inactive, the answer is "no tenant" and the page is a 404 — otherwise a
+logged-in admin opening a mistyped public address would get their own association's form
+and file the declaration there. A resolver cannot claim a request
 and answer "none" — the next one is tried regardless — so any future strategy that must
 not stand in for another has to say so itself, the same way.
 
@@ -397,20 +409,19 @@ not stand in for another has to say so itself, the same way.
 - **`Organization` and `User` are not `TenantAware`.** `Organization` *is* the
   tenant; filtering `User` would break authentication, because the user provider
   runs before any tenant is known.
-- **`MyOrganizationCrudController` is the only CRUD under `/admin` on a
-  non-`TenantAware` entity**, and therefore the only one no filter protects: another
-  association's UUID in the URL would be editable. It checks the instance against
-  `TenantContext` on `detail()`, on `edit()` *and* in `updateEntity()`, and
-  `tests/Controller/Admin/MyOrganizationTest` proves all three. Anything similar must do
-  the same.
-- **`DeclarationAction` is the one documented exception**, by decision: it is
-  reached through its `Declaration`, which is tenant-scoped. The filter therefore
-  does *not* touch it, and anything querying it directly must scope itself. Three
-  places do, and all three are covered by
-  `tests/Controller/Admin/DeclarationActionIsolationTest`:
-  `createIndexQueryBuilder()` joins the declaration (index and autocomplete),
-  `Crud::setEntityPermission()` runs `DeclarationActionVoter` (detail), and the
-  custom transition actions check for themselves — because
+- **`MyOrganizationCrudController` is on a non-`TenantAware` entity**, so no filter
+  protects it: another association's UUID in the URL would be editable. It checks the
+  instance against `TenantContext` on `detail()`, on `edit()` *and* in `updateEntity()`;
+  `tests/Controller/Admin/MyOrganizationTest` covers the first two, and the third is the
+  same check once more before writing. Anything similar must do the same.
+- **`DeclarationAction` is not `TenantAware`**, by decision: it is reached through its
+  `Declaration`, which is. (`FiscalYearTaskRate` and `FiscalYearMileageRate` are the same
+  case, reached through their exercice and edited only on its form.) The filter therefore
+  does *not* touch a line, and anything querying it directly must scope itself. Three
+  places do, covered by `tests/Controller/Admin/DeclarationActionIsolationTest`:
+  `createIndexQueryBuilder()` joins the declaration (index, and the autocomplete that
+  shares it), `Crud::setEntityPermission()` runs `DeclarationActionVoter` (detail), and
+  the custom transition actions check for themselves — because
   **`setEntityPermission()` does not cover custom CRUD actions**: EasyAdmin marks
   the entity inaccessible and hands the action a `null` instance instead of
   refusing the request. If you ever give this entity an `organization` FK, delete
@@ -438,8 +449,9 @@ not stand in for another has to say so itself, the same way.
 - `/platform` — manages the associations themselves. `ROLE_SUPER_ADMIN` only.
 
 `/platform` runs unfiltered not by bypassing the filter but because a super-admin
-is attached to no organization, so nothing arms it. Keep it that way: a
-super-admin must never be given an `Organization`.
+is attached to no organization, so nothing arms it. Keep it that way: **an account is
+one or the other, never both** — a super-admin given an `Organization` would scope the
+whole platform to it. `app:user:create` refuses that combination.
 
 EasyAdmin registers **every** CRUD controller under **every** dashboard by
 default. The `deniedControllers` list on `App\Controller\Admin\DashboardController`
@@ -573,8 +585,8 @@ error followed them.
 
 **TRAP — EasyAdmin's actions dropdown ignores an action's template.** It renders its own
 `<a>` or `<form>`, so a custom template carrying a CSRF token is silently bypassed and the
-action posts without it. Both user CRUDs call `showEntityActionsInlined()` for that reason;
-« Renvoyer l'invitation » was broken on `/admin`'s list until this was found.
+action posts without it. Both user CRUDs call `showEntityActionsInlined()` for that reason,
+and `ActionTokenGuardTest` checks every CRUD with a token-carrying button.
 
 ### EasyAdmin prints three things raw — escape what people typed
 
@@ -627,21 +639,30 @@ the test enforces the last two.
 ## Layout
 
 - `src/Entity/` — domain model
-- `src/ValueObject/` — self-validating value objects (`Address`, `Email`). Also a
-  Doctrine mapping, because `Address` is an `#[ORM\Embeddable]`.
+- `src/ValueObject/` — value objects: `Address`, `Email` (self-validating; `Address` is
+  also an `#[ORM\Embeddable]`), and the figures `Money`, `HourlyRate`, `MileageRate`,
+  `WorkHours` — see *Money*
 - `src/Enum/` — closed business sets (`FiscalPower`)
-- `src/State/` — finite state enums, and `Listener/` for their guards and cascades
+- `src/State/` — finite state enums, the `DeclarationLifecycle` trait they share, and
+  `Listener/` for their guards and cascades
 - `src/Repository/` — Doctrine repositories
 - `src/Controller/` — invokable controllers; `Admin/` and `Platform/` hold the two
-  EasyAdmin dashboards, `Public/` the anonymous volunteer pages
+  EasyAdmin dashboards, `Public/` the anonymous volunteer pages, `Security/` login
+  links and passwords
 - `src/Form/` — form types and the DTOs they bind to
 - `src/Declaration/` — the declaration use cases (`DeclarationSubmitter`,
   `DeclarationConfirmer`, `DeclarationDecider`) and their exceptions
-- `src/Organization/` — organization-level services (`DefaultTasks`)
+- `src/Accounting/` — valuation and the two ledger pages (`ContributionValuator`,
+  `Ledger`, `LedgerSummary`, `PcgAccount`)
+- `src/Receipt/` — the CERFA: the yearly run, eligibility, numbering, PDF and storage
+- `src/Organization/` — organization-level services (`DefaultTasks`, `SignatureFactory`)
 - `src/User/` — back-office account services (`OwnerAssigner`, `LoginLinkMailer`)
 - `src/Tenant/` — tenant contract, resolvers, context, request listener
 - `src/Doctrine/Filter/` — the tenant SQL filter; `src/Doctrine/Type/` — DBAL types
-- `src/Security/` — roles, voters
+- `src/Security/` — roles, voters, the CSP and action-token listeners
+- `src/Validator/` — constraints that need a service (`FiscalYearDoesNotOverlap`,
+  `OneOwnerPerOrganization`)
+- `src/Twig/` — the `euros`/`hours` filters, `csp_nonce()`, `admin_action_token()`
 - `src/Factory/` — Foundry factories (used by both tests and fixtures)
 - `src/Exception/` — `ExceptionInterface` and shared exceptions
 - `src/Command/` — the console commands that bootstrap a fresh instance; see
@@ -675,11 +696,10 @@ each linking to its declaration form.
 - **Screenshots are static**, `assets/images/landing/*.webp`: captured from the dev
   fixtures (fake names) at 1280 × 800 in the light theme, converted with Pillow. They go
   stale when the screens change; retake them the same way rather than editing them.
-- **Logging in no longer lands on `/`.** `form_login`'s `default_target_path` is
-  `backoffice` (`/espace`, `App\Controller\BackofficeController`), which sends a
-  super-admin to `/platform` and anyone else to `/admin`. Before the home page existed, a
-  plain login landed on a 404 in production; the home page's « Espace administrateur »
-  link uses the same route.
+- **Logging in lands on `/espace`, not `/`.** `form_login`'s `default_target_path` is
+  `backoffice` (`App\Controller\BackofficeController`), the one place that sends a
+  super-admin to `/platform` and anyone else to `/admin`. Saving a chosen password and
+  the home page's « Espace administrateur » link go through the same route.
 
 ## The public declaration form
 
@@ -730,12 +750,10 @@ which is when a loud failure is wanted.
 « Reçus fiscaux » in the back office (`ReceiptCrudController::chooseYear` → `generate`) or
 from `app:receipts:generate <year> --organization=<slug>`.
 
-Lot 7 did it the other way — one receipt per declaration, dispatched when the declaration
-was validated — and that could not work. A volunteer files several declarations a year and
+**Never one receipt per declaration.** A volunteer files several declarations a year and
 carries **one** figure to their income-tax return (CGI art. 200 applies to the *revenus* of
-a calendar year), and no receipt can be complete before the year has ended. The listener,
-the `IssueReceipt` message and its handler are gone; `Declaration` has no receipt relation
-and no withheld reason. Do not reintroduce a per-declaration hook.
+a calendar year), and no receipt can be complete before the year has ended. `Declaration`
+has no receipt relation; do not add a per-declaration hook.
 
 **The civil year is not the exercice.** An association may run September to August; the
 ledger follows that, the receipt does not. Each line is priced by the exercice covering
@@ -795,8 +813,8 @@ failure on the twelfth must not undo the first eleven.
 
 The object key is `receipts/<year>/cerfa-firstname-lastname-<number>.pdf` — `receipts/` from
 the flysystem prefix, in the bucket `benevolio`. The number in the key is what makes it safe:
-a reissue no longer overwrites the earlier PDF, and two volunteers sharing a name no longer
-collide. The collision lot 7 accepted is closed.
+a reissue does not overwrite the earlier PDF, and two volunteers sharing a name do not
+collide.
 
 **The mail goes out inside the run**, one per volunteer, in series. That is an accepted cost:
 fifty volunteers means fifty PDFs and fifty mails in one request, which is why
@@ -843,8 +861,8 @@ baseline. A `max-inline-size`/`max-block-size` pair with no width or height keep
 aspect ratio, so a wide scanned signature and a square stamp both fit.
 
 The « Date et signature » box is at **x 106.9→184.1 mm, y 216.2→233.4 mm**, found by pixel
-scan of a render — it is vector, so `pdftotext` reports nothing for it. The date run lot 7
-placed already occupies x 109→128.2, so the image goes to its right.
+scan of a render — it is vector, so `pdftotext` reports nothing for it. The date already
+occupies x 109→128.2, so the image goes to its right.
 
 The signature is embedded as a `data:` URI. It has to be: Gotenberg renders the layer in a
 container that cannot reach this application, so a URL comes back as a broken image on a
@@ -909,11 +927,6 @@ containers, and three details are what make that work:
   `initialBuckets` is silently ignored under a wrong name, and the first PUT would 404
   mid-test.
 
-**TRAP in mail assertions:** the mailer records a `MessageEvent` when a message is queued
-*and* again when it is sent, so `getEvents()->getMessages()` returns the same mail twice.
-Filter on `!$event->isQueued()` — an `assertCount(1)` on the messages fails against
-perfectly correct behaviour.
-
 ## Running (Docker, via Makefile)
 
 **Use the Makefile, not raw `docker compose`** (except `docker compose logs`).
@@ -929,7 +942,7 @@ make stan         # PHPStan
 make cs           # Fix code style (php-cs-fixer + twig-cs-fixer + eslint + stylelint)
 make cs-check     # Same, read-only — what CI runs
 make lint         # lint:container, lint:yaml, lint:twig, lint:xliff, schema:validate
-make qa           # Everything CI runs
+make qa           # Everything CI runs, except hadolint and the image build
 make clean        # Stop containers, remove all data/volumes/vendor
 ```
 
@@ -947,17 +960,12 @@ fixture accounts `super-admin@benevolio.test` (the platform, `/platform`) and
 `App\Factory\UserFactory::DEFAULT_PASSWORD`. The association's public form is at
 `/a/cvvfcm/declaration`.
 
-An account is one or the other, never both: a platform super-admin is attached to no
-association — `App\Tenant\UserTenantResolver` reads the association off the account to
-arm the tenant filter, so giving one an organization would scope the whole platform
-backoffice to it. `app:user:create` refuses that combination outright.
-
 **Password rules are deliberately weak**, and this applies in production too:
 minimum `User::PASSWORD_MIN_LENGTH` (8) characters, and nothing else — on
 « Choisissez votre mot de passe » as in the command.
-`Assert\NotCompromisedPassword` was removed — it called haveibeenpwned on every
-write, which meant the account commands needed network egress and a well-known
-development password could not be used. Re-adding it means re-adding
+There is no `Assert\NotCompromisedPassword`: it calls haveibeenpwned on every write, so
+the account commands would need network egress and a well-known development password
+could not be used. Adding it means adding
 `not_compromised_password: false` for the test environment at the same time; see
 `config/packages/validator.yaml`.
 
@@ -991,11 +999,9 @@ the keys to this database.
 **Object storage and Gotenberg are chart-configured, and both refuse to render when
 they are not.** `app.s3Endpoint` / `s3Region` / `s3Bucket` land in the ConfigMap,
 `secrets.s3Key` / `s3Secret` in the Secret, and CD fills the last two from the
-Scaleway organization secrets. They are `required` for the same reason
-`secrets.mailerDsn` is, and worse: the defaults in
-`config/packages/flysystem.yaml` are the *development* ones, so an unset key does
-not fail — it signs a request to **AWS** with the literal key `s3mock` and the
-receipt is lost. The bucket must already exist; nothing in the chart creates it.
+Scaleway organization secrets. They are `required` because the defaults are the
+development ones and an unset key would not fail — see *S3 configuration*. The bucket
+must already exist; nothing in the chart creates it.
 
 The chart ships **its own Gotenberg** (`gotenberg.enabled`, ClusterIP only —
 it renders whatever HTML it is handed, so it must never be exposed).
@@ -1005,7 +1011,7 @@ first validated declaration.
 
 **The database is CloudNativePG, declared by the chart.** The operator is installed
 cluster-wide (`cnpg-system`) and is not part of this chart; `templates/database-cluster.yaml`
-declares one `Cluster`, `benevolio-db`. It replaced Neon, which replaced a Bitnami subchart.
+declares one `Cluster`, `benevolio-db`.
 
 - **No database credential goes through CD.** The operator generates the owner's password
   into the Secret `benevolio-db-app`, and the web pods and the migration Job build
@@ -1032,19 +1038,14 @@ declares one `Cluster`, `benevolio-db`. It replaced Neon, which replaced a Bitna
   the bucket. Restore:
   `pg_restore --clean --if-exists --no-owner --no-acl -d "$URI" benevolio-….dump`.
 
-**The mailer DSN is shape-checked at render time, not merely required.** Being
-non-empty was not enough: `MAILER_DSN` was once set to the whole environment line,
-`MAILER_DSN=brevo+api://…`, which passed `required`, deployed green, satisfied
-every probe, and then threw *"The mailer DSN must contain a scheme"* on the
-volunteer's first page load — a 500 on the only page the public uses, while
-`/admin` and `/health` stayed fine. `templates/secret.yaml` now refuses a
-`mailerDsn` without a scheme and names the offending prefix. Keep that guard on any DSN added later.
-
-**`secrets.mailerDsn` is `required` in the chart, on purpose.** Since a declaration
-is only final once the volunteer opens an emailed link, an instance that cannot
-send mail is an instance in which nothing can be declared. Symfony's default
-`null://null` would swallow every message without an error, so the chart refuses to
-render instead of letting the failure be silent.
+**`secrets.mailerDsn` is required, and shape-checked at render time.** A declaration is
+only final once the volunteer opens an emailed link, so an instance that cannot send mail
+is one in which nothing can be declared — and Symfony's default `null://null` would
+swallow every message without an error. Non-empty is not enough either: a value pasted as
+the whole line, `MAILER_DSN=brevo+api://…`, deploys green, satisfies every probe, and
+throws *"The mailer DSN must contain a scheme"* on the public form only.
+`templates/secret.yaml` refuses a `mailerDsn` without a scheme and names the offending
+prefix. Keep that guard on any DSN added later.
 
 **`MAIL_FROM` is the platform's own address**, `benevolat@cvvfcm.fr` by default,
 configured deployment-wide (`app.mailFrom`, `MAIL_FROM` in `.env`) and **not** per
@@ -1062,10 +1063,8 @@ request URI and in the `Referer` header, where the same URL reappears on the nex
 Anyone able to read the pod's log could otherwise replay an invitation nobody had opened
 yet. A new link that authenticates by its URL needs adding to that regexp.
 
-**Kubernetes probes `/health`** (`App\Controller\HealthController`). There was nothing
-else safe to probe: `/` was not routed then, so the chart's original probe on it 404'd
-forever and the pod never turned ready. `/` is the public home page now and still must not
-be probed — it queries the database. The endpoint **does not touch the database** — the same URL
+**Kubernetes probes `/health`** (`App\Controller\HealthController`), not `/`, which
+queries the database. The endpoint **does not touch the database** — the same URL
 backs the liveness probe, and failing it on a database blip would restart every pod
 over something the application does not control. Do not "improve" it into a tenant
 URL either: `/a/<slug>/declaration` cannot answer before an organization exists (so
@@ -1117,10 +1116,12 @@ then invite the others from « Administrateurs » without anyone touching a pass
 - **Route names** are bare and meaningful — no `app_` prefix, it carries no
   information.
 - **HTTP verbs** use `Request::METHOD_*`, never string literals.
-- **UI is French.** Code identifiers are English. User-facing strings live in
-  `translations/*.fr.xlf` (`messages` for the app, `admin` for EasyAdmin);
-  Symfony already ships `validators.fr.xlf` and `security.fr.xlf`, so do not
-  duplicate those.
+- **UI is French; code identifiers are English.** User-facing strings are **written in
+  place, in French** — in templates, controllers and constraint messages. The application
+  is French-only and the legal vocabulary has no useful translation. `translations/*.fr.xlf`
+  holds the keys that already exist (`messages` for the app, `admin` for EasyAdmin); a
+  template that reads from it keeps doing so, but nothing is moved there. Symfony ships
+  `validators.fr.xlf` and `security.fr.xlf`; do not duplicate those.
 
 ### Uploaded files
 
@@ -1165,44 +1166,24 @@ loses them at the next deployment.
   allocates 4 bytes per pixel *the moment it decodes*. Checked before decoding; refusing is a
   message, discovering it inside GD is a fatal error mid-request.
 - `ext-gd` is required (Dockerfile and CI both install it), `upload_max_filesize`/`post_max_size`
-  are raised in `.infra/docker/php/conf.d`, and `memory_limit` is 256M for the decode. **That
-  ini file was never copied into the image before this** — production ran on PHP's bare
-  defaults, which is why a 2 MB signature came back as an empty field. And a trap worth
-  remembering: a `#` comment containing parentheses is a **syntax error** in php.ini, and PHP
-  then ignores the whole file — comments there start with `;`.
+  are raised in `.infra/docker/php/conf.d`, and `memory_limit` is 256M for the decode. The
+  Dockerfile copies that file into the image; without it production runs on PHP's bare
+  defaults and a 2 MB signature comes back as an empty field. **TRAP:** a `#` comment
+  containing parentheses is a **syntax error** in php.ini, and PHP then ignores the whole
+  file — comments there start with `;`.
 - Raster only. An SVG is markup and has no business in a stamped PDF.
 
 ### State machines (finite)
 
-The state enum implements `Finite\State` and declares its own transitions — see
-`src/State/DeclarationActionState.php` for the live example. Put behaviour on the
-enum as methods rather than testing the state in domain code. Guards and side
-effects are PSR-14 listeners on `CanTransitionEvent` / `PostTransitionEvent`, i.e.
-ordinary Symfony listeners.
+A state enum implements `Finite\State` and declares its own transitions; behaviour lives
+on the enum as methods rather than as state tests in domain code. Guards and side effects
+are PSR-14 listeners on `CanTransitionEvent` / `PostTransitionEvent`, i.e. ordinary
+Symfony listeners. The two declaration machines are described under *The two state
+machines*.
 
 **Entities have no `setState()`.** Finite writes the state property through
 reflection, so a setter would exist only as a way to bypass the machine and its
 guard. Go through `Finite\StateMachine::apply()`.
-
-### The two declaration machines, and the guard between them
-
-`Declaration` runs `awaiting_confirmation → submitted → validated | refused`;
-`DeclarationAction` runs `submitted → validated | refused`. Because `validate` and
-`refuse` name `submitted` as their only source, an unconfirmed declaration is
-undecidable without any guard. Nothing structural stops them disagreeing, so
-`App\State\Listener\DeclarationTransitionGuard` blocks the whole-declaration
-verdict until every line already agrees with it.
-
-**Known consequence, accepted:** a genuinely mixed basket — one line validated,
-one refused — has no terminal state and stays *soumise*. If that becomes a
-problem the fix is a `partially_validated` state or a derived status, **not**
-weakening the guard. Note that `{refused, submitted}` is *not* mixed: refusing the
-rest is still a coherent verdict, and `DeclarationDecider::refuseAll()` does it.
-
-`DeclarationDecider` is the only thing that applies a bulk verdict. It refuses an
-impossible one **up front** rather than discovering it mid-loop: a transaction
-would roll the database back, but the in-memory entities would already be mutated,
-which is nasty to leave behind on a request that continues.
 
 `FiniteBundle` is **deliberately not registered**: `yohang/finite` 2.0.0
 overrides `Bundle::registerCommands()` and calls `Application::add()`, which
@@ -1260,7 +1241,8 @@ Use every quality keyword the language offers:
 not finished — same rule as the linters.
 
 - **Unit/integration**: `KernelTestCase`, with a real repository and database.
-  `MockHttpClient` for outbound HTTP, `MockClock` for time.
+  `MockHttpClient` for outbound HTTP. Dates are relative to today (`-30 days`), never
+  fixed, so a test does not expire.
 - **Functional**: `WebTestCase` through the real HTTP entry point.
 - **All test data comes from Foundry factories** in `src/Factory/`, never
   hand-built entities.
@@ -1271,35 +1253,26 @@ not finished — same rule as the linters.
 Test method names are `snake_case` (`.php-cs-fixer.dist.php` overrides
 `@Symfony` for this — long descriptive names read better that way).
 
-Two traps, both already handled but worth knowing:
+Harness traps:
 
 - `tests/bootstrap.php` forces `APP_ENV=test` **before** loading `.env`. PHPUnit
   applies its `<server>` block *after* the bootstrap file, so `.env`'s
   `APP_ENV=dev` would otherwise win and the kernel would boot in dev.
-- In a `WebTestCase`, call `self::createClient()` **before** any factory. Foundry
-  boots the kernel on first persist, and `WebTestCase` refuses to build a client
-  once the kernel is booted. Create the client in `setUp()`.
-
-Three harness traps that have already bitten:
-
+- **Create the client before any factory.** In a `WebTestCase`, Foundry boots the kernel
+  on first persist, and `WebTestCase` refuses to build a client once the kernel is
+  booted. Create it in `setUp()`.
 - **Do not put a Doctrine entity in a `FormFlow` DTO and expect it to stay
   managed.** The draft lives in the session between steps and `SessionDataStorage`
   deep-clones it, which detaches the entity — persisting it then fails with "A new
   entity was found through the relationship". `DeclarationSubmitter` re-fetches the
-  event type for exactly this reason, which also re-checks the tenant.
-
-
-- **Create the client before any factory.** Foundry boots the kernel on first
-  persist and `WebTestCase` refuses to build a client afterwards. Create it in
-  `setUp()`.
-- **Clear the EntityManager before a request that reads a collection you just
-  built.** `WebTestCase` shares its EntityManager with the requests it makes, and
-  Foundry's `createMany()` leaves the *inverse* side stale — three rows created,
-  one element in the collection. Through the identity map the controller gets that
-  same object, so "validate all" once saw one line out of three and the guard was
-  satisfied by a collection that did not match the database. A real request always
-  gets a fresh EntityManager, so this is a harness artefact — but it makes tests
-  lie, which is worse than failing.
+  task for exactly this reason, which also re-checks the tenant.
+- **Clear the EntityManager before a request that reads what you just built.**
+  `WebTestCase` shares its EntityManager with the requests it makes. Foundry's
+  `createMany()` leaves the *inverse* side stale — three rows created, one element in the
+  collection — and a cross-tenant row already in the identity map reaches the controller
+  without the tenant filter ever seeing a query. A real request always gets a fresh
+  EntityManager, so this is a harness artefact — but it makes tests lie: an isolation test
+  once passed while the real request answered 500.
 - **A test helper that reads the database must disable the tenant filter.** The
   filter is request-scoped, so after a request to another association's URL a plain
   `findAll()` returns nothing — the filter working correctly, and the helper
@@ -1309,19 +1282,19 @@ Both are handled once, in `tests/Support/`: **`ReloadsEntities`** (`reload()`,
 `findOne()`, `findAllOf()` — every read clears the EntityManager and switches the
 filter off), **`LogsInAdmins`**, **`ReadsAdminPages`** (page text, detail URLs, the
 tokens buttons post) and **`WalksDeclarationFlow`** (the public form, step by step).
-Use them rather than writing a private copy; the copies had already drifted apart.
+Use them rather than writing a private copy.
 For factories: `PersonFactory::for()`, and `DeclarationActionFactory::withWaivedTravel()`
 / `onFoot()` for the two shapes of line most tests need.
 
 Also: `Foundry`'s `defaults()` is evaluated whether or not the caller overrides
 the keys it sets. Creating an entity in there to make two attributes consistent
-produces one orphan per object built — `DeclarationActionFactory` learned this the
-expensive way and now exposes `for()` / `forDeclaration()` instead.
+produces one orphan per object built — hence `DeclarationActionFactory::for()` /
+`forDeclaration()` rather than a guess in `defaults()`.
 
-And a **factory instance** used for two keys is created twice. `DeclarationFactory`
-handed one `OrganizationFactory::new()` to both the declaration and its person, which
-filed them under two associations. When two defaults must agree, share a
-`memoize(...)`d value — lazy, so nothing is created when the caller overrides both.
+And a **factory instance** used for two keys is created twice: one
+`OrganizationFactory::new()` handed to both a declaration and its person files them under
+two associations. When two defaults must agree, share a `memoize(...)`d value — lazy, so
+nothing is created when the caller overrides both (see `DeclarationFactory`).
 
 To test what happens when Gotenberg goes down part-way, `App\Tests\Support\FailingGotenberg`
 swaps in a client that renders N documents and then cannot connect. `GotenbergClient` is
@@ -1338,7 +1311,7 @@ memory size exhausted"*. Set there rather than on a command line, so CI gets it 
 
 All produced code MUST pass every check CI runs
 (`.github/workflows/ci.yaml`). A change that fails any of them is not finished.
-`make qa` runs the lot.
+`make qa` runs all of them except hadolint.
 
 - **PHPStan** — level max + bleedingEdge + strict-rules, symfony, doctrine and
   phpunit extensions: `make stan`
@@ -1352,8 +1325,7 @@ All produced code MUST pass every check CI runs
 provably wrong, use a narrow inline `@phpstan-ignore` with a comment explaining
 why — see `App\Receipt\AmountInWords`, where PHPStan resolves `NumberFormatter` to
 Symfony's polyfill while ext-intl is what actually runs. PHPStan also reports an ignore
-that no longer matches anything, so a suppression cannot outlive its reason: the one on
-`Kernel::getAllowedEnvs()` went that way.
+that no longer matches anything, so a suppression cannot outlive its reason.
 
 `config/reference.php` is auto-generated and excluded from php-cs-fixer;
 formatting it would be undone on the next regeneration.
