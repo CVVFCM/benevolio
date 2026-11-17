@@ -83,7 +83,11 @@ final class DashboardController extends AbstractDashboardController
     public function configureDashboard(): Dashboard
     {
         return Dashboard::new()
-            ->setTitle($this->tenantContext->getOrganization()->getName())
+            // Escaped: EasyAdmin prints the title raw, on every page, and the name
+            // is editable from « Mon association ». Unescaped, any admin could run
+            // script in the session of whoever opens this back office — including a
+            // platform super-admin using « Se connecter en tant que ».
+            ->setTitle(htmlspecialchars($this->tenantContext->getOrganization()->getName()))
             ->setTranslationDomain('admin')
             ->setLocales(['fr'])
             // Paths, not absolute URLs, and this is load-bearing in production.

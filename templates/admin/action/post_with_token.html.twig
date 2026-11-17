@@ -1,0 +1,29 @@
+{#
+    An EasyAdmin action as a POST form carrying a CSRF token — for the buttons that
+    rule on a declaration or one of its lines. renderAsForm() emits the form but no
+    token, and a verdict feeds the tax receipts, so it is not left to SameSite
+    cookies alone: as a GET link, any page the treasurer had open, or a mail scanner
+    following a link, could have validated a declaration.
+
+    The token id is App\Security\AdminActionToken::id(): action name + row id.
+
+    TRAP: EasyAdmin's actions dropdown ignores this template and renders its own
+    form, without the token. Any CRUD using it must call showEntityActionsInlined().
+
+    A confirmation modal still works: EasyAdmin's script intercepts the click on the
+    button (data-action-confirmation) and, once confirmed, submits the enclosing form.
+#}
+{# @var action \EasyCorp\Bundle\EasyAdminBundle\Dto\ActionDto #}
+{# @var entity \EasyCorp\Bundle\EasyAdminBundle\Dto\EntityDto #}
+<form method="post" action="{{ action.linkUrl }}" class="d-inline">
+    <input type="hidden" name="{{ constant('App\\Security\\AdminActionToken::FIELD') }}" value="{{ csrf_token(constant('App\\Security\\AdminActionToken::PREFIX') ~ action.name ~ '-' ~ entity.primaryKeyValue) }}">
+    <twig:ea:Button
+        variant="{{ action.variant }}"
+        class="{{ action.cssClass }}"
+        {{ ...action.htmlAttributes|ea_html_attrs|filter(v => v is not null) }}
+        type="submit"
+        icon="{{ action.icon }}"
+    >
+        <span class="action-label">{{ action.label|trans }}</span>
+    </twig:ea:Button>
+</form>

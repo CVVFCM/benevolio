@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Entity\DeclarationAction;
+use App\Security\AdminActionToken;
 use App\Security\Voter\DeclarationActionVoter;
 use App\State\DeclarationActionState;
 use App\Tenant\TenantContext;
@@ -85,7 +86,10 @@ final class DeclarationActionCrudController extends AbstractCrudController
             ->setSearchFields(['title', 'description'])
             // Guards detail/edit/delete, which do not go through
             // createIndexQueryBuilder(). See the class docblock.
-            ->setEntityPermission(DeclarationActionVoter::VIEW);
+            ->setEntityPermission(DeclarationActionVoter::VIEW)
+            // Inlined: the dropdown renders its own <form> and ignores an action's
+            // template, so the verdict buttons would post without their CSRF token.
+            ->showEntityActionsInlined();
     }
 
     /**
@@ -107,10 +111,17 @@ final class DeclarationActionCrudController extends AbstractCrudController
     {
         $validate = Action::new(self::ACTION_VALIDATE, 'Valider', 'fa fa-check')
             ->linkToCrudAction(self::ACTION_VALIDATE)
+            // POST with a token, never a link: see post_with_token.html.twig.
+            ->renderAsForm()
+            ->setTemplatePath('admin/action/post_with_token.html.twig')
             ->displayIf(fn (DeclarationAction $action): bool => $this->stateMachine->can($action, DeclarationActionState::TRANSITION_VALIDATE));
 
         $refuse = Action::new(self::ACTION_REFUSE, 'Refuser', 'fa fa-xmark')
             ->linkToCrudAction(self::ACTION_REFUSE)
+            ->renderAsForm()
+            ->setTemplatePath('admin/action/post_with_token.html.twig')
+            ->asDangerAction()
+            ->askConfirmation('Refuser cette action ?', 'Refuser')
             ->displayIf(fn (DeclarationAction $action): bool => $this->stateMachine->can($action, DeclarationActionState::TRANSITION_REFUSE));
 
         return $actions
@@ -169,25 +180,25 @@ final class DeclarationActionCrudController extends AbstractCrudController
      *
      * @param AdminContext<DeclarationAction> $context
      */
-    #[AdminRoute(path: '/{entityId}/validate', name: 'validate', options: ['methods' => ['GET']])]
+    #[AdminRoute(path: '/{entityId}/validate', name: 'validate', options: ['methods' => ['POST']])]
     public function validateAction(AdminContext $context): Response
     {
-        return $this->applyTransition($context, DeclarationActionState::TRANSITION_VALIDATE);
+        return $this->applyTransition($context, self::ACTION_VALIDATE, DeclarationActionState::TRANSITION_VALIDATE);
     }
 
     /**
      * @param AdminContext<DeclarationAction> $context
      */
-    #[AdminRoute(path: '/{entityId}/refuse', name: 'refuse', options: ['methods' => ['GET']])]
+    #[AdminRoute(path: '/{entityId}/refuse', name: 'refuse', options: ['methods' => ['POST']])]
     public function refuseAction(AdminContext $context): Response
     {
-        return $this->applyTransition($context, DeclarationActionState::TRANSITION_REFUSE);
+        return $this->applyTransition($context, self::ACTION_REFUSE, DeclarationActionState::TRANSITION_REFUSE);
     }
 
     /**
      * @param AdminContext<DeclarationAction> $context
      */
-    private function applyTransition(AdminContext $context, string $transition): Response
+    private function applyTransition(AdminContext $context, string $actionName, string $transition): Response
     {
         // Crud::setEntityPermission() does NOT cover custom CRUD actions: EasyAdmin
         // marks the entity inaccessible and hands over a null instance rather than
@@ -209,7 +220,12 @@ final class DeclarationActionCrudController extends AbstractCrudController
         // rest solely on EasyAdmin having applied the permission upstream.
         $this->denyAccessUnlessGranted(DeclarationActionVoter::VIEW, $action);
 
-        if ($this->stateMachine->can($action, $transition)) {
+        $token = $context->getRequest()->request->getString(AdminActionToken::FIELD);
+
+        if (!$this->isCsrfTokenValid(AdminActionToken::id($actionName, $action->getId()), $token)) {
+            // Most likely a page left open past the session; nothing has changed.
+            $this->addFlash('danger', 'La page a expiré. Rechargez-la et recommencez.');
+        } elseif ($this->stateMachine->can($action, $transition)) {
             $this->stateMachine->apply($action, $transition);
             $this->entityManager->flush();
 

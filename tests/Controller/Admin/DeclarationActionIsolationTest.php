@@ -100,7 +100,7 @@ final class DeclarationActionIsolationTest extends WebTestCase
         $theirs = $this->actionFor($this->organization('les-voiles'), 'Leur action');
         $this->loginAsAdminOf($mine->getOrganization());
 
-        $this->client->request('GET', '/admin/declaration-action/'.$theirs->getId()->toRfc4122().'/validate');
+        $this->client->request('POST', '/admin/declaration-action/'.$theirs->getId()->toRfc4122().'/validate');
 
         self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
     }

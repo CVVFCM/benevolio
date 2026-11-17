@@ -1,0 +1,45 @@
+{#
+    EasyAdmin's flash messages, escaped.
+
+    A copy of @EasyAdmin/flash_messages.html.twig with ONE change: the message is
+    printed through Twig's autoescape instead of `|raw`. The vendor template prints
+    every flash as HTML, and ours interpolate what a volunteer typed on the public
+    form — a name, an action title — so a typed <img onerror=…> ran as script in the
+    treasurer's session the moment they confirmed or validated.
+
+    Escaping here rather than at each addFlash() covers the flash nobody has written
+    yet. The cost: a flash cannot carry a link or bold text. None does.
+
+    ON AN EASYADMIN UPGRADE: diff this against the vendor file and carry over anything
+    but the `|raw`. tests/Controller/Admin/NoRawUserTextTest fails if the override
+    stops applying.
+#}
+{% set ea = ea() %}
+{% trans_default_domain null != ea ? ea.i18n.translationDomain : (translation_domain is defined ? translation_domain ?? 'messages') %}
+
+{% set flash_messages = app.flashes %}
+
+{% if flash_messages|length > 0 %}
+    <div id="flash-messages">
+        {% for label, messages in flash_messages %}
+            {% for message in messages %}
+                {# flash messages can be plain strings or arrays with 'message', 'title' and 'icon' keys,
+                   e.g. $this->addFlash('success', ['message' => '...', 'icon' => 'fa-circle-check']) #}
+                {# the message and title must be translated outside of the Twig component because
+                   the trans_default_domain value is ignored inside the component #}
+                {% if message is iterable %}
+                    {% set flash_icon = message.icon ?? null %}
+                    {% set flash_title = message.title is defined ? message.title|trans : null %}
+                    {% set flash_message = (message.message ?? '')|trans %}
+                {% else %}
+                    {% set flash_icon = null %}
+                    {% set flash_title = null %}
+                    {% set flash_message = message|trans %}
+                {% endif %}
+                <twig:ea:Alert variant="{{ label }}" :icon="flash_icon" :title="flash_title" withDismissButton>
+                    {{ flash_message }}
+                </twig:ea:Alert>
+            {% endfor %}
+        {% endfor %}
+    </div>
+{% endif %}

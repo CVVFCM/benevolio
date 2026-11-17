@@ -189,7 +189,9 @@ final class FiscalYearCrudController extends AbstractCrudController
             ->formatValue(static function (mixed $value, FiscalYear $year): string {
                 $parts = [];
                 foreach ($year->getTaskRates() as $rate) {
-                    $parts[] = $rate->getTask()->getName().' : '.self::formatEuros($rate->getHourlyRateCents());
+                    // Escaped: a formatValue() string is printed raw, and a task
+                    // name is typed by an admin. See DeclarationCrudController.
+                    $parts[] = htmlspecialchars($rate->getTask()->getName()).' : '.self::formatEuros($rate->getHourlyRateCents());
                 }
 
                 return [] === $parts ? 'Aucun — le taux par défaut s\'applique' : implode(' · ', $parts);

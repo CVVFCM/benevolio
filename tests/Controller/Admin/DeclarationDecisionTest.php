@@ -11,6 +11,7 @@ use App\Factory\DeclarationActionFactory;
 use App\Factory\DeclarationFactory;
 use App\Factory\OrganizationFactory;
 use App\Factory\UserFactory;
+use App\Security\AdminActionToken;
 use App\State\DeclarationActionState;
 use App\State\DeclarationState;
 use Doctrine\ORM\EntityManagerInterface;
@@ -19,6 +20,8 @@ use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Zenstruck\Foundry\Test\Factories;
 use Zenstruck\Foundry\Test\ResetDatabase;
+
+use function sprintf;
 
 /**
  * "Valider tout" through the real back-office, which is also what proves
@@ -29,6 +32,8 @@ final class DeclarationDecisionTest extends WebTestCase
 {
     use Factories;
     use ResetDatabase;
+
+    private const string ACTIONS_URL = '/admin/declaration-action';
 
     private KernelBrowser $client;
 
@@ -56,10 +61,11 @@ final class DeclarationDecisionTest extends WebTestCase
         self::assertStringContainsString('En attente de confirmation', $this->bodyText());
         self::assertStringNotContainsString('Valider tout', $this->bodyText());
 
-        // …and the URL is not a way round the missing button.
-        $this->client->request('GET', $this->validateAllUrl($declaration));
+        // …and the URL is not a way round the missing button: with no button there
+        // is no token to post, and DeclarationDeciderTest covers the refusal itself.
+        $this->client->request('POST', $this->validateAllUrl($declaration));
         $this->client->followRedirect();
-        self::assertStringContainsString('pas encore été confirmée', $this->bodyText());
+        self::assertStringContainsString('La page a expiré', $this->bodyText());
         self::assertTrue($this->reload($declaration)->getState()->isAwaitingConfirmation());
     }
 
@@ -70,7 +76,7 @@ final class DeclarationDecisionTest extends WebTestCase
         $declaration = $this->declarationWithLines($organization, 3);
         $this->loginAsAdminOf($organization);
 
-        $this->client->request('GET', $this->validateAllUrl($declaration));
+        $this->submitButton($this->detailUrl($declaration), $this->validateAllUrl($declaration));
 
         self::assertResponseRedirects();
         $this->client->followRedirect();
@@ -97,7 +103,7 @@ final class DeclarationDecisionTest extends WebTestCase
         $this->client->request('GET', $this->detailUrl($declaration));
         self::assertStringContainsString('Valider tout', $this->bodyText());
 
-        $this->client->request('GET', $this->validateAllUrl($declaration));
+        $this->submitButton($this->detailUrl($declaration), $this->validateAllUrl($declaration));
         $this->client->followRedirect();
 
         self::assertStringNotContainsString('Valider tout', $this->bodyText());
@@ -115,15 +121,20 @@ final class DeclarationDecisionTest extends WebTestCase
         $declaration = $this->declarationWithLines($organization, 2);
         $this->loginAsAdminOf($organization);
 
-        $this->client->request('GET', $this->actionUrl($this->lineAt($declaration, 0), 'validate'));
-        $this->client->request('GET', $this->actionUrl($this->lineAt($declaration, 1), 'refuse'));
+        // Taken while the button is still offered: once the basket is mixed the
+        // page no longer renders it, and a token is needed to get past the CSRF
+        // check to the refusal this test is about.
+        $token = $this->tokenOf($this->detailUrl($declaration), $this->validateAllUrl($declaration));
+
+        $this->submitButton(self::ACTIONS_URL, $this->actionUrl($this->lineAt($declaration, 0), 'validate'));
+        $this->submitButton(self::ACTIONS_URL, $this->actionUrl($this->lineAt($declaration, 1), 'refuse'));
 
         // Neither bulk verdict applies now, so neither button is offered…
         $this->client->request('GET', $this->detailUrl($declaration));
         self::assertStringNotContainsString('Valider tout', $this->bodyText());
 
         // …and reaching the URL directly is refused rather than half-applied.
-        $this->client->request('GET', $this->validateAllUrl($declaration));
+        $this->client->request('POST', $this->validateAllUrl($declaration), [AdminActionToken::FIELD => $token]);
         $this->client->followRedirect();
 
         self::assertStringContainsString('aucun verdict global ne s\'applique', $this->bodyText());
@@ -137,7 +148,7 @@ final class DeclarationDecisionTest extends WebTestCase
         $declaration = $this->declarationWithLines($organization, 2);
         $this->loginAsAdminOf($organization);
 
-        $this->client->request('GET', $this->actionUrl($this->lineAt($declaration, 0), 'validate'));
+        $this->submitButton(self::ACTIONS_URL, $this->actionUrl($this->lineAt($declaration, 0), 'validate'));
 
         self::assertResponseRedirects();
 
@@ -145,6 +156,68 @@ final class DeclarationDecisionTest extends WebTestCase
         $reloaded = $this->reload($declaration);
         self::assertSame(DeclarationState::SUBMITTED, $reloaded->getState());
         self::assertTrue($reloaded->hasUndecidedAction());
+    }
+
+    /**
+     * A verdict is a POST carrying a token bound to the row. As a GET link, any page
+     * the treasurer had open — or a mail scanner following a link — could have
+     * validated a declaration, and validated lines feed the tax receipts.
+     */
+    #[Test]
+    public function a_verdict_cannot_be_given_by_a_link(): void
+    {
+        $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
+        $declaration = $this->declarationWithLines($organization, 1);
+        $this->loginAsAdminOf($organization);
+
+        foreach ([$this->validateAllUrl($declaration), $this->detailUrl($declaration).'/refuse-all'] as $url) {
+            $this->client->request('GET', $url);
+            self::assertFalse($this->client->getResponse()->isRedirection(), $url);
+        }
+
+        foreach (['validate', 'refuse'] as $transition) {
+            $this->client->request('GET', $this->actionUrl($this->lineAt($declaration, 0), $transition));
+            self::assertFalse($this->client->getResponse()->isRedirection(), $transition);
+        }
+
+        self::assertSame(DeclarationState::SUBMITTED, $this->reload($declaration)->getState());
+        self::assertSame(DeclarationActionState::SUBMITTED, $this->lineAt($declaration, 0)->getState());
+    }
+
+    #[Test]
+    public function a_verdict_posted_without_its_token_changes_nothing(): void
+    {
+        $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
+        $declaration = $this->declarationWithLines($organization, 1);
+        $this->loginAsAdminOf($organization);
+
+        $this->client->request('POST', $this->validateAllUrl($declaration), [AdminActionToken::FIELD => 'forged']);
+        $this->client->followRedirect();
+        self::assertStringContainsString('La page a expiré', $this->bodyText());
+
+        $this->client->request('POST', $this->actionUrl($this->lineAt($declaration, 0), 'refuse'), [AdminActionToken::FIELD => 'forged']);
+        $this->client->followRedirect();
+        self::assertStringContainsString('La page a expiré', $this->bodyText());
+
+        self::assertSame(DeclarationState::SUBMITTED, $this->reload($declaration)->getState());
+        self::assertSame(DeclarationActionState::SUBMITTED, $this->lineAt($declaration, 0)->getState());
+    }
+
+    /**
+     * A token is bound to its row: one minted for a declaration does not decide another.
+     */
+    #[Test]
+    public function a_token_minted_for_one_declaration_does_not_decide_another(): void
+    {
+        $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
+        $first = $this->declarationWithLines($organization, 1);
+        $second = $this->declarationWithLines($organization, 1);
+        $this->loginAsAdminOf($organization);
+
+        $token = $this->tokenOf($this->detailUrl($first), $this->validateAllUrl($first));
+        $this->client->request('POST', $this->validateAllUrl($second), [AdminActionToken::FIELD => $token]);
+
+        self::assertSame(DeclarationState::SUBMITTED, $this->reload($second)->getState());
     }
 
     /**
@@ -186,6 +259,26 @@ final class DeclarationDecisionTest extends WebTestCase
     private function validateAllUrl(Declaration $declaration): string
     {
         return $this->detailUrl($declaration).'/validate-all';
+    }
+
+    /**
+     * Presses a verdict button the way a browser does: through the form the page
+     * renders, so the token posted is the real one.
+     */
+    private function submitButton(string $pageUrl, string $actionUrl): void
+    {
+        $crawler = $this->client->request('GET', $pageUrl);
+
+        $this->client->submit($crawler->filter(sprintf('form[action="%s"]', $actionUrl))->form());
+    }
+
+    private function tokenOf(string $pageUrl, string $actionUrl): string
+    {
+        $crawler = $this->client->request('GET', $pageUrl);
+
+        return (string) $crawler
+            ->filter(sprintf('form[action="%s"] input[name="%s"]', $actionUrl, AdminActionToken::FIELD))
+            ->attr('value');
     }
 
     private function actionUrl(DeclarationAction $action, string $transition): string
