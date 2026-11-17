@@ -420,7 +420,12 @@ still takes a password, because bootstrapping and `composer reset` cannot wait o
   hash would otherwise read as "user changed" and log them out on the next request.
 - **TRAP — the enforcer returns before touching the token when there is no previous
   session.** Reading the token wakes the lazy firewall, which marks every response
-  private; `/health` caught it.
+  private; `/health` caught it. `App\Tenant\UserTenantResolver` runs on every request
+  too and has the same guard (plus the remember-me cookie, which it must still honour).
+  It lacked one until Symfony 8.1.11 started counting that read: the home page and
+  `/health` went `private, must-revalidate` in production, and only `HomeTest` and
+  `HealthTest` said so. **Anything running on every request must not read the token
+  unconditionally.**
 - « Mot de passe oublié » (`/mot-de-passe-oublie`) answers **the same page whatever
   the address**, so it does not reveal who has an account. It is **not rate-limited**,
   by decision for now.
@@ -1138,8 +1143,10 @@ All produced code MUST pass every check CI runs
 
 **There is no PHPStan baseline, and none is to be added.** When a rule is
 provably wrong, use a narrow inline `@phpstan-ignore` with a comment explaining
-why — see `src/Kernel.php`, where `getAllowedEnvs()` overrides a trait-private
-framework hook that PHPStan cannot see being called.
+why — see `App\Receipt\AmountInWords`, where PHPStan resolves `NumberFormatter` to
+Symfony's polyfill while ext-intl is what actually runs. PHPStan also reports an ignore
+that no longer matches anything, so a suppression cannot outlive its reason: the one on
+`Kernel::getAllowedEnvs()` went that way.
 
 `config/reference.php` is auto-generated and excluded from php-cs-fixer;
 formatting it would be undone on the next regeneration.

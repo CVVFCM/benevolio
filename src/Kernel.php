@@ -13,12 +13,9 @@ class Kernel extends BaseKernel
 
     /**
      * Overrides the private hook of Symfony's KernelTrait, which calls it to
-     * reject any APP_ENV outside this list. PHPStan cannot see that call site
-     * because the parent declaration is private to the trait.
+     * reject any APP_ENV outside this list.
      *
      * @return list<string> An array of allowed values for APP_ENV
-     *
-     * @phpstan-ignore method.unused
      */
     private function getAllowedEnvs(): array
     {
