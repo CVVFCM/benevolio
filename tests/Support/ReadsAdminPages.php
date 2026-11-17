@@ -8,6 +8,7 @@ use App\Security\AdminActionToken;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
 use function sprintf;
@@ -79,5 +80,31 @@ trait ReadsAdminPages
     private static function deleteTokenIn(Crawler $page): string
     {
         return (string) $page->filter('#action-confirmation-form input[name="token"]')->attr('value');
+    }
+
+    /**
+     * A valid token for an action on a row no page offers — another association's, in an
+     * isolation test. App\Security\ActionTokenListener refuses a bad token before the
+     * action's own tenant check runs, so a test posting a forged one would only prove the
+     * listener. Minted in the client's own session, which therefore needs a request made
+     * first (the login is not one).
+     */
+    private function mintActionToken(string $actionName, Uuid $entityId): string
+    {
+        $request = $this->client->getRequest();
+        $requestStack = self::getContainer()->get('request_stack');
+        $requestStack->push($request);
+
+        try {
+            $token = self::getContainer()->get(CsrfTokenManagerInterface::class)
+                ->getToken(AdminActionToken::id($actionName, $entityId))
+                ->getValue();
+        } finally {
+            $requestStack->pop();
+        }
+
+        $request->getSession()->save();
+
+        return $token;
     }
 }

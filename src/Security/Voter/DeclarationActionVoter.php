@@ -6,6 +6,7 @@ namespace App\Security\Voter;
 
 use App\Entity\DeclarationAction;
 use App\Tenant\TenantContext;
+use Doctrine\ORM\EntityNotFoundException;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\Vote;
@@ -59,6 +60,16 @@ final class DeclarationActionVoter extends Voter
             return false;
         }
 
-        return $subject->getOrganization()->getId()->equals($organization->getId());
+        try {
+            $owner = $subject->getOrganization();
+        } catch (EntityNotFoundException) {
+            // The line's Declaration IS TenantAware: with the filter armed for another
+            // association, loading it finds nothing. That is the answer — not ours — and
+            // letting the exception out made every cross-tenant request a 500 instead of a
+            // 403. Tests missed it while the declaration sat in Foundry's identity map.
+            return false;
+        }
+
+        return $owner->getId()->equals($organization->getId());
     }
 }

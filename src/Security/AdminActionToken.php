@@ -4,19 +4,18 @@ declare(strict_types=1);
 
 namespace App\Security;
 
-use Symfony\Component\Uid\Uuid;
+use Stringable;
 
 /**
- * The CSRF token id of a back-office action that changes something from a button:
- * validating or refusing a line or a declaration.
+ * The CSRF token id of a back-office button that changes something.
  *
- * EasyAdmin's renderAsForm() emits a POST form and no token, so these actions carry
- * their own, rendered by templates/admin/action/post_with_token.html.twig and checked
- * by the controller. The id names the action AND the row, so a token minted for one
- * cannot be replayed on another.
+ * EasyAdmin's renderAsForm() emits a POST form and no token, so these actions carry their
+ * own: templates/admin/action/post_with_token.html.twig renders it through the
+ * `admin_action_token()` Twig function, and App\Security\ActionTokenListener checks it
+ * before any controller marked #[RequiresActionToken] runs. Both build the id here.
  *
- * The template rebuilds the same string from PREFIX, the action's name and the row's
- * primary key; the controllers call id(). Change one and change the other.
+ * The id names the action AND the row, so a token minted for one cannot be replayed on
+ * another. The action's name is the CRUD method's name — what linkToCrudAction() takes.
  */
 final readonly class AdminActionToken
 {
@@ -25,8 +24,8 @@ final readonly class AdminActionToken
     /** The request field the token travels in — EasyAdmin's own name for it. */
     public const string FIELD = 'token';
 
-    public static function id(string $actionName, Uuid $entityId): string
+    public static function id(string $actionName, string|Stringable $entityId): string
     {
-        return self::PREFIX.$actionName.'-'.$entityId->toRfc4122();
+        return self::PREFIX.$actionName.'-'.$entityId;
     }
 }

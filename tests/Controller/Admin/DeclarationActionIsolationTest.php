@@ -74,7 +74,10 @@ final class DeclarationActionIsolationTest extends WebTestCase
         $theirs = $this->actionFor($this->organization('les-voiles'), 'Leur action');
         $this->loginAsAdminOf($mine->getOrganization());
 
-        $this->client->request('GET', '/admin/declaration-action/'.$theirs->getId()->toRfc4122());
+        // With an empty EntityManager, as a real request has: the voter must load the
+        // line's declaration under the tenant filter, which finds nothing. It answered
+        // a 500 for that while Foundry's copy sat in the identity map and hid it.
+        $this->requestFresh('GET', '/admin/declaration-action/'.$theirs->getId()->toRfc4122());
 
         self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
     }
@@ -103,7 +106,11 @@ final class DeclarationActionIsolationTest extends WebTestCase
         $theirs = $this->actionFor($this->organization('les-voiles'), 'Leur action');
         $this->loginAsAdminOf($mine->getOrganization());
 
-        $this->client->request('POST', '/admin/declaration-action/'.$theirs->getId()->toRfc4122().'/validate');
+        // A real token: a forged one is refused before the tenant check is reached.
+        $this->client->request('GET', '/admin');
+        $token = $this->mintActionToken('validateAction', $theirs->getId());
+
+        $this->requestFresh('POST', '/admin/declaration-action/'.$theirs->getId()->toRfc4122().'/validate', ['token' => $token]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
     }

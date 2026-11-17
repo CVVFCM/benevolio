@@ -10,7 +10,7 @@ use App\Declaration\Exception\DeclarationNotConfirmableException;
 use App\Declaration\Exception\DeclarationNotDecidableException;
 use App\Entity\Declaration;
 use App\Entity\User;
-use App\Security\AdminActionToken;
+use App\Security\RequiresActionToken;
 use App\State\DeclarationState;
 use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminRoute;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
@@ -46,10 +46,9 @@ use function sprintf;
  *
  * "Confirmer à la place du bénévole" is the escape hatch for a confirmation mail
  * that never arrived. Detail page only, behind a modal that says it is not a
- * normal operation, and a POST with its own CSRF token rather than a link like its
- * siblings: a state change that skips the double opt-in must not be reachable
- * from a prefetched or pasted URL. EasyAdmin's renderAsForm() emits no token, so
- * the button has its own template (admin/action/confirm_manually.html.twig).
+ * normal operation, and a POST with a token like the verdicts: a state change that
+ * skips the double opt-in must not be reachable from a prefetched or pasted URL. See
+ * App\Security\RequiresActionToken.
  *
  * CONVENTION EXCEPTION: see App\Controller\Admin\DashboardController.
  *
@@ -59,7 +58,6 @@ use function sprintf;
 final class DeclarationCrudController extends AbstractCrudController
 {
     /** Suffixed with the declaration id, so a token minted for one cannot confirm another. */
-    public const string CSRF_CONFIRM_MANUALLY = 'declaration-confirm-manually-';
     private const string ACTION_VALIDATE_ALL = 'validateAll';
     private const string ACTION_REFUSE_ALL = 'refuseAll';
     private const string ACTION_CONFIRM_MANUALLY = 'confirmManually';
@@ -108,7 +106,7 @@ final class DeclarationCrudController extends AbstractCrudController
         $confirmManually = Action::new(self::ACTION_CONFIRM_MANUALLY, 'Confirmer à la place du bénévole', 'fa fa-user-check')
             ->linkToCrudAction(self::ACTION_CONFIRM_MANUALLY)
             ->renderAsForm()
-            ->setTemplatePath('admin/action/confirm_manually.html.twig')
+            ->setTemplatePath('admin/action/post_with_token.html.twig')
             ->asWarningAction()
             ->askConfirmation('Confirmer cette déclaration à la place du bénévole ?', 'Confirmer quand même')
             // EasyAdmin's modal script shows this under the title for any action,
@@ -231,24 +229,27 @@ final class DeclarationCrudController extends AbstractCrudController
      *
      * @param AdminContext<Declaration> $context
      */
+    #[RequiresActionToken]
     #[AdminRoute(path: '/{entityId}/validate-all', name: 'validate_all', options: ['methods' => ['POST']])]
     public function validateAll(AdminContext $context): Response
     {
-        return $this->decide($context, self::ACTION_VALIDATE_ALL, decide: true);
+        return $this->decide($context, decide: true);
     }
 
     /**
      * @param AdminContext<Declaration> $context
      */
+    #[RequiresActionToken]
     #[AdminRoute(path: '/{entityId}/refuse-all', name: 'refuse_all', options: ['methods' => ['POST']])]
     public function refuseAll(AdminContext $context): Response
     {
-        return $this->decide($context, self::ACTION_REFUSE_ALL, decide: false);
+        return $this->decide($context, decide: false);
     }
 
     /**
      * @param AdminContext<Declaration> $context
      */
+    #[RequiresActionToken]
     #[AdminRoute(path: '/{entityId}/confirm-manually', name: 'confirm_manually', options: ['methods' => ['POST']])]
     public function confirmManually(AdminContext $context): Response
     {
@@ -257,15 +258,6 @@ final class DeclarationCrudController extends AbstractCrudController
 
         if (!$declaration instanceof Declaration) {
             throw new NotFoundHttpException('Declaration not found.');
-        }
-
-        $token = $context->getRequest()->request->getString('token');
-
-        if (!$this->isCsrfTokenValid(self::CSRF_CONFIRM_MANUALLY.$declaration->getId()->toRfc4122(), $token)) {
-            // Most likely a page left open past the session; nothing has changed.
-            $this->addFlash('danger', 'La page a expiré. Rechargez-la et recommencez.');
-
-            return $this->redirectToDetail($declaration);
         }
 
         $user = $this->getUser();
@@ -293,7 +285,7 @@ final class DeclarationCrudController extends AbstractCrudController
     /**
      * @param AdminContext<Declaration> $context
      */
-    private function decide(AdminContext $context, string $actionName, bool $decide): Response
+    private function decide(AdminContext $context, bool $decide): Response
     {
         // Declaration IS TenantAware, so OrganizationFilter already makes another
         // tenant's row unloadable — the instance simply comes back null. That is a
@@ -303,15 +295,6 @@ final class DeclarationCrudController extends AbstractCrudController
 
         if (!$declaration instanceof Declaration) {
             throw new NotFoundHttpException('Declaration not found.');
-        }
-
-        $token = $context->getRequest()->request->getString(AdminActionToken::FIELD);
-
-        if (!$this->isCsrfTokenValid(AdminActionToken::id($actionName, $declaration->getId()), $token)) {
-            // Most likely a page left open past the session; nothing has changed.
-            $this->addFlash('danger', 'La page a expiré. Rechargez-la et recommencez.');
-
-            return $this->redirectToDetail($declaration);
         }
 
         try {

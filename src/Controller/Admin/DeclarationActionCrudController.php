@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Entity\DeclarationAction;
-use App\Security\AdminActionToken;
+use App\Security\RequiresActionToken;
 use App\Security\Voter\DeclarationActionVoter;
 use App\State\DeclarationActionState;
 use App\Tenant\TenantContext;
@@ -176,25 +176,27 @@ final class DeclarationActionCrudController extends AbstractCrudController
      *
      * @param AdminContext<DeclarationAction> $context
      */
+    #[RequiresActionToken]
     #[AdminRoute(path: '/{entityId}/validate', name: 'validate', options: ['methods' => ['POST']])]
     public function validateAction(AdminContext $context): Response
     {
-        return $this->applyTransition($context, self::ACTION_VALIDATE, DeclarationActionState::TRANSITION_VALIDATE);
+        return $this->applyTransition($context, DeclarationActionState::TRANSITION_VALIDATE);
     }
 
     /**
      * @param AdminContext<DeclarationAction> $context
      */
+    #[RequiresActionToken]
     #[AdminRoute(path: '/{entityId}/refuse', name: 'refuse', options: ['methods' => ['POST']])]
     public function refuseAction(AdminContext $context): Response
     {
-        return $this->applyTransition($context, self::ACTION_REFUSE, DeclarationActionState::TRANSITION_REFUSE);
+        return $this->applyTransition($context, DeclarationActionState::TRANSITION_REFUSE);
     }
 
     /**
      * @param AdminContext<DeclarationAction> $context
      */
-    private function applyTransition(AdminContext $context, string $actionName, string $transition): Response
+    private function applyTransition(AdminContext $context, string $transition): Response
     {
         // Crud::setEntityPermission() does NOT cover custom CRUD actions: EasyAdmin
         // marks the entity inaccessible and hands over a null instance rather than
@@ -216,12 +218,7 @@ final class DeclarationActionCrudController extends AbstractCrudController
         // rest solely on EasyAdmin having applied the permission upstream.
         $this->denyAccessUnlessGranted(DeclarationActionVoter::VIEW, $action);
 
-        $token = $context->getRequest()->request->getString(AdminActionToken::FIELD);
-
-        if (!$this->isCsrfTokenValid(AdminActionToken::id($actionName, $action->getId()), $token)) {
-            // Most likely a page left open past the session; nothing has changed.
-            $this->addFlash('danger', 'La page a expiré. Rechargez-la et recommencez.');
-        } elseif ($this->stateMachine->can($action, $transition)) {
+        if ($this->stateMachine->can($action, $transition)) {
             $this->stateMachine->apply($action, $transition);
             $this->entityManager->flush();
 

@@ -6,6 +6,7 @@ namespace App\Controller\Admin;
 
 use App\Entity\User;
 use App\Repository\UserRepository;
+use App\Security\RequiresActionToken;
 use App\Security\Role;
 use App\Security\Voter\UserVoter;
 use App\Tenant\TenantContext;
@@ -63,7 +64,6 @@ use function sprintf;
 final class UserCrudController extends AbstractCrudController
 {
     /** Suffixed with the account id, so a token minted for one cannot act on another. */
-    public const string CSRF_RESEND_INVITATION = 'user-resend-invitation-';
     private const string ACTION_RESEND_INVITATION = 'resendInvitation';
 
     public function __construct(
@@ -118,7 +118,7 @@ final class UserCrudController extends AbstractCrudController
         $resend = Action::new(self::ACTION_RESEND_INVITATION, 'Renvoyer l\'invitation', 'fa fa-paper-plane')
             ->linkToCrudAction(self::ACTION_RESEND_INVITATION)
             ->renderAsForm()
-            ->setTemplatePath('admin/action/resend_invitation.html.twig')
+            ->setTemplatePath('admin/action/post_with_token.html.twig')
             ->displayIf(fn (User $user): bool => $this->isGranted(UserVoter::RESEND_INVITATION, $user));
 
         return $actions
@@ -203,6 +203,7 @@ final class UserCrudController extends AbstractCrudController
     /**
      * @param AdminContext<User> $context
      */
+    #[RequiresActionToken]
     #[AdminRoute(path: '/{entityId}/resend-invitation', name: 'resend_invitation', options: ['methods' => ['POST']])]
     public function resendInvitation(AdminContext $context): Response
     {
@@ -222,11 +223,7 @@ final class UserCrudController extends AbstractCrudController
 
         $this->denyAccessUnlessGranted(UserVoter::VIEW, $user);
 
-        $token = $context->getRequest()->request->getString('token');
-
-        if (!$this->isCsrfTokenValid(self::CSRF_RESEND_INVITATION.$user->getId()->toRfc4122(), $token)) {
-            $this->addFlash('danger', 'La page a expiré. Rechargez-la et recommencez.');
-        } elseif (!$this->isGranted(UserVoter::RESEND_INVITATION, $user)) {
+        if (!$this->isGranted(UserVoter::RESEND_INVITATION, $user)) {
             $this->addFlash('danger', sprintf('%s a déjà choisi son mot de passe : il peut utiliser « Mot de passe oublié ».', $user->getEmail()));
         } else {
             $this->loginLinkMailer->sendInvitation($user);
