@@ -250,7 +250,12 @@ final class DeclarationManualConfirmationTest extends WebTestCase
         // identity map, which no SQL filter ever sees — the test would prove nothing.
         self::getContainer()->get(EntityManagerInterface::class)->clear();
 
-        $this->client->request(Request::METHOD_POST, $this->confirmUrl($declaration), ['token' => 'whatever']);
+        // A real token: a forged one is refused before the tenant check is reached.
+        $this->client->request(Request::METHOD_GET, '/admin');
+        $token = $this->mintActionToken('confirmManually', $declaration->getId());
+        self::getContainer()->get(EntityManagerInterface::class)->clear();
+
+        $this->client->request(Request::METHOD_POST, $this->confirmUrl($declaration), ['token' => $token]);
 
         self::assertResponseStatusCodeSame(404);
         $this->disableTenantFilter();

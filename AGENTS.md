@@ -241,9 +241,9 @@ to.
   (`Declaration::$confirmedBy`, null = the volunteer clicked) and the detail page shows
   it. `DeclarationConfirmer::confirmManually()` uses the same `confirm` transition, so
   the lines cascade as usual; it **ignores token expiry**, since an expired link is
-  the usual way the problem gets noticed. It is a **POST with its own CSRF token**
-  (`admin/action/confirm_manually.html.twig`): `renderAsForm()` emits no token, and
-  this must not be reachable from a pasted or prefetched link. The modal body is set
+  the usual way the problem gets noticed. It is a **POST with a token**, like the
+  verdicts (see *Every button that changes something carries a token*): this must not be
+  reachable from a pasted or prefetched link. The modal body is set
   through `data-action-confirmation-content`, which EasyAdmin's script reads for any
   action although only DELETE sets it natively.
 - `DeclarationState::isDecided()` means validated-or-refused. Awaiting confirmation
@@ -598,18 +598,31 @@ someone typed, and each was a stored XSS:
 free-text field and walks every `/admin` page and flash. **A new page under `/admin` goes in
 its list**, and a new free-text field in its `setUp()`.
 
-### Verdicts are POSTs with a token
+### Every button that changes something carries a token
 
-« Valider », « Refuser », « Valider tout » and « Refuser tout » were GET links: any page a
-treasurer had open, or a mail scanner following a link, could have ruled on a declaration,
-and validated lines feed the tax receipts. They are forms now
-(`templates/admin/action/post_with_token.html.twig`), carrying a token whose id is
-`App\Security\AdminActionToken::id()` — action name plus row id, so a token minted for one
-row decides no other. The two refusals ask for confirmation.
+As GET links, any page a treasurer had open, or a mail scanner following a link, could
+have ruled on a declaration — and validated lines feed the tax receipts. So every row
+button that changes something (« Valider », « Refuser », « Valider tout », « Refuser
+tout », « Confirmer à la place du bénévole », « Renvoyer l'invitation ») is a POST form,
+`templates/admin/action/post_with_token.html.twig`, and its CRUD method is marked
+**`#[App\Security\RequiresActionToken]`**. Nothing else checks the token:
 
-Both CRUDs call `showEntityActionsInlined()`, for the reason given under *Impersonation*:
-the dropdown would render its own form and drop the token. Any new button that changes
-something uses the same template and the same helper.
+- The template renders it with `admin_action_token(action.name, entity.primaryKeyValue)`;
+  `App\Security\ActionTokenListener` (kernel.controller_arguments) checks it before the
+  method runs. Both build the id with `AdminActionToken::id()` — the method's name plus
+  the row id, so a token minted for one row decides no other.
+- A bad token sends the user back to the page they clicked on (a same-origin `Referer`,
+  else the CRUD's index) with « La page a expiré ». Nothing has changed.
+- The check runs **before** the action's own tenant check. Isolation tests therefore post a
+  real token, from `ReadsAdminPages::mintActionToken()`, or they would only prove the
+  listener.
+- Every CRUD with such a button calls `showEntityActionsInlined()`, for the reason given
+  under *Impersonation*: the dropdown renders its own form and drops the token.
+
+`tests/Controller/Admin/ActionTokenGuardTest` fails when a POST route naming a row
+(`{entityId}`) runs a custom action without the attribute, or when its CRUD shows actions
+in the dropdown. A new button needs the template, the attribute and the inlined actions;
+the test enforces the last two.
 
 ## Layout
 

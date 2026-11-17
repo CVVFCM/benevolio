@@ -119,7 +119,11 @@ final class UserIsolationTest extends WebTestCase
         $theirs = UserFactory::new()->admin($this->organization('les-voiles'))->invited()->create();
         $this->loginAs($me);
 
-        $this->requestFresh(Request::METHOD_POST, '/admin/user/'.$theirs->getId()->toRfc4122().'/resend-invitation', ['token' => 'x']);
+        // A real token: a forged one is refused before the tenant check is reached.
+        $this->client->request(Request::METHOD_GET, '/admin');
+        $token = $this->mintActionToken('resendInvitation', $theirs->getId());
+
+        $this->requestFresh(Request::METHOD_POST, '/admin/user/'.$theirs->getId()->toRfc4122().'/resend-invitation', ['token' => $token]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
         self::assertEmailCount(0);
