@@ -23,6 +23,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 use Zenstruck\Foundry\Test\Factories;
 use Zenstruck\Foundry\Test\ResetDatabase;
@@ -463,6 +464,57 @@ final class DeclarationFlowTest extends WebTestCase
         $lines = $this->findAllOf(DeclarationAction::class);
         self::assertCount(1, $lines);
         self::assertTrue($lines[0]->isElectricVehicle());
+    }
+
+    #[Test]
+    public function a_refused_step_links_each_error_to_its_field(): void
+    {
+        OrganizationFactory::createOne(['slug' => 'les-jardins']);
+        $this->client->request('GET', '/a/les-jardins/declaration');
+        $crawler = $this->client->submitForm('Suivant', $this->personStep(['firstName' => '', 'addressPostcode' => '440']));
+
+        $links = $crawler->filter('.error-summary a');
+        self::assertCount(2, $links);
+        self::assertStringContainsString('2 points à corriger', $crawler->filter('.error-summary')->text());
+
+        foreach ($links->each(static fn (Crawler $link): string => (string) $link->attr('href')) as $href) {
+            $target = substr($href, 1);
+            self::assertCount(1, $crawler->filter('#'.$target.'[name^="'.self::FORM.'[person]"]'), 'A summary link points at no field: #'.$target);
+        }
+        self::assertStringContainsString('Code postal', $links->eq(1)->text());
+    }
+
+    #[Test]
+    public function an_error_on_an_action_line_names_the_line(): void
+    {
+        OrganizationFactory::createOne(['slug' => 'les-jardins']);
+        $this->client->request('GET', '/a/les-jardins/declaration');
+        $this->client->submitForm('Suivant', $this->personStep());
+
+        $crawler = $this->client->submitForm('Suivant', [
+            self::FORM.'[actions][actions][0][task]' => $this->firstTaskId(),
+            self::FORM.'[actions][actions][0][title]' => '',
+            self::FORM.'[actions][actions][0][date]' => new DateTimeImmutable('-30 days')->format('Y-m-d'),
+            self::FORM.'[actions][actions][0][consecutiveDays]' => '1',
+            self::FORM.'[actions][actions][0][workHours]' => '2',
+            self::FORM.'[actions][actions][0][distanceKm]' => '0',
+            self::FORM.'[actions][actions][0][journeys]' => '0',
+        ]);
+
+        $link = $crawler->filter('.error-summary a');
+        self::assertCount(1, $link);
+        self::assertStringStartsWith('Action 1 — ', $link->text());
+        self::assertSame('#'.$crawler->filter('[name="'.self::FORM.'[actions][actions][0][title]"]')->attr('id'), $link->attr('href'));
+    }
+
+    #[Test]
+    public function a_valid_step_shows_no_summary(): void
+    {
+        OrganizationFactory::createOne(['slug' => 'les-jardins']);
+        $this->client->request('GET', '/a/les-jardins/declaration');
+        $crawler = $this->client->submitForm('Suivant', $this->personStep());
+
+        self::assertCount(0, $crawler->filter('.error-summary'));
     }
 
     private function assertPageContainsText(string $needle): void

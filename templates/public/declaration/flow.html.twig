@@ -44,15 +44,7 @@
        error system, in French, is worth the round trip. #}
     {{ form_start(flow, {attr: {novalidate: 'novalidate'}}) }}
         {% if not flow.vars.valid %}
-            {# The only role="alert" on the page: the per-field messages would talk
-               over each other if each announced itself. #}
-            <div class="alert alert--danger" role="alert">
-                <p class="alert__title">Le formulaire n'a pas pu être envoyé.</p>
-                <p class="alert__hint">
-                    Corrigez les champs signalés ci-dessous, puis réessayez.
-                </p>
-                {{ form_errors(flow) }}
-            </div>
+            {{ include('public/declaration/_error_summary.html.twig', {form: flow}) }}
         {% endif %}
 
         {# A section with a heading rather than fieldset/legend: a flow step is a
