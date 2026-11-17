@@ -8,7 +8,8 @@ use App\Entity\Organization;
 use App\Entity\User;
 use App\Factory\OrganizationFactory;
 use App\Factory\UserFactory;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Tests\Support\LogsInAdmins;
+use App\Tests\Support\ReloadsEntities;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -26,6 +27,8 @@ use Zenstruck\Foundry\Test\ResetDatabase;
 final class PlatformUserTest extends WebTestCase
 {
     use Factories;
+    use LogsInAdmins;
+    use ReloadsEntities;
     use ResetDatabase;
 
     private KernelBrowser $client;
@@ -39,7 +42,7 @@ final class PlatformUserTest extends WebTestCase
     public function creating_an_association_admin_invites_them_and_makes_the_first_one_owner(): void
     {
         $organization = OrganizationFactory::createOne(['name' => 'Les Jardins']);
-        $this->client->loginUser(UserFactory::new()->superAdmin()->create());
+        $this->loginAsSuperAdmin();
 
         $crawler = $this->client->request(Request::METHOD_GET, '/platform/user/new');
         self::assertSelectorNotExists('input[type="password"]');
@@ -48,7 +51,7 @@ final class PlatformUserTest extends WebTestCase
 
         self::assertResponseRedirects();
 
-        $user = $this->findUser('premier@jardins.test');
+        $user = $this->findOne(User::class, ['email' => 'premier@jardins.test']);
         self::assertTrue($user->isOwner());
         self::assertFalse($user->hasPassword());
 
@@ -63,7 +66,7 @@ final class PlatformUserTest extends WebTestCase
     {
         $organization = OrganizationFactory::createOne();
         UserFactory::new()->owner($organization)->create(['email' => 'premier@jardins.test']);
-        $this->client->loginUser(UserFactory::new()->superAdmin()->create());
+        $this->loginAsSuperAdmin();
 
         $crawler = $this->client->request(Request::METHOD_GET, '/platform/user/new');
         $this->submitNewUser($crawler, 'second@jardins.test', ['ROLE_ADMIN', 'ROLE_OWNER'], $organization);
@@ -91,16 +94,5 @@ final class PlatformUserTest extends WebTestCase
         ]];
 
         $this->client->request($form->getMethod(), $form->getUri(), $values);
-    }
-
-    private function findUser(string $email): User
-    {
-        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
-        $entityManager->clear();
-
-        $user = $entityManager->getRepository(User::class)->findOneBy(['email' => $email]);
-        self::assertNotNull($user);
-
-        return $user;
     }
 }

@@ -10,11 +10,11 @@ use App\Factory\DeclarationFactory;
 use App\Factory\OrganizationFactory;
 use App\State\DeclarationActionState;
 use App\State\DeclarationState;
+use App\Tests\Support\ReloadsEntities;
 use Doctrine\ORM\EntityManagerInterface;
 use Finite\StateMachine;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
-use Symfony\Component\Uid\Uuid;
 use Zenstruck\Foundry\Test\Factories;
 use Zenstruck\Foundry\Test\ResetDatabase;
 
@@ -29,6 +29,7 @@ use Zenstruck\Foundry\Test\ResetDatabase;
 final class DeclarationConfirmationCascadeTest extends KernelTestCase
 {
     use Factories;
+    use ReloadsEntities;
     use ResetDatabase;
 
     private StateMachine $stateMachine;
@@ -66,7 +67,7 @@ final class DeclarationConfirmationCascadeTest extends KernelTestCase
         $this->stateMachine->apply($declaration, DeclarationState::TRANSITION_CONFIRM);
         $this->entityManager->flush();
 
-        $reloaded = $this->reload($declaration->getId());
+        $reloaded = $this->reload($declaration);
         self::assertSame(DeclarationState::SUBMITTED, $reloaded->getState());
         self::assertCount(3, $reloaded->getActions());
         foreach ($reloaded->getActions() as $action) {
@@ -111,15 +112,6 @@ final class DeclarationConfirmationCascadeTest extends KernelTestCase
 
         // Foundry's many()->create() leaves the inverse collection stale, so the
         // declaration in memory still believes it has no lines.
-        return $this->reload($declaration->getId());
-    }
-
-    private function reload(Uuid $id): Declaration
-    {
-        $this->entityManager->clear();
-        $declaration = $this->entityManager->getRepository(Declaration::class)->find($id);
-        self::assertNotNull($declaration);
-
-        return $declaration;
+        return $this->reload($declaration);
     }
 }

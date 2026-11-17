@@ -23,6 +23,18 @@ use function sprintf;
  */
 final class DeclarationActionFactory extends PersistentObjectFactory
 {
+    /**
+     * Two one-way journeys of 34 km in the volunteer's own 5 CV car: 68 km, 43,25 € at
+     * the 2025 barème (0,636 €/km). The travel line most tests and the fixtures need.
+     * Public so a helper taking attributes can spread it; withWaivedTravel() otherwise.
+     */
+    public const array WAIVED_TRAVEL = [
+        'ownVehicle' => true,
+        'fiscalPower' => FiscalPower::FIVE_CV,
+        'journeys' => 2,
+        'distanceKm' => 34,
+    ];
+
     public function __construct(
         private readonly TaskRepository $tasks,
         private readonly StateMachine $stateMachine,
@@ -36,10 +48,10 @@ final class DeclarationActionFactory extends PersistentObjectFactory
     }
 
     /**
-     * Attaches the action to a declaration, with a type from the SAME association.
+     * Attaches the action to a declaration, with a task from the SAME association.
      *
      * One of this or for() must be called: defaults() deliberately supplies neither
-     * `declaration` nor `task`, because an action and its type have to share a
+     * `declaration` nor `task`, because an action and its task have to share a
      * tenant and nothing in the mapping enforces it. An earlier version guessed in
      * defaults() and produced an orphan organization per action, because Foundry
      * evaluates the defaults whether or not the caller overrides them.
@@ -48,7 +60,7 @@ final class DeclarationActionFactory extends PersistentObjectFactory
     {
         return $this->with([
             'declaration' => $declaration,
-            'task' => $this->existingTypeFor($declaration->getOrganization()),
+            'task' => $this->existingTaskFor($declaration->getOrganization()),
         ]);
     }
 
@@ -104,7 +116,7 @@ final class DeclarationActionFactory extends PersistentObjectFactory
     {
         return $this->with([
             'declaration' => DeclarationFactory::new()->for($organization),
-            'task' => $this->existingTypeFor($organization),
+            'task' => $this->existingTaskFor($organization),
         ]);
     }
 
@@ -116,6 +128,17 @@ final class DeclarationActionFactory extends PersistentObjectFactory
         ]);
     }
 
+    /**
+     * See WAIVED_TRAVEL.
+     */
+    public function withWaivedTravel(): self
+    {
+        return $this->with(self::WAIVED_TRAVEL);
+    }
+
+    /**
+     * No travel at all: hours only, which open no right to a receipt.
+     */
     public function onFoot(): self
     {
         return $this->with([
@@ -155,14 +178,14 @@ final class DeclarationActionFactory extends PersistentObjectFactory
     }
 
     /**
-     * Reuses one of the association's real types rather than inventing another, so
+     * Reuses one of the association's real tasks rather than inventing another, so
      * fixtures read like something a club would actually have.
      *
      * Queried with an explicit organization rather than through the repository's
      * findActive(): the tenant filter is OFF in CLI and test context, so a filtered
      * helper would happily hand back another association's row.
      */
-    private function existingTypeFor(Organization $organization): Task
+    private function existingTaskFor(Organization $organization): Task
     {
         /** @var list<Task> $existing */
         $existing = $this->tasks->findBy(['organization' => $organization, 'active' => true]);

@@ -9,11 +9,12 @@ use App\Entity\Organization;
 use App\Entity\User;
 use App\Factory\OrganizationFactory;
 use App\Factory\UserFactory;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Tests\Support\LogsInAdmins;
+use App\Tests\Support\ReadsAdminPages;
+use App\Tests\Support\ReloadsEntities;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
-use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Zenstruck\Foundry\Test\Factories;
@@ -31,6 +32,9 @@ use Zenstruck\Foundry\Test\ResetDatabase;
 final class UserIsolationTest extends WebTestCase
 {
     use Factories;
+    use LogsInAdmins;
+    use ReadsAdminPages;
+    use ReloadsEntities;
     use ResetDatabase;
 
     private KernelBrowser $client;
@@ -49,7 +53,7 @@ final class UserIsolationTest extends WebTestCase
         UserFactory::new()->owner($theirs)->create(['email' => 'eux@voiles.test']);
         $this->loginAs($me);
 
-        $this->request(Request::METHOD_GET, '/admin/user');
+        $this->requestFresh(Request::METHOD_GET, '/admin/user');
 
         self::assertResponseIsSuccessful();
         self::assertSelectorTextContains('body', 'moi@jardins.test');
@@ -67,7 +71,7 @@ final class UserIsolationTest extends WebTestCase
         // EasyAdmin refuses an autocomplete request that does not say which field it
         // serves; without this context it answers a 500 before running any query,
         // and the assertion below would pass on an error page.
-        $this->request(Request::METHOD_GET, '/admin/user/autocomplete', [
+        $this->requestFresh(Request::METHOD_GET, '/admin/user/autocomplete', [
             'query' => 'test',
             'autocompleteContext' => [
                 'crudControllerFqcn' => UserCrudController::class,
@@ -89,7 +93,7 @@ final class UserIsolationTest extends WebTestCase
         $theirs = UserFactory::new()->owner($this->organization('les-voiles'))->create();
         $this->loginAs($me);
 
-        $this->request(Request::METHOD_GET, '/admin/user/'.$theirs->getId()->toRfc4122());
+        $this->requestFresh(Request::METHOD_GET, '/admin/user/'.$theirs->getId()->toRfc4122());
 
         self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
     }
@@ -101,12 +105,11 @@ final class UserIsolationTest extends WebTestCase
         $theirs = UserFactory::new()->admin($this->organization('les-voiles'))->create();
         $this->loginAs($me);
 
-        $token = (string) $this->request(Request::METHOD_GET, '/admin/user')
-            ->filter('#action-confirmation-form input[name="token"]')->attr('value');
-        $this->request(Request::METHOD_POST, '/admin/user/'.$theirs->getId()->toRfc4122().'/delete', ['token' => $token]);
+        $token = self::deleteTokenIn($this->requestFresh(Request::METHOD_GET, '/admin/user'));
+        $this->requestFresh(Request::METHOD_POST, '/admin/user/'.$theirs->getId()->toRfc4122().'/delete', ['token' => $token]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
-        self::assertTrue($this->exists($theirs));
+        self::assertTrue(null !== $this->findOneOrNull(User::class, ['id' => $theirs->getId()]));
     }
 
     #[Test]
@@ -116,37 +119,14 @@ final class UserIsolationTest extends WebTestCase
         $theirs = UserFactory::new()->admin($this->organization('les-voiles'))->invited()->create();
         $this->loginAs($me);
 
-        $this->request(Request::METHOD_POST, '/admin/user/'.$theirs->getId()->toRfc4122().'/resend-invitation', ['token' => 'x']);
+        $this->requestFresh(Request::METHOD_POST, '/admin/user/'.$theirs->getId()->toRfc4122().'/resend-invitation', ['token' => 'x']);
 
         self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
         self::assertEmailCount(0);
     }
 
-    /**
-     * @param array<string, string|array<string, string>> $parameters
-     */
-    private function request(string $method, string $uri, array $parameters = []): Crawler
-    {
-        self::getContainer()->get(EntityManagerInterface::class)->clear();
-
-        return $this->client->request($method, $uri, $parameters);
-    }
-
     private function organization(string $slug): Organization
     {
         return OrganizationFactory::createOne(['slug' => $slug]);
-    }
-
-    private function loginAs(User $user): void
-    {
-        $this->client->loginUser($user);
-    }
-
-    private function exists(User $user): bool
-    {
-        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
-        $entityManager->clear();
-
-        return null !== $entityManager->getRepository(User::class)->find($user->getId());
     }
 }

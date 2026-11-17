@@ -1279,6 +1279,14 @@ Three harness traps that have already bitten:
   `findAll()` returns nothing — the filter working correctly, and the helper
   reporting a falsehood.
 
+Both are handled once, in `tests/Support/`: **`ReloadsEntities`** (`reload()`,
+`findOne()`, `findAllOf()` — every read clears the EntityManager and switches the
+filter off), **`LogsInAdmins`**, **`ReadsAdminPages`** (page text, detail URLs, the
+tokens buttons post) and **`WalksDeclarationFlow`** (the public form, step by step).
+Use them rather than writing a private copy; the copies had already drifted apart.
+For factories: `PersonFactory::for()`, and `DeclarationActionFactory::withWaivedTravel()`
+/ `onFoot()` for the two shapes of line most tests need.
+
 Also: `Foundry`'s `defaults()` is evaluated whether or not the caller overrides
 the keys it sets. Creating an entity in there to make two attributes consistent
 produces one orphan per object built — `DeclarationActionFactory` learned this the

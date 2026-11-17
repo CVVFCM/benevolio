@@ -15,7 +15,6 @@ use App\Factory\DeclarationFactory;
 use App\Factory\FiscalYearFactory;
 use App\Factory\FiscalYearTaskRateFactory;
 use App\Factory\OrganizationFactory;
-use App\Repository\FiscalYearRepository;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -44,12 +43,7 @@ final class ContributionValuatorTest extends KernelTestCase
         self::bootKernel();
 
         $this->entityManager = self::getContainer()->get(EntityManagerInterface::class);
-        // Built by hand, not fetched: nothing injects ContributionValuator until the
-        // ledger page does, so the container inlines it away — the same reason
-        // DeclarationDeciderTest constructs its subject.
-        $this->valuator = new ContributionValuator(
-            self::getContainer()->get(FiscalYearRepository::class),
-        );
+        $this->valuator = self::getContainer()->get(ContributionValuator::class);
     }
 
     /**
@@ -131,7 +125,7 @@ final class ContributionValuatorTest extends KernelTestCase
     public function travel_without_the_volunteers_own_vehicle_is_worth_nothing(): void
     {
         $organization = OrganizationFactory::createOne();
-        $fiscalYear = $this->year2025($organization);
+        $fiscalYear = $this->year2025AtDefaultRates($organization);
         $action = $this->actionOn($organization, '2025-06-15', [
             'ownVehicle' => false,
             'fiscalPower' => null,
@@ -193,7 +187,7 @@ final class ContributionValuatorTest extends KernelTestCase
         self::assertSame(5000, $this->valuator->valueWithin($action, $fiscalYear)->hoursCents);
     }
 
-    private function year2025(Organization $organization): FiscalYear
+    private function year2025AtDefaultRates(Organization $organization): FiscalYear
     {
         return FiscalYearFactory::new()
             ->for($organization)

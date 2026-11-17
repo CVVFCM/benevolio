@@ -6,15 +6,14 @@ namespace App\Tests\Command;
 
 use App\Entity\Organization;
 use App\Entity\Receipt;
-use App\Enum\FiscalPower;
 use App\Factory\DeclarationActionFactory;
 use App\Factory\DeclarationFactory;
 use App\Factory\FiscalYearFactory;
 use App\Factory\OrganizationFactory;
 use App\Factory\PersonFactory;
 use App\Tests\Support\FailingGotenberg;
+use App\Tests\Support\ReloadsEntities;
 use DateTimeImmutable;
-use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -37,6 +36,7 @@ final class GenerateReceiptsCommandTest extends KernelTestCase
 {
     use Factories;
     use FailingGotenberg;
+    use ReloadsEntities;
     use ResetDatabase;
 
     private CommandTester $command;
@@ -236,21 +236,12 @@ final class GenerateReceiptsCommandTest extends KernelTestCase
                 ->create();
         }
 
-        $person = PersonFactory::createOne(['organization' => $organization] + (null === $lastName ? [] : ['lastName' => $lastName]));
+        $person = PersonFactory::new()->for($organization)->create(null === $lastName ? [] : ['lastName' => $lastName]);
         $declaration = DeclarationFactory::new()->forPerson($person)->confirmed()->create();
 
-        DeclarationActionFactory::new()->forDeclaration($declaration)->validated()->create([
+        DeclarationActionFactory::new()->forDeclaration($declaration)->validated()->withWaivedTravel()->create([
             'date' => new DateTimeImmutable($date),
             'workHours' => '2.00',
-            'journeys' => 2,
-            'distanceKm' => 34,
-            'ownVehicle' => true,
-            'fiscalPower' => FiscalPower::FIVE_CV,
         ]);
-    }
-
-    private function entityManager(): EntityManagerInterface
-    {
-        return self::getContainer()->get(EntityManagerInterface::class);
     }
 }

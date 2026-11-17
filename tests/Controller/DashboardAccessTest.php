@@ -6,7 +6,7 @@ namespace App\Tests\Controller;
 
 use App\Entity\Organization;
 use App\Factory\OrganizationFactory;
-use App\Factory\UserFactory;
+use App\Tests\Support\LogsInAdmins;
 use LogicException;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -26,6 +26,7 @@ use Zenstruck\Foundry\Test\ResetDatabase;
 final class DashboardAccessTest extends WebTestCase
 {
     use Factories;
+    use LogsInAdmins;
     use ResetDatabase;
 
     private KernelBrowser $client;
@@ -79,7 +80,7 @@ final class DashboardAccessTest extends WebTestCase
     #[Test]
     public function each_back_office_names_its_accounts_entry_its_own_way(): void
     {
-        $this->client->loginUser(UserFactory::new()->superAdmin()->create());
+        $this->loginAsSuperAdmin();
         $this->client->request('GET', '/platform');
         self::assertSelectorTextContains('#main-menu', 'Comptes administrateurs');
 
@@ -120,7 +121,7 @@ final class DashboardAccessTest extends WebTestCase
     #[Test]
     public function a_super_admin_reaches_the_platform_backoffice(): void
     {
-        $this->client->loginUser(UserFactory::new()->superAdmin()->create());
+        $this->loginAsSuperAdmin();
 
         $this->client->request('GET', '/platform');
 
@@ -132,7 +133,7 @@ final class DashboardAccessTest extends WebTestCase
     {
         OrganizationFactory::createOne(['name' => 'Première Association']);
         OrganizationFactory::createOne(['name' => 'Seconde Association']);
-        $this->client->loginUser(UserFactory::new()->superAdmin()->create());
+        $this->loginAsSuperAdmin();
 
         $this->client->request('GET', '/platform/organization');
 
@@ -154,14 +155,9 @@ final class DashboardAccessTest extends WebTestCase
     public function a_super_admin_has_no_tenant_on_the_organization_backoffice(): void
     {
         $this->client->catchExceptions(false);
-        $this->client->loginUser(UserFactory::new()->superAdmin()->create());
+        $this->loginAsSuperAdmin();
 
         $this->expectException(LogicException::class);
         $this->client->request('GET', '/admin');
-    }
-
-    private function loginAsAdminOf(Organization $organization): void
-    {
-        $this->client->loginUser(UserFactory::new()->admin($organization)->create());
     }
 }

@@ -8,8 +8,9 @@ use App\Entity\Task;
 use App\Factory\DeclarationActionFactory;
 use App\Factory\OrganizationFactory;
 use App\Factory\TaskFactory;
-use App\Factory\UserFactory;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Tests\Support\LogsInAdmins;
+use App\Tests\Support\ReadsAdminPages;
+use App\Tests\Support\ReloadsEntities;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -26,6 +27,9 @@ use Zenstruck\Foundry\Test\ResetDatabase;
 final class TaskAdminTest extends WebTestCase
 {
     use Factories;
+    use LogsInAdmins;
+    use ReadsAdminPages;
+    use ReloadsEntities;
     use ResetDatabase;
 
     private KernelBrowser $client;
@@ -42,12 +46,12 @@ final class TaskAdminTest extends WebTestCase
         $theirs = OrganizationFactory::createOne(['slug' => 'les-voiles']);
         TaskFactory::new()->for($mine)->create(['name' => 'Chantier naval']);
         TaskFactory::new()->for($theirs)->create(['name' => 'Secret des voiles']);
-        $this->client->loginUser(UserFactory::new()->admin($mine)->create());
+        $this->loginAsAdminOf($mine);
 
         $this->client->request('GET', '/admin/task');
 
         self::assertResponseIsSuccessful();
-        $text = $this->client->getCrawler()->filter('body')->text();
+        $text = $this->bodyText();
         self::assertStringContainsString('Chantier naval', $text);
         self::assertStringNotContainsString('Secret des voiles', $text);
     }
@@ -62,11 +66,11 @@ final class TaskAdminTest extends WebTestCase
         $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
         $action = DeclarationActionFactory::new()->for($organization)->create();
         $typeInUse = $action->getTask();
-        $this->client->loginUser(UserFactory::new()->admin($organization)->create());
+        $this->loginAsAdminOf($organization);
 
         $this->deleteTask($typeInUse);
 
-        $text = $this->client->getCrawler()->filter('body')->text();
+        $text = $this->bodyText();
         self::assertStringContainsString('ne peut pas être supprimé', $text);
         self::assertStringContainsString('Proposé aux bénévoles', $text);
 
@@ -80,7 +84,7 @@ final class TaskAdminTest extends WebTestCase
     {
         $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
         $unused = TaskFactory::new()->for($organization)->create(['name' => 'Jamais utilisé']);
-        $this->client->loginUser(UserFactory::new()->admin($organization)->create());
+        $this->loginAsAdminOf($organization);
 
         $this->deleteTask($unused);
 
@@ -103,10 +107,8 @@ final class TaskAdminTest extends WebTestCase
         // EasyAdmin keeps one hidden confirmation form on the page and repoints it
         // at the right URL in JavaScript, so the token is not inside a per-action
         // form to select by action.
-        $token = $crawler
-            ->filter('#action-confirmation-form input[name="token"]')
-            ->attr('value');
-        self::assertNotNull($token);
+        $token = self::deleteTokenIn($crawler);
+        self::assertNotSame('', $token);
 
         $this->client->request(
             'POST',
@@ -117,10 +119,5 @@ final class TaskAdminTest extends WebTestCase
         if ($this->client->getResponse()->isRedirect()) {
             $this->client->followRedirect();
         }
-    }
-
-    private function entityManager(): EntityManagerInterface
-    {
-        return self::getContainer()->get(EntityManagerInterface::class);
     }
 }

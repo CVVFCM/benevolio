@@ -18,6 +18,8 @@ use App\Factory\OrganizationFactory;
 use App\Factory\PersonFactory;
 use App\Factory\TaskFactory;
 use App\Factory\UserFactory;
+use App\Tests\Support\LogsInAdmins;
+use App\Tests\Support\ReadsAdminPages;
 use App\ValueObject\Address;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -45,6 +47,8 @@ use function sprintf;
 final class NoRawUserTextTest extends WebTestCase
 {
     use Factories;
+    use LogsInAdmins;
+    use ReadsAdminPages;
     use ResetDatabase;
 
     /** Short enough for the tightest column (Address::NUMBER_MAX_LENGTH). */
@@ -71,8 +75,7 @@ final class NoRawUserTextTest extends WebTestCase
             'addressCity' => 'Ville '.self::MARKER,
         ]);
         $this->task = TaskFactory::new()->for($this->organization)->create(['name' => 'Tâche '.self::MARKER]);
-        $this->person = PersonFactory::createOne([
-            'organization' => $this->organization,
+        $this->person = PersonFactory::new()->for($this->organization)->create([
             'firstName' => 'Prénom '.self::MARKER,
             'lastName' => 'Nom '.self::MARKER,
             'address' => new Address(self::MARKER, 'rue '.self::MARKER, '08000', 'Ville '.self::MARKER, 'FR'),
@@ -97,7 +100,7 @@ final class NoRawUserTextTest extends WebTestCase
         ]);
         FiscalYearTaskRateFactory::new()->forTask($this->fiscalYear, $this->task)->create();
 
-        $this->client->loginUser(UserFactory::new()->owner($this->organization)->create());
+        $this->loginAs(UserFactory::new()->owner($this->organization)->create());
     }
 
     #[Test]
@@ -218,8 +221,7 @@ final class NoRawUserTextTest extends WebTestCase
     #[Test]
     public function the_flash_refusing_to_delete_a_task_is_escaped(): void
     {
-        $crawler = $this->client->request('GET', '/admin/task');
-        $token = $crawler->filter('#action-confirmation-form input[name="token"]')->attr('value');
+        $token = self::deleteTokenIn($this->client->request('GET', '/admin/task'));
 
         $this->client->request('POST', '/admin/task/'.$this->task->getId()->toRfc4122().'/delete', ['token' => $token]);
 

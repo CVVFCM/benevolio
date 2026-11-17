@@ -9,7 +9,8 @@ use App\Factory\DeclarationActionFactory;
 use App\Factory\DeclarationFactory;
 use App\Factory\OrganizationFactory;
 use App\Factory\PersonFactory;
-use App\Factory\UserFactory;
+use App\Tests\Support\LogsInAdmins;
+use App\Tests\Support\ReadsAdminPages;
 use App\ValueObject\Address;
 use App\ValueObject\Email;
 use PHPUnit\Framework\Attributes\Test;
@@ -28,6 +29,8 @@ use Zenstruck\Foundry\Test\ResetDatabase;
 final class DeclarationDetailTest extends WebTestCase
 {
     use Factories;
+    use LogsInAdmins;
+    use ReadsAdminPages;
     use ResetDatabase;
 
     private KernelBrowser $client;
@@ -43,14 +46,14 @@ final class DeclarationDetailTest extends WebTestCase
         $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
         // PersonFactory has no for(); the organization goes through with(), as
         // DeclarationFactory::defaults() does.
-        $person = PersonFactory::new()->with(['organization' => $organization])->create([
+        $person = PersonFactory::new()->for($organization)->create([
             'firstName' => 'Camille',
             'lastName' => 'Berthier',
             'email' => new Email('camille.berthier@example.org'),
             'address' => new Address('12', 'rue des Tilleuls', '08000', 'Charleville-Mézières', 'FR'),
         ]);
         $declaration = DeclarationFactory::new()->forPerson($person)->create();
-        $this->client->loginUser(UserFactory::new()->admin($organization)->create());
+        $this->loginAsAdminOf($organization);
 
         $text = $this->detailText($declaration);
 
@@ -72,7 +75,7 @@ final class DeclarationDetailTest extends WebTestCase
             'journeys' => 2,
             'distanceKm' => 12,
         ]);
-        $this->client->loginUser(UserFactory::new()->admin($organization)->create());
+        $this->loginAsAdminOf($organization);
 
         $text = $this->detailText($declaration);
 
@@ -94,16 +97,13 @@ final class DeclarationDetailTest extends WebTestCase
     {
         $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
         $declaration = DeclarationFactory::new()->for($organization)->create();
-        $this->client->loginUser(UserFactory::new()->admin($organization)->create());
+        $this->loginAsAdminOf($organization);
 
         self::assertStringContainsString('Aucune action déclarée', $this->detailText($declaration));
     }
 
     private function detailText(Declaration $declaration): string
     {
-        $this->client->request('GET', '/admin/declaration/'.$declaration->getId()->toRfc4122());
-        self::assertResponseIsSuccessful();
-
-        return $this->client->getCrawler()->filter('body')->text();
+        return $this->textOf(self::detailUrl('/admin/declaration', $declaration->getId()));
     }
 }

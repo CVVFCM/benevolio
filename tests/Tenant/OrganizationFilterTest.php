@@ -188,8 +188,8 @@ final class OrganizationFilterTest extends KernelTestCase
         $first = OrganizationFactory::createOne(['slug' => 'first']);
         $second = OrganizationFactory::createOne(['slug' => 'second']);
 
-        PersonFactory::createOne(['organization' => $first, 'email' => new Email('first@example.test')]);
-        PersonFactory::createOne(['organization' => $second, 'email' => new Email('second@example.test')]);
+        PersonFactory::new()->for($first)->create(['email' => new Email('first@example.test')]);
+        PersonFactory::new()->for($second)->create(['email' => new Email('second@example.test')]);
         $this->entityManager->clear();
 
         return [

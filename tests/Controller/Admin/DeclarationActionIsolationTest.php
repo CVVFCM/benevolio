@@ -8,7 +8,8 @@ use App\Entity\DeclarationAction;
 use App\Entity\Organization;
 use App\Factory\DeclarationActionFactory;
 use App\Factory\OrganizationFactory;
-use App\Factory\UserFactory;
+use App\Tests\Support\LogsInAdmins;
+use App\Tests\Support\ReadsAdminPages;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -31,6 +32,8 @@ use Zenstruck\Foundry\Test\ResetDatabase;
 final class DeclarationActionIsolationTest extends WebTestCase
 {
     use Factories;
+    use LogsInAdmins;
+    use ReadsAdminPages;
     use ResetDatabase;
 
     private KernelBrowser $client;
@@ -53,7 +56,7 @@ final class DeclarationActionIsolationTest extends WebTestCase
         $this->client->request('GET', '/admin/declaration-action');
 
         self::assertResponseIsSuccessful();
-        $text = $this->client->getCrawler()->filter('body')->text();
+        $text = $this->bodyText();
         self::assertStringContainsString('Mon action', $text);
         self::assertStringNotContainsString('Leur action', $text);
         self::assertSame('Leur action', $theirs->getTitle());
@@ -85,7 +88,7 @@ final class DeclarationActionIsolationTest extends WebTestCase
         $this->client->request('GET', '/admin/declaration-action/'.$mine->getId()->toRfc4122());
 
         self::assertResponseIsSuccessful();
-        self::assertStringContainsString('Mon action', $this->client->getCrawler()->filter('body')->text());
+        self::assertStringContainsString('Mon action', $this->bodyText());
     }
 
     /**
@@ -132,10 +135,5 @@ final class DeclarationActionIsolationTest extends WebTestCase
         return DeclarationActionFactory::new()
             ->for($organization)
             ->create(['title' => $title]);
-    }
-
-    private function loginAsAdminOf(Organization $organization): void
-    {
-        $this->client->loginUser(UserFactory::new()->admin($organization)->create());
     }
 }

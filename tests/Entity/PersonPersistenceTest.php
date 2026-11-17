@@ -6,6 +6,7 @@ namespace App\Tests\Entity;
 
 use App\Entity\Person;
 use App\Factory\OrganizationFactory;
+use App\Tests\Support\ReloadsEntities;
 use App\ValueObject\Address;
 use App\ValueObject\Email;
 use Doctrine\ORM\EntityManagerInterface;
@@ -27,6 +28,7 @@ use Zenstruck\Foundry\Test\ResetDatabase;
 final class PersonPersistenceTest extends KernelTestCase
 {
     use Factories;
+    use ReloadsEntities;
     use ResetDatabase;
 
     private EntityManagerInterface $entityManager;
@@ -136,12 +138,7 @@ final class PersonPersistenceTest extends KernelTestCase
     {
         $this->entityManager->persist($person);
         $this->entityManager->flush();
-        $id = $person->getId();
-        $this->entityManager->clear();
 
-        $reloaded = $this->entityManager->getRepository(Person::class)->find($id);
-        self::assertNotNull($reloaded);
-
-        return $reloaded;
+        return $this->reload($person);
     }
 }

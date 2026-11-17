@@ -7,6 +7,7 @@ namespace App\Tests\Controller\Platform;
 use App\Factory\OrganizationFactory;
 use App\Factory\UserFactory;
 use App\Security\ImpersonationListener;
+use App\Tests\Support\LogsInAdmins;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -30,6 +31,7 @@ use function sprintf;
 final class ImpersonationTest extends WebTestCase
 {
     use Factories;
+    use LogsInAdmins;
     use ResetDatabase;
 
     private KernelBrowser $client;
@@ -44,7 +46,7 @@ final class ImpersonationTest extends WebTestCase
     {
         $organization = OrganizationFactory::createOne(['name' => 'Les Jardins']);
         UserFactory::new()->admin($organization)->create(['email' => 'tresorier@jardins.test']);
-        $this->client->loginUser(UserFactory::new()->superAdmin()->create(['email' => 'patron@plateforme.test']));
+        $this->loginAsSuperAdmin(['email' => 'patron@plateforme.test']);
 
         $this->impersonate('tresorier@jardins.test');
 
@@ -71,7 +73,7 @@ final class ImpersonationTest extends WebTestCase
     {
         UserFactory::new()->admin(OrganizationFactory::createOne())->create(['email' => 'tresorier@jardins.test']);
         UserFactory::new()->superAdmin()->create(['email' => 'collegue@plateforme.test']);
-        $this->client->loginUser(UserFactory::new()->superAdmin()->create(['email' => 'patron@plateforme.test']));
+        $this->loginAsSuperAdmin(['email' => 'patron@plateforme.test']);
 
         $this->client->request(Request::METHOD_GET, '/platform/user');
 
@@ -85,7 +87,7 @@ final class ImpersonationTest extends WebTestCase
     {
         UserFactory::new()->admin(OrganizationFactory::createOne())->create();
         UserFactory::new()->superAdmin()->create(['email' => 'collegue@plateforme.test']);
-        $this->client->loginUser(UserFactory::new()->superAdmin()->create());
+        $this->loginAsSuperAdmin();
 
         $this->postSwitch('collegue@plateforme.test', $this->validToken());
 
@@ -97,7 +99,7 @@ final class ImpersonationTest extends WebTestCase
     public function a_link_cannot_switch_the_session(): void
     {
         UserFactory::new()->admin(OrganizationFactory::createOne())->create(['email' => 'tresorier@jardins.test']);
-        $this->client->loginUser(UserFactory::new()->superAdmin()->create());
+        $this->loginAsSuperAdmin();
 
         $this->client->request(Request::METHOD_GET, '/platform?_switch_user=tresorier@jardins.test');
 
@@ -109,7 +111,7 @@ final class ImpersonationTest extends WebTestCase
     public function a_post_without_a_valid_token_cannot_switch_the_session(): void
     {
         UserFactory::new()->admin(OrganizationFactory::createOne())->create(['email' => 'tresorier@jardins.test']);
-        $this->client->loginUser(UserFactory::new()->superAdmin()->create());
+        $this->loginAsSuperAdmin();
 
         $this->postSwitch('tresorier@jardins.test', 'forged');
 
@@ -126,7 +128,7 @@ final class ImpersonationTest extends WebTestCase
     public function an_invited_account_can_be_looked_at_but_its_password_is_not_ours_to_choose(): void
     {
         UserFactory::new()->admin(OrganizationFactory::createOne())->invited()->create(['email' => 'nouveau@jardins.test']);
-        $this->client->loginUser(UserFactory::new()->superAdmin()->create());
+        $this->loginAsSuperAdmin();
 
         $this->impersonate('nouveau@jardins.test');
         $this->client->followRedirect();

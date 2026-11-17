@@ -8,7 +8,9 @@ use App\Entity\User;
 use App\Factory\OrganizationFactory;
 use App\Factory\UserFactory;
 use App\Security\Role;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Tests\Support\LogsInAdmins;
+use App\Tests\Support\ReadsAdminPages;
+use App\Tests\Support\ReloadsEntities;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -24,6 +26,9 @@ use Zenstruck\Foundry\Test\ResetDatabase;
 final class UserAdminTest extends WebTestCase
 {
     use Factories;
+    use LogsInAdmins;
+    use ReadsAdminPages;
+    use ReloadsEntities;
     use ResetDatabase;
 
     private KernelBrowser $client;
@@ -46,7 +51,7 @@ final class UserAdminTest extends WebTestCase
 
         self::assertResponseRedirects();
 
-        $user = $this->findUser('nouvelle@jardins.test');
+        $user = $this->findOne(User::class, ['email' => 'nouvelle@jardins.test']);
         self::assertFalse($user->hasPassword());
         self::assertTrue($user->hasRole(Role::ADMIN));
         self::assertFalse($user->isOwner());
@@ -86,7 +91,7 @@ final class UserAdminTest extends WebTestCase
         $this->loginAs(UserFactory::new()->admin($organization)->create());
         $pending = UserFactory::new()->admin($organization)->invited()->create(['email' => 'attente@asso.test']);
 
-        $crawler = $this->client->request(Request::METHOD_GET, $this->detailUrl($pending));
+        $crawler = $this->client->request(Request::METHOD_GET, self::detailUrl('/admin/user', $pending->getId()));
         $this->client->submit($crawler->filter('form[action$="/resend-invitation"]')->form());
 
         self::assertResponseRedirects();
@@ -121,10 +126,10 @@ final class UserAdminTest extends WebTestCase
         $this->loginAs(UserFactory::new()->admin($organization)->create());
         $active = UserFactory::new()->admin($organization)->create();
 
-        $this->client->request(Request::METHOD_GET, $this->detailUrl($active));
+        $this->client->request(Request::METHOD_GET, self::detailUrl('/admin/user', $active->getId()));
         self::assertSelectorNotExists('form[action$="/resend-invitation"]');
 
-        $this->client->request(Request::METHOD_POST, $this->detailUrl($active).'/resend-invitation', ['token' => 'x']);
+        $this->client->request(Request::METHOD_POST, self::detailUrl('/admin/user', $active->getId()).'/resend-invitation', ['token' => 'x']);
         self::assertEmailCount(0);
     }
 
@@ -135,7 +140,7 @@ final class UserAdminTest extends WebTestCase
         $this->loginAs(UserFactory::new()->admin($organization)->create());
         $pending = UserFactory::new()->admin($organization)->invited()->create();
 
-        $this->client->request(Request::METHOD_POST, $this->detailUrl($pending).'/resend-invitation', ['token' => 'forged']);
+        $this->client->request(Request::METHOD_POST, self::detailUrl('/admin/user', $pending->getId()).'/resend-invitation', ['token' => 'forged']);
 
         self::assertResponseRedirects();
         self::assertEmailCount(0);
@@ -150,7 +155,7 @@ final class UserAdminTest extends WebTestCase
         $this->loginAs(UserFactory::new()->admin($organization)->create());
         $pending = UserFactory::new()->admin($organization)->invited()->create();
 
-        $this->client->request(Request::METHOD_GET, $this->detailUrl($pending).'/resend-invitation');
+        $this->client->request(Request::METHOD_GET, self::detailUrl('/admin/user', $pending->getId()).'/resend-invitation');
 
         self::assertEmailCount(0);
         self::assertFalse($this->client->getResponse()->isRedirection());
@@ -166,7 +171,7 @@ final class UserAdminTest extends WebTestCase
         $this->delete($admin);
 
         self::assertResponseRedirects();
-        self::assertNull($this->findUserOrNull($admin->getEmail()));
+        self::assertNull($this->findOneOrNull(User::class, ['email' => $admin->getEmail()]));
     }
 
     #[Test]
@@ -177,13 +182,13 @@ final class UserAdminTest extends WebTestCase
         $this->loginAs(UserFactory::new()->admin($organization)->create());
         $other = UserFactory::new()->admin($organization)->create();
 
-        $this->client->request(Request::METHOD_GET, $this->detailUrl($other));
+        $this->client->request(Request::METHOD_GET, self::detailUrl('/admin/user', $other->getId()));
         self::assertSelectorNotExists('[data-action-name="delete"]');
 
         $this->delete($other);
 
         self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
-        self::assertNotNull($this->findUserOrNull($other->getEmail()));
+        self::assertNotNull($this->findOneOrNull(User::class, ['email' => $other->getEmail()]));
     }
 
     #[Test]
@@ -196,7 +201,7 @@ final class UserAdminTest extends WebTestCase
         $this->delete($owner);
 
         self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
-        self::assertNotNull($this->findUserOrNull($owner->getEmail()));
+        self::assertNotNull($this->findOneOrNull(User::class, ['email' => $owner->getEmail()]));
     }
 
     #[Test]
@@ -206,13 +211,13 @@ final class UserAdminTest extends WebTestCase
         $owner = UserFactory::new()->owner($organization)->create();
         $this->loginAs($owner);
 
-        $this->client->request(Request::METHOD_GET, $this->detailUrl($owner));
+        $this->client->request(Request::METHOD_GET, self::detailUrl('/admin/user', $owner->getId()));
         self::assertSelectorNotExists('[data-action-name="delete"]');
 
         $this->delete($owner);
 
         self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
-        self::assertNotNull($this->findUserOrNull($owner->getEmail()));
+        self::assertNotNull($this->findOneOrNull(User::class, ['email' => $owner->getEmail()]));
     }
 
     #[Test]
@@ -222,7 +227,7 @@ final class UserAdminTest extends WebTestCase
         $owner = UserFactory::new()->owner($organization)->create();
         $this->loginAs($owner);
 
-        $this->client->request(Request::METHOD_GET, $this->detailUrl($owner).'/edit');
+        $this->client->request(Request::METHOD_GET, self::detailUrl('/admin/user', $owner->getId()).'/edit');
 
         self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
     }
@@ -245,35 +250,8 @@ final class UserAdminTest extends WebTestCase
      */
     private function delete(User $user): void
     {
-        $crawler = $this->client->request(Request::METHOD_GET, '/admin/user');
-        $token = $crawler->filter('#action-confirmation-form input[name="token"]')->attr('value');
+        $token = self::deleteTokenIn($this->client->request(Request::METHOD_GET, '/admin/user'));
 
-        $this->client->request(Request::METHOD_POST, $this->detailUrl($user).'/delete', ['token' => $token]);
-    }
-
-    private function loginAs(User $user): void
-    {
-        $this->client->loginUser($user);
-    }
-
-    private function detailUrl(User $user): string
-    {
-        return '/admin/user/'.$user->getId()->toRfc4122();
-    }
-
-    private function findUser(string $email): User
-    {
-        $user = $this->findUserOrNull($email);
-        self::assertNotNull($user);
-
-        return $user;
-    }
-
-    private function findUserOrNull(string $email): ?User
-    {
-        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
-        $entityManager->clear();
-
-        return $entityManager->getRepository(User::class)->findOneBy(['email' => $email]);
+        $this->client->request(Request::METHOD_POST, self::detailUrl('/admin/user', $user->getId()).'/delete', ['token' => $token]);
     }
 }

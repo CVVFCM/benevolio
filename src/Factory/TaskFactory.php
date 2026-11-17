@@ -23,11 +23,6 @@ final class TaskFactory extends PersistentObjectFactory
         return $this->with(['organization' => $organization]);
     }
 
-    public function retired(): self
-    {
-        return $this->with(['active' => false]);
-    }
-
     /**
      * @return array<string, mixed>
      */

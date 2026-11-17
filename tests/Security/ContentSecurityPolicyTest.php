@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Tests\Security;
 
 use App\Factory\OrganizationFactory;
-use App\Factory\UserFactory;
 use App\Security\ContentSecurityPolicyListener;
+use App\Tests\Support\LogsInAdmins;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -28,6 +28,7 @@ use Zenstruck\Foundry\Test\ResetDatabase;
 final class ContentSecurityPolicyTest extends WebTestCase
 {
     use Factories;
+    use LogsInAdmins;
     use ResetDatabase;
 
     private KernelBrowser $client;
@@ -98,7 +99,7 @@ final class ContentSecurityPolicyTest extends WebTestCase
     public function the_back_office_gets_no_script_policy(): void
     {
         $organization = OrganizationFactory::createOne();
-        $this->client->loginUser(UserFactory::new()->admin($organization)->create());
+        $this->loginAsAdminOf($organization);
 
         $this->client->request(Request::METHOD_GET, '/admin/declaration');
 

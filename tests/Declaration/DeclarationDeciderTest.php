@@ -12,7 +12,7 @@ use App\Factory\DeclarationActionFactory;
 use App\Factory\DeclarationFactory;
 use App\State\DeclarationActionState;
 use App\State\DeclarationState;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Tests\Support\ReloadsEntities;
 use Finite\StateMachine;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -28,21 +28,17 @@ use Zenstruck\Foundry\Test\ResetDatabase;
 final class DeclarationDeciderTest extends KernelTestCase
 {
     use Factories;
+    use ReloadsEntities;
     use ResetDatabase;
     private DeclarationDecider $decider;
     private StateMachine $stateMachine;
-    private EntityManagerInterface $entityManager;
 
     protected function setUp(): void
     {
         self::bootKernel();
 
         $this->stateMachine = self::getContainer()->get(StateMachine::class);
-        $this->entityManager = self::getContainer()->get(EntityManagerInterface::class);
-        // Built by hand rather than fetched: nothing injects DeclarationDecider
-        // yet, so the container inlines it away. Its wiring is covered by the
-        // back-office functional test instead.
-        $this->decider = new DeclarationDecider($this->stateMachine, $this->entityManager);
+        $this->decider = self::getContainer()->get(DeclarationDecider::class);
     }
 
     #[Test]
@@ -211,33 +207,12 @@ final class DeclarationDeciderTest extends KernelTestCase
 
         // Reload for the same reason as declarationWithActions(): the in-memory
         // inverse collection cannot be trusted after Foundry created the lines.
-        $id = $declaration->getId();
-        $this->entityManager->clear();
-        $reloaded = $this->entityManager->getRepository(Declaration::class)->find($id);
-        self::assertNotNull($reloaded);
+        $reloaded = $this->reload($declaration);
 
         // 2.25 + 3.50 with no floating point drift.
         self::assertSame('5.75', $reloaded->getTotalWorkHours());
         // One-way distance × journeys, per line: 10×2 + 7×4.
         self::assertSame(48, $reloaded->getTotalDistanceKm());
-    }
-
-    /**
-     * Re-fetches the declaration after creating its lines.
-     *
-     * Necessary, not decorative: Foundry's createMany() leaves the inverse
-     * `actions` collection of the in-memory Declaration stale (it reported one
-     * element for two created rows). Reloading also matches what the back-office
-     * actually does — it loads a declaration and its lines from the database.
-     */
-    private function reload(Declaration $declaration): Declaration
-    {
-        $id = $declaration->getId();
-        $this->entityManager->clear();
-        $reloaded = $this->entityManager->getRepository(Declaration::class)->find($id);
-        self::assertNotNull($reloaded);
-
-        return $reloaded;
     }
 
     private function declarationWithActions(int $count): Declaration
@@ -247,11 +222,7 @@ final class DeclarationDeciderTest extends KernelTestCase
         $declaration = DeclarationFactory::new()->confirmed()->create();
         DeclarationActionFactory::new()->forDeclaration($declaration)->confirmed()->many($count)->create();
 
-        $id = $declaration->getId();
-        $this->entityManager->clear();
-        $reloaded = $this->entityManager->getRepository(Declaration::class)->find($id);
-
-        self::assertNotNull($reloaded);
+        $reloaded = $this->reload($declaration);
         self::assertCount($count, $reloaded->getActions());
 
         return $reloaded;
