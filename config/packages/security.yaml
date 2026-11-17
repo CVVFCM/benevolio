@@ -62,6 +62,12 @@ security:
                 enable_csrf: true
                 # Not `/`, which is the public home page: see App\Controller\BackofficeController.
                 default_target_path: backoffice
+            # Five failed logins per minute per account and visitor (and 25 per visitor
+            # across accounts) — Symfony's defaults. Per visitor is sound here: the Gateway
+            # overwrites X-Forwarded-For, so Request::getClientIp() is the real address.
+            login_throttling:
+                max_attempts: 5
+                interval: '1 minute'
             # Accounts are created without a password and are emailed one of these
             # instead, as is anyone who forgot theirs — see App\User\LoginLinkMailer.
             #

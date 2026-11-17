@@ -83,6 +83,19 @@ final class VolunteerAccountTest extends WebTestCase
     }
 
     #[Test]
+    public function one_visitor_gets_ten_links_an_hour_whatever_the_addresses(): void
+    {
+        $this->association('les-jardins');
+        self::getContainer()->get('limiter.volunteer_link_ip')->create('127.0.0.1')->consume(10);
+
+        $this->client->request(Request::METHOD_GET, '/a/les-jardins/connexion');
+        $this->client->submitForm('Recevoir un lien', ['volunteer_login[email]' => 'nouveau@example.test']);
+
+        self::assertSelectorTextContains('h1', 'Vérifiez votre boîte mail');
+        self::assertEmailCount(0);
+    }
+
+    #[Test]
     public function following_the_link_logs_nobody_in_until_the_button_is_pressed(): void
     {
         $organization = $this->association('les-jardins');

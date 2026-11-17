@@ -6,6 +6,7 @@ namespace App\Tests\Controller;
 
 use App\Factory\OrganizationFactory;
 use App\Factory\UserFactory;
+use App\Tests\Support\ResetsRateLimiters;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -21,6 +22,7 @@ final class LoginControllerTest extends WebTestCase
 {
     use Factories;
     use ResetDatabase;
+    use ResetsRateLimiters;
     private const string PASSWORD = 'a-long-enough-password';
 
     private KernelBrowser $client;
@@ -28,6 +30,7 @@ final class LoginControllerTest extends WebTestCase
     protected function setUp(): void
     {
         $this->client = self::createClient();
+        self::resetRateLimiters();
     }
 
     #[Test]
@@ -100,6 +103,28 @@ final class LoginControllerTest extends WebTestCase
         self::assertResponseRedirects('http://localhost/espace');
         $this->client->followRedirect();
         self::assertResponseRedirects('/admin');
+    }
+
+    /**
+     * Login throttling: five failures a minute per account and visitor. The sixth try is
+     * refused even with the right password.
+     */
+    #[Test]
+    public function the_sixth_failed_attempt_in_a_minute_is_refused_even_with_the_right_password(): void
+    {
+        $this->createAdmin();
+
+        for ($i = 0; $i < 5; ++$i) {
+            $this->client->request('GET', '/login');
+            $this->client->submitForm('Se connecter', ['_username' => 'admin@example.test', '_password' => 'wrong-password']);
+        }
+
+        $this->client->request('GET', '/login');
+        $this->client->submitForm('Se connecter', ['_username' => 'admin@example.test', '_password' => self::PASSWORD]);
+        $this->client->followRedirect();
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
+        self::assertSelectorTextContains('[role="alert"]', 'tentatives');
     }
 
     private function createAdmin(): void

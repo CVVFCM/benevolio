@@ -355,9 +355,8 @@ browsers ignore `'unsafe-inline'` once a nonce is present.
 ### Deferred — do not assume these exist
 
 Not built yet, by explicit decision: exporting the écritures to accounting software,
-resending a confirmation link, purging declarations never confirmed, login throttling
-and any per-IP limit (see *Rate limits*), transferring ownership of an association, and
-changing an account's email. When you add one, update this file.
+resending a confirmation link, purging declarations never confirmed, transferring
+ownership of an association, and changing an account's email. When you add one, update this file.
 
 ## Stack
 
@@ -560,10 +559,17 @@ still takes a password, because bootstrapping and `composer reset` cannot wait o
   over the limit.
 - A declaration holds at most `DeclarationDraft::MAX_ACTIONS` (50) lines.
 
-**None is per IP, and login is not throttled yet**, on purpose: behind Cloudflare and the
-Gateway the application may see an edge address shared by many visitors, and a per-IP
-limit would throttle strangers together. Symfony's `login_throttling` counts per IP too.
-Both wait until what `Request::getClientIp()` returns in production has been checked.
+**Per visitor too**, on top of per address: `forgot_password_ip` and `volunteer_link_ip`
+(ten an hour) and `declaration_ip` (twenty anonymous declarations a day), each answered
+like its per-address twin. And `/login` has Symfony's **`login_throttling`**: five failed
+attempts a minute per account and visitor, twenty-five per visitor.
+
+Per visitor is sound because **`Request::getClientIp()` is the real visitor in
+production**, checked: the Gateway overwrites `X-Forwarded-For` with the client's address
+(a forged one sent by the visitor is dropped), the pod sees the Gateway's private address,
+and `SYMFONY_TRUSTED_PROXIES=private_ranges` trusts it. No Cloudflare address appears in
+the chain. If a proxy is ever put in front that appends rather than overwrites, these limits
+would throttle strangers together, or become spoofable — check again.
 
 The counts live in the `cache.rate_limiter` pool, on disk, so they hold across requests —
 and across tests. A test that submits either form uses
@@ -1046,6 +1052,12 @@ deploys on every push to `main` — CI runs on the same push and **does not gate
 so a red merge still ships. The nets are the migration Job (`--all-or-nothing`) and
 `helm upgrade --wait --rollback-on-failure`.
 
+**Deploys queue, they are never cancelled** (`cancel-in-progress: false`). A run cancelled
+mid-`helm upgrade` leaves the release in `pending-upgrade`, and every later deploy then fails
+with *"another operation (install/upgrade/rollback) is in progress"*. If it happens anyway:
+`helm history benevolio`, then `helm rollback benevolio <last deployed revision>` — and note
+that the rollback restores that revision's **image** too, so re-run the latest CD at once.
+
 The image is **GHCR**, `ghcr.io/cvvfcm/benevolio/app`, public, authenticated with
 the workflow's own `GITHUB_TOKEN`. Not Docker Hub: the name is nested and Docker
 Hub only understands `namespace/repo`. Deploys pin `image.tag` to the commit sha,
@@ -1099,7 +1111,9 @@ declares one `Cluster`, `benevolio-db`.
   rclone to `<s3Bucket>/backups/` with the receipts' credentials, and pruned after **7 days**.
   With one replica on one disk, **it is the only copy that survives losing that node**. The
   prune runs inside the prefix, which the chart refuses to render empty — the receipts share
-  the bucket. Restore:
+  the bucket. **A `403 AccessDenied` from rclone** (on `ListObjectsV2` and `PutObject`) is
+  the Scaleway key lacking permission on the bucket, not the chart: the job uses the
+  receipts' key — grant it Object Storage access in the bucket's project. Restore:
   `pg_restore --clean --if-exists --no-owner --no-acl -d "$URI" benevolio-….dump`.
 
 **`secrets.mailerDsn` is required, and shape-checked at render time.** A declaration is
