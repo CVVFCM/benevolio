@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Form\Declaration;
 
 use App\Entity\DeclarationAction;
+use App\Entity\Person;
 use App\Entity\Task;
 use App\Enum\FiscalPower;
 use DateTimeImmutable;
@@ -134,5 +135,23 @@ final class ActionDraft
                 ->atPath('distanceKm')
                 ->addViolation();
         }
+    }
+
+    /**
+     * A new line for a logged-in volunteer, started from « Mon profil »: their usual
+     * distance and vehicle. « Véhicule personnel » stays unticked — whether they drove
+     * this time is for them to say, and nothing is valued until they do (#36).
+     */
+    public static function startingFrom(?Person $volunteer): self
+    {
+        $draft = new self();
+
+        if (null !== $volunteer) {
+            $draft->distanceKm = $volunteer->getDistanceKm() ?? 0;
+            $draft->fiscalPower = $volunteer->getFiscalPower();
+            $draft->electricVehicle = $volunteer->isElectricVehicle();
+        }
+
+        return $draft;
     }
 }

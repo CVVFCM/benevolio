@@ -67,13 +67,10 @@ final readonly class DeclarationController
         // stored draft if there is one.
         $volunteer = $this->currentVolunteer->get();
 
-        // A logged-in volunteer declares as themselves: the email is theirs, shown
-        // read-only, and DeclarationSubmitter::submitAs() files under them whatever was
-        // typed. Set before the form is built, so the field shows it.
-        $draft = new DeclarationDraft();
-        $draft->email = $volunteer?->getEmail()->value;
-
-        $flow = $this->formFactory->create(DeclarationFlowType::class, $draft);
+        // A logged-in volunteer's form opens pre-filled from their profile, the email
+        // theirs and read-only: DeclarationSubmitter::submitAs() files under them whatever
+        // is typed. Anyone else gets an empty form.
+        $flow = $this->formFactory->create(DeclarationFlowType::class, DeclarationDraft::startingFrom($volunteer));
         assert($flow instanceof FormFlowInterface);
 
         $flow->handleRequest($request);

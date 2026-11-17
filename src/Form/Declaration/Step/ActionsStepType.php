@@ -7,6 +7,7 @@ namespace App\Form\Declaration\Step;
 use App\Form\Declaration\ActionDraft;
 use App\Form\Declaration\ActionDraftType;
 use App\Form\Declaration\DeclarationDraft;
+use App\Volunteer\CurrentVolunteer;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CollectionType;
 use Symfony\Component\Form\FormBuilderInterface;
@@ -24,6 +25,11 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
  */
 final class ActionsStepType extends AbstractType
 {
+    public function __construct(
+        private readonly CurrentVolunteer $currentVolunteer,
+    ) {
+    }
+
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder->add('actions', CollectionType::class, [
@@ -37,7 +43,9 @@ final class ActionsStepType extends AbstractType
             // type stays honest and the Stimulus indices do not go sparse.
             'keep_as_list' => true,
             'prototype' => true,
-            'prototype_data' => new ActionDraft(),
+            // A line added with « Ajouter une action » starts like the first one: from the
+            // logged-in volunteer's profile, or empty. Server-side, so no request is needed.
+            'prototype_data' => ActionDraft::startingFrom($this->currentVolunteer->get()),
         ]);
     }
 

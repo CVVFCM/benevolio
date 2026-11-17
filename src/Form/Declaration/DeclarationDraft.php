@@ -122,4 +122,32 @@ final class DeclarationDraft
     {
         $this->actions = [new ActionDraft()];
     }
+
+    /**
+     * The form as it opens for a logged-in volunteer: their name, email and address on the
+     * first step, their distance and vehicle on the first line (#36). Nothing for anyone
+     * else — pre-filling from a typed email would show a volunteer's address to whoever
+     * knows it.
+     */
+    public static function startingFrom(?Person $volunteer): self
+    {
+        $draft = new self();
+
+        if (null === $volunteer) {
+            return $draft;
+        }
+
+        $address = $volunteer->getAddress();
+        $draft->firstName = $volunteer->getFirstName();
+        $draft->lastName = $volunteer->getLastName();
+        $draft->email = $volunteer->getEmail()->value;
+        $draft->addressNumber = $address->number;
+        $draft->addressStreet = $address->street;
+        $draft->addressPostcode = $address->postcode;
+        $draft->addressCity = $address->city;
+        $draft->addressCountry = $address->country;
+        $draft->actions = [ActionDraft::startingFrom($volunteer)];
+
+        return $draft;
+    }
 }

@@ -601,6 +601,11 @@ A volunteer logs in to ONE association's space, `/a/{organizationSlug}/…`: « 
   `App\Security\VolunteerLinkAuthenticator`, which supports no request on its own.
 - **Logged in, the email is the account's**: shown read-only on the form, and
   `DeclarationSubmitter::submitAs()` ignores what is typed.
+- **Logged in, the form opens pre-filled** (#36): `DeclarationDraft::startingFrom()` puts
+  the name and address on the first step, and `ActionDraft::startingFrom()` the profile's
+  distance, fiscal power and electric flag on each line — the first one, and through the
+  collection's `prototype_data` every line added. « Véhicule personnel » stays unticked:
+  nothing is valued until the volunteer says they drove. Never from a typed email.
 - Receipts are listed and downloaded only for their own `Person`; another volunteer's is a
   404. Tests: `tests/Controller/Volunteer/VolunteerAccountTest`.
 
