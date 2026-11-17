@@ -64,9 +64,9 @@ final class DeclarationDraft
     #[Assert\NotBlank(message: 'Indiquez votre code postal.', groups: [self::STEP_PERSON])]
     #[Assert\Length(max: Address::POSTCODE_MAX_LENGTH, groups: [self::STEP_PERSON])]
     #[Assert\When(
-        expression: 'this.addressCountry === "FR"',
+        expression: 'this.addressCountry === "'.Address::FRANCE.'"',
         constraints: [new Assert\Regex(
-            pattern: '/^\d{5}$/',
+            pattern: Address::FRENCH_POSTCODE_PATTERN,
             message: 'Un code postal français comporte 5 chiffres.',
         )],
         groups: [self::STEP_PERSON],

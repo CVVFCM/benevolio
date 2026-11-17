@@ -72,6 +72,26 @@ final class DashboardAccessTest extends WebTestCase
     }
 
     /**
+     * Two back offices, two words for their accounts. Both menu entries once shared
+     * the translation id `menu.users`, declared twice in admin.fr.xlf: the second
+     * silently won, and /platform read « Administrateurs » like /admin.
+     */
+    #[Test]
+    public function each_back_office_names_its_accounts_entry_its_own_way(): void
+    {
+        $this->client->loginUser(UserFactory::new()->superAdmin()->create());
+        $this->client->request('GET', '/platform');
+        self::assertSelectorTextContains('#main-menu', 'Comptes administrateurs');
+
+        $this->loginAsAdminOf(OrganizationFactory::createOne());
+        $this->client->request('GET', '/admin');
+        self::assertSelectorTextContains('#main-menu', 'Administrateurs');
+        self::assertSelectorTextNotContains('#main-menu', 'Comptes administrateurs');
+        // The page used to announce, as still to come, sections that sit in the menu.
+        self::assertSelectorTextNotContains('body', 'prochaine version');
+    }
+
+    /**
      * The platform CRUDs must not be reachable through the tenant dashboard,
      * where the Doctrine tenant filter is armed. EasyAdmin would register them
      * under every dashboard without the deniedControllers list on

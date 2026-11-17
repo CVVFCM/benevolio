@@ -13,6 +13,8 @@ use DateTimeImmutable;
 use Finite\StateMachine;
 use Zenstruck\Foundry\Persistence\PersistentObjectFactory;
 
+use function Zenstruck\Foundry\memoize;
+
 /**
  * @extends PersistentObjectFactory<Declaration>
  */
@@ -85,7 +87,11 @@ final class DeclarationFactory extends PersistentObjectFactory
      */
     protected function defaults(): array
     {
-        $organization = OrganizationFactory::new();
+        // Memoized, not a bare factory: Foundry creates from a factory every time it
+        // meets one, so handing OrganizationFactory::new() to both keys below filed
+        // the declaration under one association and its volunteer under another.
+        // Lazy, so a caller going through for() or forPerson() creates no stray row.
+        $organization = memoize(static fn (): Organization => OrganizationFactory::createOne());
 
         return [
             'organization' => $organization,

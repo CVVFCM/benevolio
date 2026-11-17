@@ -110,21 +110,39 @@ class Organization
      * here and getPostalAddress() builds the value object when they are all present —
      * which keeps Address as the single place that knows how an address validates and
      * how it reads.
+     *
+     * The lengths and the postcode rule below are Address's own, by reference: the two
+     * forms that edit these columns must refuse what the value object would. They once
+     * allowed more (255 characters, any postcode), and a four-digit French postcode
+     * saved here became an exception in the middle of a receipt run. Every part stays
+     * optional — an address half typed is "incomplete", which is not an error.
      */
-    #[ORM\Column(length: 10, nullable: true)]
+    #[ORM\Column(length: Address::NUMBER_MAX_LENGTH, nullable: true)]
+    #[Assert\Length(max: Address::NUMBER_MAX_LENGTH)]
     private ?string $addressNumber = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
+    #[ORM\Column(length: Address::STREET_MAX_LENGTH, nullable: true)]
+    #[Assert\Length(max: Address::STREET_MAX_LENGTH)]
     private ?string $addressStreet = null;
 
-    #[ORM\Column(length: 16, nullable: true)]
+    #[ORM\Column(length: Address::POSTCODE_MAX_LENGTH, nullable: true)]
+    #[Assert\Length(max: Address::POSTCODE_MAX_LENGTH)]
+    #[Assert\When(
+        expression: 'this.getAddressCountry() === "'.Address::FRANCE.'"',
+        constraints: [new Assert\Regex(
+            pattern: Address::FRENCH_POSTCODE_PATTERN,
+            message: 'Un code postal français comporte 5 chiffres.',
+        )],
+    )]
     private ?string $addressPostcode = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
+    #[ORM\Column(length: Address::CITY_MAX_LENGTH, nullable: true)]
+    #[Assert\Length(max: Address::CITY_MAX_LENGTH)]
     private ?string $addressCity = null;
 
     /** ISO 3166-1 alpha-2, like Address::$country. */
     #[ORM\Column(length: 2, nullable: true, options: ['fixed' => true])]
+    #[Assert\Country]
     private ?string $addressCountry = null;
 
     /** The *objet* of the association, as declared. Printed verbatim on the form. */

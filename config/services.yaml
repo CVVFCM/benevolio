@@ -64,3 +64,14 @@ services:
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+
+when@test:
+    services:
+        # Public in tests only, so one can stand a failing Gotenberg in for it: the
+        # container otherwise inlines it into ReceiptGenerator, where nothing can be
+        # swapped. See tests/Receipt/YearlyReceiptRunTest and tests/Support/FailingGotenberg.
+        App\Receipt\GotenbergClient:
+            autowire: true
+            public: true
+            arguments:
+                $baseUri: '%env(GOTENBERG_DSN)%'

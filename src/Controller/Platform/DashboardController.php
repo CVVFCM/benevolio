@@ -57,6 +57,6 @@ final class DashboardController extends AbstractDashboardController
         // EasyAdmin 5 dropped MenuItem::linkToCrud(): menu items point at the
         // CRUD controller, not at the entity.
         yield MenuItem::linkTo(OrganizationCrudController::class, 'menu.organizations', 'fa fa-building');
-        yield MenuItem::linkTo(UserCrudController::class, 'menu.users', 'fa fa-user-shield');
+        yield MenuItem::linkTo(UserCrudController::class, 'menu.platform_users', 'fa fa-user-shield');
     }
 }

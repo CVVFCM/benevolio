@@ -30,7 +30,13 @@ final readonly class Address implements Stringable
     public const int POSTCODE_MAX_LENGTH = 16;
     public const int CITY_MAX_LENGTH = 120;
 
-    private const string FRANCE = 'FR';
+    /**
+     * Public, like the lengths above, so that whatever collects an address states the
+     * same rules as this class enforces — a form has to name the field that is wrong,
+     * which an exception thrown from here cannot do.
+     */
+    public const string FRANCE = 'FR';
+    public const string FRENCH_POSTCODE_PATTERN = '/^\d{5}$/';
 
     #[ORM\Column(length: self::NUMBER_MAX_LENGTH, nullable: true)]
     public ?string $number;
@@ -70,7 +76,7 @@ final readonly class Address implements Stringable
             throw InvalidValueObjectException::create(self::class, sprintf('"%s" is not a known ISO 3166-1 alpha-2 country code.', $country));
         }
 
-        if (self::FRANCE === $country && 1 !== preg_match('/^\d{5}$/', $postcode)) {
+        if (self::FRANCE === $country && 1 !== preg_match(self::FRENCH_POSTCODE_PATTERN, $postcode)) {
             throw InvalidValueObjectException::create(self::class, sprintf('"%s" is not a valid French postcode (5 digits expected).', $postcode));
         }
 

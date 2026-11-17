@@ -7,6 +7,7 @@ namespace App\Receipt;
 use RuntimeException;
 
 use function array_filter;
+use function array_find;
 use function array_values;
 use function count;
 
@@ -17,6 +18,12 @@ use function count;
  * — and `refusalReason` says so with nothing attempted, or there is one outcome per
  * volunteer considered. "Nothing to do" is a third, quiet case: a year with no validated
  * contribution produces no outcomes and no refusal.
+ *
+ * A run that went ahead may also have been **interrupted**: making one volunteer's receipt
+ * failed, and the run stopped there. The report then still says who was receipted before
+ * that, who it failed on, and who is left — which is the point of returning one at all:
+ * the receipts issued before the failure are real, and without the report nobody knows
+ * which they are.
  */
 final readonly class ReceiptRunReport
 {
@@ -71,7 +78,41 @@ final readonly class ReceiptRunReport
     {
         return array_values(array_filter(
             $this->outcomes,
-            static fn (ReceiptRunOutcome $outcome): bool => !$outcome->isIssued(),
+            static fn (ReceiptRunOutcome $outcome): bool => $outcome->isSkipped(),
+        ));
+    }
+
+    /**
+     * True when making a receipt failed and the run stopped before the end.
+     */
+    public function isInterrupted(): bool
+    {
+        return null !== $this->failure();
+    }
+
+    /**
+     * The volunteer the run stopped on, if it did. At most one: the run does not go on
+     * past a failure.
+     */
+    public function failure(): ?ReceiptRunOutcome
+    {
+        return array_find(
+            $this->outcomes,
+            static fn (ReceiptRunOutcome $outcome): bool => $outcome->isFailed(),
+        );
+    }
+
+    /**
+     * Volunteers owed a receipt that the run never got to. Running the year again issues
+     * theirs — and, being a new run, re-issues the ones already made under new numbers.
+     *
+     * @return list<ReceiptRunOutcome>
+     */
+    public function notAttempted(): array
+    {
+        return array_values(array_filter(
+            $this->outcomes,
+            static fn (ReceiptRunOutcome $outcome): bool => $outcome->isNotAttempted(),
         ));
     }
 

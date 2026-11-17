@@ -174,6 +174,25 @@ final class GenerateReceiptsCommand extends Command
             );
         }
 
+        $failure = $report->failure();
+
+        if (null !== $failure) {
+            $io->section('Non émis');
+            $io->table(
+                ['Bénévole', 'Raison'],
+                [
+                    [$failure->person->getFullName(), $failure->failureReason()],
+                    ...array_map(
+                        static fn (ReceiptRunOutcome $outcome): array => [
+                            $outcome->person->getFullName(),
+                            'Non traité : la génération s\'était arrêtée.',
+                        ],
+                        $report->notAttempted(),
+                    ),
+                ],
+            );
+        }
+
         if ($report->unvaluedLineCount() > 0) {
             $io->warning(sprintf(
                 '%d action(s) ne sont couvertes par aucun exercice comptable et sont donc '
@@ -182,11 +201,25 @@ final class GenerateReceiptsCommand extends Command
             ));
         }
 
-        $io->success(sprintf(
+        $summary = sprintf(
             '%d reçu(s) émis pour un total de %s.',
             $report->issuedCount(),
             self::euros($report->totalCents()),
-        ));
+        );
+
+        if (null !== $failure) {
+            // Not a success, whatever was issued before: a script calling this must see
+            // that the year is not done. The exception itself is in the application log.
+            $io->error(sprintf(
+                'La génération s\'est arrêtée avant la fin. %s Relancer l\'année émet un nouveau '
+                .'reçu, sous un nouveau numéro, pour chaque bénévole.',
+                $summary,
+            ));
+
+            return Command::FAILURE;
+        }
+
+        $io->success($summary);
 
         return Command::SUCCESS;
     }

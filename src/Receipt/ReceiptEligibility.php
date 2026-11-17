@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Receipt;
 
 use App\Entity\Organization;
+use App\Exception\InvalidValueObjectException;
 
 /**
  * Whether an association is in a position to issue reçus fiscaux at all.
@@ -35,7 +36,17 @@ final readonly class ReceiptEligibility
                 .'ne serait pas valable. Renseignez-le dans « Mon association ».';
         }
 
-        if (null === $organization->getPostalAddress()) {
+        try {
+            $address = $organization->getPostalAddress();
+        } catch (InvalidValueObjectException) {
+            // All there, but not an address: a row saved before the forms held these
+            // fields to Address's rules. A refusal like the others — the run must tell
+            // the treasurer what to correct, not fail on them.
+            return 'L\'adresse postale de l\'association n\'est pas valide. '
+                .'Corrigez-la dans « Mon association ».';
+        }
+
+        if (null === $address) {
             return 'L\'adresse postale de l\'association est incomplète. '
                 .'Complétez-la dans « Mon association ».';
         }

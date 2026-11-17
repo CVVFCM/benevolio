@@ -35,6 +35,10 @@ use function array_values;
  * **One transaction per volunteer**, and the mail sent after their commit. A failure on the
  * twelfth volunteer must not undo the first eleven, and a mail relay blinking must not
  * discard a document that exists and is filed — the volunteer can be sent it again.
+ *
+ * **A receipt that cannot be made stops the run, and the run still returns its report**:
+ * who was receipted before, who it failed on, who was not reached. It does not carry on
+ * to the next volunteer — see run().
  */
 final readonly class YearlyReceiptRun
 {
@@ -61,16 +65,48 @@ final readonly class YearlyReceiptRun
         }
 
         $outcomes = [];
+        $interrupted = false;
 
         foreach ($this->waivedByVolunteer($organization, $year) as $waived) {
-            $outcomes[] = $waived->amountCents > 0
-                ? $this->issue($organization, $year, $waived)
-                : ReceiptRunOutcome::skipped(
+            if ($waived->amountCents <= 0) {
+                $outcomes[] = ReceiptRunOutcome::skipped(
                     $waived->person,
                     'Aucun frais abandonné sur l\'année : le temps donné n\'ouvre pas droit '
                     .'à un reçu fiscal.',
                     $waived->unvaluedLineCount,
                 );
+
+                continue;
+            }
+
+            if ($interrupted) {
+                $outcomes[] = ReceiptRunOutcome::notAttempted($waived->person, $waived->unvaluedLineCount);
+
+                continue;
+            }
+
+            try {
+                $outcomes[] = $this->issue($organization, $year, $waived);
+            } catch (Throwable $e) {
+                // Stop, and still report. What fails here is rendering, storage or the
+                // database — a Gotenberg that is down is down for the next volunteer too —
+                // and the EntityManager is closed by the rolled-back transaction anyway.
+                // The receipts issued so far are real and already mailed; letting this
+                // escape would answer a 500 and leave nobody knowing which they are.
+                $interrupted = true;
+
+                $this->logger->error('The {year} receipt run stopped: a receipt could not be made.', [
+                    'year' => $year,
+                    'exception' => $e,
+                ]);
+
+                $outcomes[] = ReceiptRunOutcome::failed(
+                    $waived->person,
+                    'Le reçu n\'a pas pu être établi, à cause d\'une erreur technique. '
+                    .'Rien n\'a été émis ni envoyé pour ce bénévole.',
+                    $waived->unvaluedLineCount,
+                );
+            }
         }
 
         return ReceiptRunReport::of($year, $outcomes);
@@ -90,7 +126,7 @@ final readonly class YearlyReceiptRun
             $person = $action->getDeclaration()->getPerson();
             $key = $person->getId()->toRfc4122();
 
-            $totals[$key] ??= new WaivedYear($person);
+            $totals[$key] ??= new WaivedYear($person, $year);
             $totals[$key]->add($action, $this->valuator->value($action)?->mileageCents);
         }
 

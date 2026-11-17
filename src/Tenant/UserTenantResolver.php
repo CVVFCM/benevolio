@@ -22,7 +22,11 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInt
  * helper: it is the narrowest contract that answers "who is logged in", and it
  * keeps this class testable without a container.
  *
- * Runs after UrlPrefixTenantResolver (lower priority).
+ * Runs after UrlPrefixTenantResolver (lower priority), and stays out of any request
+ * whose address names an association. When that slug resolves nothing — unknown, or
+ * deactivated — the answer is "no tenant", so a 404. Falling back to the account
+ * here handed a logged-in admin their own association's form under any mistyped
+ * public address, and filed the declaration there.
  *
  * TRAP — returns before touching the token when the request carries nothing to
  * authenticate with. Reading the token on a lazy firewall counts as using the
@@ -46,6 +50,10 @@ final readonly class UserTenantResolver implements TenantResolver
 
     public function resolve(Request $request): ?Organization
     {
+        if ($request->attributes->has(UrlPrefixTenantResolver::ROUTE_ATTRIBUTE)) {
+            return null;
+        }
+
         if (!$request->hasPreviousSession() && !$request->cookies->has(self::REMEMBER_ME_COOKIE)) {
             return null;
         }
