@@ -3,6 +3,8 @@ services:
     environment:
       APP_ENV: dev
       APP_DEBUG: true
+      # Not unused: FRANKENPHP_SITE_CONFIG's hot_reload needs a Mercure hub, and the
+      # container refuses to start without one.
       CADDY_SERVER_EXTRA_DIRECTIVES: |
         mercure {
         		name default

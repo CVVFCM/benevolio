@@ -153,7 +153,6 @@ final class OrganizationFilterTest extends KernelTestCase
         // Each organization was seeded with the same starter list, so an unfiltered
         // query would return twice as many.
         self::assertCount(count(DefaultTasks::NAMES), $repository->findAll());
-        self::assertCount(count(DefaultTasks::NAMES), $repository->findActive());
 
         foreach ($repository->findAll() as $task) {
             self::assertSame($first->getId()->toRfc4122(), $task->getOrganization()->getId()->toRfc4122());

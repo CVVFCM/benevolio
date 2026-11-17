@@ -22,14 +22,13 @@ use function sprintf;
  * hours they gave, and the travel they paid for.
  *
  * A single line therefore carries BOTH kinds of contribution, which are accounted
- * for differently: the hours are donated time (864/870, off balance sheet, never
+ * for differently: the hours are donated time (864/875, off balance sheet, never
  * receiptable), while the travel is an expense the person waives reimbursement of
- * and so becomes a donation (754x, receiptable). Keep that in mind before
+ * and so becomes a donation (75412, receiptable). Keep that in mind before
  * summing anything.
  *
- * TENANCY — DELIBERATE EXCEPTION: this is the one business entity that does NOT
- * implement App\Tenant\TenantAware, so OrganizationFilter does NOT scope queries
- * on it. It is reachable through its Declaration, which is tenant-scoped. Any
+ * TENANCY — DELIBERATE EXCEPTION: this entity does NOT implement
+ * App\Tenant\TenantAware, so OrganizationFilter does NOT scope queries on it. It is reachable through its Declaration, which is tenant-scoped. Any
  * code that queries DeclarationAction directly must scope itself — see
  * App\Controller\Admin\DeclarationActionCrudController, which joins declaration
  * in createIndexQueryBuilder() and guards single-record access with

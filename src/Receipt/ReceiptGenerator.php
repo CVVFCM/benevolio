@@ -33,12 +33,6 @@ use function sys_get_temp_dir;
  */
 final readonly class ReceiptGenerator
 {
-    /**
-     * Gotenberg requires the entry file of an HTML conversion to be called exactly
-     * this; anything else is rejected with a 400 that does not say so.
-     */
-    private const string GOTENBERG_ENTRY_FILE = 'index.html';
-
     public function __construct(
         private Environment $twig,
         private GotenbergClient $gotenberg,
@@ -63,7 +57,7 @@ final readonly class ReceiptGenerator
             'layout_font_size' => CerfaLayout::FONT_SIZE,
         ]);
 
-        $layer = $this->gotenberg->htmlToPdf(self::GOTENBERG_ENTRY_FILE, $html);
+        $layer = $this->gotenberg->htmlToPdf($html);
 
         return $this->stamp($layer);
     }

@@ -19,10 +19,4 @@ final readonly class AccountBalance
         public int $creditCents,
     ) {
     }
-
-    /** Whether the account closes level, which every pair in a valid écriture does. */
-    public function isBalanced(): bool
-    {
-        return $this->debitCents === $this->creditCents;
-    }
 }

@@ -48,7 +48,7 @@ class Organization
     private string $name = '';
 
     /**
-     * Used in the public volunteer URLs (/a/{slug}/…), so it must stay stable
+     * Used in the public volunteer URLs (/a/{organizationSlug}/…), so it must stay stable
      * once communicated and must not collide with another organization.
      */
     #[ORM\Column(length: self::SLUG_MAX_LENGTH, unique: true)]
@@ -311,17 +311,6 @@ class Organization
             $this->addressCity,
             $this->addressCountry,
         );
-    }
-
-    public function setPostalAddress(?Address $address): self
-    {
-        $this->addressNumber = $address?->number;
-        $this->addressStreet = $address?->street;
-        $this->addressPostcode = $address?->postcode;
-        $this->addressCity = $address?->city;
-        $this->addressCountry = $address?->country;
-
-        return $this;
     }
 
     public function getAddressNumber(): ?string

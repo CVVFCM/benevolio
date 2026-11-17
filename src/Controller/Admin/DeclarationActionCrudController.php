@@ -42,15 +42,17 @@ use function sprintf;
  *
  * ⚠ TENANCY IS MANUAL HERE. DeclarationAction does not implement TenantAware, so
  * OrganizationFilter does NOT scope it and this controller has to do the work
- * itself, in two places that are easy to forget:
+ * itself, in three places that are easy to forget:
  *
  *   1. createIndexQueryBuilder() joins the declaration and constrains it to the
  *      current tenant. This covers the index and the autocomplete endpoint.
  *   2. Crud::setEntityPermission() runs DeclarationActionVoter on single-record
  *      pages — detail, edit, delete — which fetch by id and never touch the query
  *      builder above.
+ *   3. The custom verdict actions check the voter themselves: setEntityPermission()
+ *      does not cover a custom action, which receives a null instance instead.
  *
- * Both are covered by tests/Controller/Admin/DeclarationActionIsolationTest.
+ * All three are covered by tests/Controller/Admin/DeclarationActionIsolationTest.
  * If DeclarationAction ever gains an organization FK through TenantAwareTrait,
  * delete all of this: the filter would cover it automatically.
  *

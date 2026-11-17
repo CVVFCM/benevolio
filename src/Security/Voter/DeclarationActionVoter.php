@@ -12,8 +12,8 @@ use Symfony\Component\Security\Core\Authorization\Voter\Vote;
 use Symfony\Component\Security\Core\Authorization\Voter\Voter;
 
 /**
- * Tenant check for DeclarationAction, which is the one business entity that does
- * NOT implement TenantAware — so OrganizationFilter does not scope it.
+ * Tenant check for DeclarationAction, which does NOT implement TenantAware — so
+ * OrganizationFilter does not scope it.
  *
  * DeclarationActionCrudController scopes its *index* query by joining the
  * declaration, but the detail, edit and delete pages fetch a single record by id

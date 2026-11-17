@@ -66,9 +66,4 @@ final class EmailType extends StringType
             throw ValueNotConvertible::new($value, self::NAME, null, $e);
         }
     }
-
-    public function requiresSQLCommentHint(AbstractPlatform $platform): bool
-    {
-        return true;
-    }
 }

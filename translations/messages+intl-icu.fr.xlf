@@ -77,18 +77,6 @@
                 <target>Se connecter</target>
             </segment>
         </unit>
-        <unit id="login.logged_in_as">
-            <segment>
-                <source>login.logged_in_as</source>
-                <target>Connecté en tant que {email}</target>
-            </segment>
-        </unit>
-        <unit id="logout.submit">
-            <segment>
-                <source>logout.submit</source>
-                <target>Se déconnecter</target>
-            </segment>
-        </unit>
 
         <!-- Step names must match the flow step names in DeclarationFlowType,
              which are also the validation group names. -->

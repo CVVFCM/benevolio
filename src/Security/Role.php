@@ -8,7 +8,8 @@ namespace App\Security;
  * The closed set of roles this application grants.
  *
  * Volunteers are deliberately absent: they have no account. They identify
- * themselves on the public declaration form with an email one-time code.
+ * themselves on the public declaration form, and confirm it from a link emailed to
+ * them.
  */
 enum Role: string
 {

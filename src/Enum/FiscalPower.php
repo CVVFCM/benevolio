@@ -5,16 +5,16 @@ declare(strict_types=1);
 namespace App\Enum;
 
 /**
- * The vehicle's *puissance fiscale*, as the brackets of the volunteer mileage
- * scale (*barème kilométrique bénévole*) actually distinguishes them.
+ * The vehicle's *puissance fiscale*, as the brackets of the *barème kilométrique*
+ * actually distinguish them — the general salaried scale, which volunteers use since
+ * loi n° 2022-1157 (see AGENTS.md).
  *
  * The scale groups everything at 3 CV and below, then 4, 5 and 6 CV, then
  * everything at 7 CV and above — so storing the raw number from the carte grise
  * would only mean mapping it back to a bracket later.
  *
- * NO euro rates here. The scale is re-published every year and its own scale for
- * volunteers is lower than the one for salaried employees; the rates belong with
- * the valuation lot, keyed by financial year, not baked into an enum.
+ * NO euro rates here. The scale is re-published every year, so the rates belong to
+ * App\Entity\FiscalYear, not to an enum.
  */
 enum FiscalPower: string
 {

@@ -52,7 +52,7 @@ final class OrganizationCrudController extends AbstractCrudController
     {
         yield TextField::new('name', 'organization.name');
 
-        // The slug appears in the public volunteer URLs (/a/{slug}/…), so it is
+        // The slug appears in the public volunteer URLs (/a/{organizationSlug}/…), so it is
         // shown as an editable field rather than silently regenerated: changing
         // it invalidates links already handed out to volunteers.
         yield SlugField::new('slug', 'organization.slug')

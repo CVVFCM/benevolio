@@ -33,15 +33,4 @@ final class TaskRepository extends ServiceEntityRepository
             ->andWhere('task.active = true')
             ->orderBy('task.name', 'ASC');
     }
-
-    /**
-     * @return list<Task>
-     */
-    public function findActive(): array
-    {
-        /** @var list<Task> $types */
-        $types = $this->activeQueryBuilder()->getQuery()->getResult();
-
-        return $types;
-    }
 }
