@@ -477,6 +477,27 @@ body {
     color: var(--danger);
 }
 
+/* The summary of a refused step: each item links to its field (#33). */
+.error-summary:focus {
+    outline: 3px solid color-mix(in oklab, var(--danger) 55%, transparent);
+    outline-offset: 2px;
+}
+
+.error-summary__list {
+    margin: var(--space-2) 0 0;
+    padding-inline-start: var(--space-5);
+}
+
+.error-summary__list li + li {
+    margin-top: var(--space-1);
+}
+
+.error-summary__list a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
 /* --------------------------------------------------------- action panels -- */
 
 .actions-list {

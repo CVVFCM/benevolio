@@ -745,6 +745,11 @@ Other things worth knowing before touching it:
   rules. One error system, in French.
 - `templates/form/public_theme.html.twig` owns how a field is composed. Add fields
   through it rather than styling one in place.
+- A refused step opens with **one summary** (`templates/public/declaration/_error_summary.html.twig`):
+  every error of the step, each linking to its field's `id`, lines labelled « Action N — ».
+  It is the only `role="alert"` on the page, and the `error-summary` controller focuses it.
+  An error on a group (the list, a whole line) has no field to point at and is listed
+  without a link.
 
 `DeclarationSubmitter` is the boundary where the value objects are built. Their
 assertions should be unreachable there, because the form validated the same rules
