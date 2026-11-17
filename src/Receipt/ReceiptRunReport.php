@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Receipt;
 
+use App\ValueObject\Money;
 use RuntimeException;
 
 use function array_filter;
@@ -127,18 +128,18 @@ final readonly class ReceiptRunReport
     }
 
     /**
-     * The receipted total, in cents.
+     * The receipted total.
      *
      * The sum of what was issued, and nothing else: it is a figure to check the run
      * against, not an accounting total — the exercice's écriture is at
      * App\Accounting\LedgerSummary and covers a different period.
      */
-    public function totalCents(): int
+    public function total(): Money
     {
-        $total = 0;
+        $total = Money::zero();
 
         foreach ($this->issued() as $outcome) {
-            $total += $outcome->receipt()->getAmountCents();
+            $total = $total->plus($outcome->receipt()->getAmount());
         }
 
         return $total;

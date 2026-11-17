@@ -73,7 +73,7 @@ final class YearlyReceiptRunTest extends KernelTestCase
         $report = $this->run->run($organization, 2025);
 
         self::assertSame(1, $report->issuedCount());
-        self::assertSame(17300, $report->totalCents());
+        self::assertSame(17300, $report->total()->cents);
 
         $receipt = $this->firstIssued($report);
         self::assertSame(2025, $receipt->getYear());
@@ -115,7 +115,7 @@ final class YearlyReceiptRunTest extends KernelTestCase
         $report = $this->run->run($organization, 2025);
 
         self::assertSame(1, $report->issuedCount());
-        self::assertSame(3400 + 4760, $report->totalCents());
+        self::assertSame(3400 + 4760, $report->total()->cents);
     }
 
     #[Test]
@@ -129,7 +129,7 @@ final class YearlyReceiptRunTest extends KernelTestCase
         $this->waivedLine($person, '2024-06-21');
         $this->waivedLine($person, '2025-06-21');
 
-        self::assertSame(4325, $this->run->run($organization, 2025)->totalCents());
+        self::assertSame(4325, $this->run->run($organization, 2025)->total()->cents);
     }
 
     /**
@@ -246,7 +246,7 @@ final class YearlyReceiptRunTest extends KernelTestCase
         self::assertStringContainsString('erreur technique', $failure->failureReason());
         self::assertSame(['Troisième'], $this->lastNames($report->notAttempted()));
         self::assertSame([], $report->skipped());
-        self::assertSame(4325, $report->totalCents());
+        self::assertSame(4325, $report->total()->cents);
     }
 
     /**

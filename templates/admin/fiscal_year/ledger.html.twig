@@ -13,14 +13,11 @@
     écriture recording them is passed at closing.
 
     The per-volunteer detail is on its own page — admin/fiscal_year/ledger_detail.html.twig.
-    Amounts arrive in cents and go through the `euros` filter; nothing is divided here.
+    Amounts arrive as App\ValueObject\Money and go through the `euros` filter; nothing is
+    divided here.
 #}
 
-{% macro amount(cents) %}{{ cents|euros }}{% endmacro %}
-
 {% macro entries(rows) %}
-    {% import _self as fmt %}
-
     <table class="data-table ledger">
         <thead>
             <tr>
@@ -37,8 +34,8 @@
                     <td>{{ entry.date|format_date('short') }}</td>
                     <td class="ledger__account">{{ entry.account.display }}</td>
                     <td>{{ entry.label }}</td>
-                    <td class="is-numeric">{{ entry.debitCents ? fmt.amount(entry.debitCents) : '' }}</td>
-                    <td class="is-numeric">{{ entry.creditCents ? fmt.amount(entry.creditCents) : '' }}</td>
+                    <td class="is-numeric">{{ entry.debit.isZero ? '' : entry.debit|euros }}</td>
+                    <td class="is-numeric">{{ entry.credit.isZero ? '' : entry.credit|euros }}</td>
                 </tr>
             {% endfor %}
         </tbody>
@@ -69,7 +66,7 @@
         <p class="ledger__volume">
             {{ summary.volunteerCount }}
             {{ summary.volunteerCount > 1 ? 'bénévoles' : 'bénévole' }}
-            · {{ summary.workHoursInHundredths|hours }} de bénévolat
+            · {{ summary.workHours|hours }} de bénévolat
             · {{ summary.waivedDistanceKm }} km avec véhicule personnel
         </p>
 
@@ -122,8 +119,8 @@
                     {% for balance in summary.balances %}
                         <tr class="ledger__row">
                             <td class="ledger__account">{{ balance.account.display }}</td>
-                            <td class="is-numeric">{{ balance.debitCents ? fmt.amount(balance.debitCents) : '' }}</td>
-                            <td class="is-numeric">{{ balance.creditCents ? fmt.amount(balance.creditCents) : '' }}</td>
+                            <td class="is-numeric">{{ balance.debit.isZero ? '' : balance.debit|euros }}</td>
+                            <td class="is-numeric">{{ balance.credit.isZero ? '' : balance.credit|euros }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>

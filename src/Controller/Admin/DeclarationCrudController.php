@@ -199,8 +199,8 @@ final class DeclarationCrudController extends AbstractCrudController
         yield IntegerField::new('actions.count', 'Actions')
             ->onlyOnIndex();
 
-        yield TextField::new('totalWorkHours', 'Heures déclarées')
-            ->formatValue(static fn (mixed $value, Declaration $declaration): string => sprintf('%s h', $declaration->getTotalWorkHours()));
+        yield TextField::new('totalHours', 'Heures déclarées')
+            ->formatValue(static fn (mixed $value, Declaration $declaration): string => $declaration->getTotalHours()->format());
 
         yield IntegerField::new('totalDistanceKm', 'Kilomètres déclarés')
             ->setHelp('Distance d\'un trajet × nombre de trajets, pour chaque action.');

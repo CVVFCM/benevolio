@@ -53,7 +53,7 @@
                         {% endif %}
                     </td>
                     <td class="is-numeric">{{ action.consecutiveDays }}</td>
-                    <td class="is-numeric">{{ action.workHours }} h</td>
+                    <td class="is-numeric">{{ action.hours|hours }}</td>
                     <td class="is-numeric">{{ action.journeys }}</td>
                     <td class="is-numeric">
                         {{ action.totalDistanceKm }}

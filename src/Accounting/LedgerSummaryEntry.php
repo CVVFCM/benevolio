@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Accounting;
 
+use App\ValueObject\Money;
 use DateTimeImmutable;
 
 /**
@@ -13,7 +14,7 @@ use DateTimeImmutable;
  * requires each record to carry its date, and a line handed to a template without one
  * would let the template invent it.
  *
- * A line is one-sided. `debitCents` and `creditCents` are never both non-zero, because
+ * A line is one-sided. `debit` and `credit` are never both non-zero, because
  * an écriture is read as two facing columns and a row filling both would be unreadable.
  */
 final readonly class LedgerSummaryEntry
@@ -22,8 +23,8 @@ final readonly class LedgerSummaryEntry
         public DateTimeImmutable $date,
         public PcgAccount $account,
         public string $label,
-        public int $debitCents = 0,
-        public int $creditCents = 0,
+        public Money $debit = new Money(0),
+        public Money $credit = new Money(0),
     ) {
     }
 }

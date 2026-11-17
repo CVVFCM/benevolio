@@ -9,6 +9,7 @@ use App\Factory\DeclarationActionFactory;
 use App\Factory\DeclarationFactory;
 use App\Factory\OrganizationFactory;
 use App\Receipt\WaivedYear;
+use App\ValueObject\Money;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -28,9 +29,9 @@ final class WaivedYearTest extends KernelTestCase
     {
         $waived = new WaivedYear($this->lineOn('2025-06-20', days: 1)->getDeclaration()->getPerson(), 2025);
 
-        $waived->add($this->lineOn('2025-06-20', days: 1), 4325);
-        $waived->add($this->lineOn('2025-09-05', days: 3), 4325);
-        $waived->add($this->lineOn('2025-07-14', days: 1), 4325);
+        $waived->add($this->lineOn('2025-06-20', days: 1), new Money(4325));
+        $waived->add($this->lineOn('2025-09-05', days: 3), new Money(4325));
+        $waived->add($this->lineOn('2025-07-14', days: 1), new Money(4325));
 
         self::assertSame('2025-09-07', $waived->lastWaivedDay()->format('Y-m-d'));
     }
@@ -46,7 +47,7 @@ final class WaivedYearTest extends KernelTestCase
         $line = $this->lineOn('2025-12-30', days: 3);
         $waived = new WaivedYear($line->getDeclaration()->getPerson(), 2025);
 
-        $waived->add($line, 4325);
+        $waived->add($line, new Money(4325));
 
         self::assertSame('2026-01-01', $line->getEndDate()->format('Y-m-d'));
         self::assertSame('2025-12-31', $waived->lastWaivedDay()->format('Y-m-d'));

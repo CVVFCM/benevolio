@@ -6,6 +6,7 @@ namespace App\Receipt;
 
 use App\Entity\DeclarationAction;
 use App\Entity\Person;
+use App\ValueObject\Money;
 use DateTimeImmutable;
 use RuntimeException;
 
@@ -21,7 +22,7 @@ use function sprintf;
  */
 final class WaivedYear
 {
-    public int $amountCents = 0;
+    public Money $amount;
 
     /**
      * Lines with no exercice to price them, which are therefore absent from the amount.
@@ -36,27 +37,28 @@ final class WaivedYear
         /** The civil year being receipted: the date printed must fall inside it. */
         private readonly int $year,
     ) {
+        $this->amount = Money::zero();
     }
 
     /**
-     * @param int|null $mileageCents what the line is worth, or null when no exercice covers
-     *                               its date and there is therefore no barème to price it
+     * @param Money|null $mileage what the line is worth, or null when no exercice covers its
+     *                            date and there is therefore no barème to price it
      */
-    public function add(DeclarationAction $action, ?int $mileageCents): void
+    public function add(DeclarationAction $action, ?Money $mileage): void
     {
-        if (null === $mileageCents) {
+        if (null === $mileage) {
             ++$this->unvaluedLineCount;
 
             return;
         }
 
-        if (0 === $mileageCents) {
+        if ($mileage->isZero()) {
             // Declared, but nothing was waived — hours only, or travel in someone else's
             // vehicle. It belongs to the ledger, not to a receipt.
             return;
         }
 
-        $this->amountCents += $mileageCents;
+        $this->amount = $this->amount->plus($mileage);
 
         // The latest day the volunteer actually incurred waived expenses. The lines arrive
         // in date order, so this is a comparison and not a sort — see

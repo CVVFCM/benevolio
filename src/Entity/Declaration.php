@@ -11,6 +11,7 @@ use App\State\DeclarationState;
 use App\Tenant\TenantAware;
 use App\Tenant\TenantAwareTrait;
 use App\ValueObject\Address;
+use App\ValueObject\WorkHours;
 use DateTimeImmutable;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -369,21 +370,20 @@ class Declaration implements TenantAware
     }
 
     /**
-     * Total hours declared across every line, decided or not, as a DECIMAL(x,2)
-     * string.
+     * Total hours declared across every line, decided or not.
      *
      * Summed in integer hundredths rather than as floats, so the figure stays
      * exact once valuation multiplies it by an hourly rate. ext-bcmath is not
      * installed and is not worth requiring for this.
      */
-    public function getTotalWorkHours(): string
+    public function getTotalHours(): WorkHours
     {
-        $hundredths = 0;
+        $total = WorkHours::zero();
         foreach ($this->actions as $action) {
-            $hundredths += $action->getWorkHoursInHundredths();
+            $total = $total->plus($action->getHours());
         }
 
-        return sprintf('%d.%02d', intdiv($hundredths, 100), $hundredths % 100);
+        return $total;
     }
 
     /** Total kilometres: each line is one-way distance × number of journeys. */

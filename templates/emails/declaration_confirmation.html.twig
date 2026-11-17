@@ -54,7 +54,7 @@
                                     {{ action.date|format_date('short') }} — {{ action.task.name }} :
                                     {{ action.title }}<br>
                                     <span style="color:#4c5563;">
-                                        {{ action.workHours }} h
+                                        {{ action.hours|hours }}
                                         {%- if action.totalDistanceKm > 0 %}, {{ action.totalDistanceKm }} km{% endif -%}
                                     </span>
                                 </td>
@@ -62,7 +62,7 @@
                         {% endfor %}
                         <tr>
                             <td style="padding-top:12px;font-size:14px;color:#4c5563;">
-                                Total : {{ declaration.totalWorkHours }} h
+                                Total : {{ declaration.totalHours|hours }}
                                 {%- if declaration.totalDistanceKm > 0 %} et {{ declaration.totalDistanceKm }} km{% endif -%}
                             </td>
                         </tr>

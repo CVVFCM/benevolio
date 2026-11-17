@@ -5,14 +5,13 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Enum\FiscalPower;
+use App\ValueObject\MileageRate;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Constraints as Assert;
 
-use function abs;
-use function intdiv;
 use function sprintf;
 
 /**
@@ -71,12 +70,12 @@ class FiscalYearMileageRate
      */
     public function __toString(): string
     {
-        return sprintf(
-            "%s : %d,%03d\u{a0}€/km",
-            $this->fiscalPower->label(),
-            intdiv($this->milliEurosPerKm, 1000),
-            abs($this->milliEurosPerKm % 1000),
-        );
+        return sprintf('%s : %s', $this->fiscalPower->label(), $this->getMileageRate());
+    }
+
+    public function getMileageRate(): MileageRate
+    {
+        return new MileageRate($this->milliEurosPerKm);
     }
 
     public function getId(): Uuid

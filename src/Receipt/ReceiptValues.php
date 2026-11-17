@@ -6,13 +6,11 @@ namespace App\Receipt;
 
 use App\Entity\Organization;
 use App\Entity\Person;
+use App\ValueObject\Money;
 use DateTimeImmutable;
 use Symfony\Component\Intl\Countries;
 
-use function abs;
 use function assert;
-use function intdiv;
-use function sprintf;
 
 /**
  * Everything that gets printed on the CERFA, gathered in one place.
@@ -46,7 +44,7 @@ final readonly class ReceiptValues
         Organization $organization,
         Person $person,
         string $number,
-        int $amountCents,
+        Money $amount,
         DateTimeImmutable $donationDate,
         DateTimeImmutable $issuedAt,
     ): self {
@@ -89,8 +87,9 @@ final readonly class ReceiptValues
                 'volunteerAddressCity' => $person->getAddress()->city,
                 'volunteerAddressCountry' => self::countryName($person->getAddress()->country),
 
-                'amount' => self::amount($amountCents),
-                'amountInWords' => new AmountInWords()->forCents($amountCents),
+                // No currency sign and no grouping: « euros » is printed on the form.
+                'amount' => $amount->formatBare(),
+                'amountInWords' => new AmountInWords()->forCents($amount->cents),
 
                 // Split because the form supplies its own slashes — see CerfaLayout.
                 'donationDay' => $donationDate->format('d'),
@@ -131,15 +130,6 @@ final readonly class ReceiptValues
     public function imagesForOverlay(): array
     {
         return $this->images;
-    }
-
-    /**
-     * `4325` → `43,25`. Integer arithmetic and a comma, like everywhere else money is
-     * rendered in this codebase.
-     */
-    private static function amount(int $cents): string
-    {
-        return sprintf('%d,%02d', intdiv($cents, 100), abs($cents % 100));
     }
 
     /**

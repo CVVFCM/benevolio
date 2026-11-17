@@ -70,7 +70,7 @@ differently, so never sum them together:
 
 | Field | Meaning |
 |---|---|
-| `workHours` | `DECIMAL(5,2)`, in hours. Donated time → 864/875, never receiptable. Totals are summed in exact integer hundredths (`getWorkHoursInHundredths()`), not as floats; ext-bcmath is not installed. |
+| `workHours` | `DECIMAL(5,2)`, in hours. Donated time → 864/875, never receiptable. Read as `App\ValueObject\WorkHours` (`getHours()`, `Declaration::getTotalHours()`), in exact integer hundredths, not as floats; ext-bcmath is not installed. |
 | `distanceKm` | Kilometres of **one journey, one way**. |
 | `journeys` | Number of **one-way** journeys — a return trip is two. Total distance is `distanceKm × journeys`. |
 | `fiscalPower` | An enum of the *barème* brackets (≤3 CV, 4, 5, 6, ≥7 CV), because the scale distinguishes only those. Required exactly when `ownVehicle` is true. **No euro rates anywhere**: the scale is republished yearly and belongs with valuation, keyed by financial year. |
@@ -113,6 +113,16 @@ division rounds**, half away from zero — the *arrondi au centime* an accountan
 valuations and always in the association's favour, which is the direction an auditor
 notices.
 
+**The domain hands these out as value objects**, in `src/ValueObject/`: `Money` (cents),
+`HourlyRate` (cents per hour), `MileageRate` (millièmes per km), `WorkHours` (hundredths).
+Each holds one integer and writes itself the French way — comma, narrow no-break space
+between thousands, no-break space before the unit: « 1 234,56 € », « 0,636 €/km »,
+« 7,50 h ». **Nothing else formats a figure**: templates use the `euros` and `hours`
+filters, PHP calls `format()`, and the CERFA box uses `Money::formatBare()` (« 1234,56 »,
+the form prints « euros » itself). The database columns and the valuator's arithmetic stay
+on plain integers; the int getters forms bind to (`getHourlyRateCents()`,
+`getMilliEurosPerKm()`, `getAmountCents()` for `MoneyField`) stay beside the typed ones.
+
 ### Rates live on the exercice, never on the Task or the Organization
 
 `App\Entity\FiscalYear` owns them, because they change: the barème is republished by
@@ -122,7 +132,7 @@ silently rewrite years already closed — lot 5 did exactly that and lot 6 undid
 Each rate is a **default plus optional per-type overrides**, held as rows
 (`FiscalYearTaskRate`, `FiscalYearMileageRate`) rather than columns, so the override set
 stays sparse and adding a `FiscalPower` bracket needs no migration.
-`FiscalYear::hourlyRateCentsFor()` and `::milliEurosPerKmFor()` are **the only places
+`FiscalYear::hourlyRateFor()` and `::mileageRateFor()` are **the only places
 the fallback lives** — reaching for the raw override gets the default when one exists,
 which is a wrong figure rather than a missing one.
 

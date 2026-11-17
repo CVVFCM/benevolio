@@ -9,9 +9,9 @@ pas transmise :
 Ce que vous avez déclaré
 {% for action in declaration.actions %}
 - {{ action.date|format_date('short') }} — {{ action.task.name }} : {{ action.title }}
-  {{ action.workHours }} h{% if action.totalDistanceKm > 0 %}, {{ action.totalDistanceKm }} km{% endif %}
+  {{ action.hours|hours }}{% if action.totalDistanceKm > 0 %}, {{ action.totalDistanceKm }} km{% endif %}
 {% endfor %}
-Total : {{ declaration.totalWorkHours }} h{% if declaration.totalDistanceKm > 0 %} et {{ declaration.totalDistanceKm }} km{% endif %}
+Total : {{ declaration.totalHours|hours }}{% if declaration.totalDistanceKm > 0 %} et {{ declaration.totalDistanceKm }} km{% endif %}
 
 Ce lien est valable 7 jours. Si vous n'êtes pas à l'origine de cette
 déclaration, ignorez ce message : rien ne sera transmis.
