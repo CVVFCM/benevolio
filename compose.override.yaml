@@ -5,6 +5,7 @@ services:
       APP_DEBUG: true
       CADDY_SERVER_EXTRA_DIRECTIVES: |
         mercure {
+        		name default
         		anonymous
         		subscriptions
         	}
