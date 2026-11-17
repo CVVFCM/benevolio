@@ -1,0 +1,39 @@
+{% extends 'public/layout.html.twig' %}
+
+{% block title %}Mes reçus fiscaux — {{ organization.name }}{% endblock %}
+
+{% block main %}
+    <h1>Mes reçus fiscaux</h1>
+
+    <p class="lede">
+        Un reçu par année civile, pour les frais que vous avez abandonnés. Le montant est
+        celui à reporter sur votre déclaration de revenus.
+    </p>
+
+    {% if receipts is empty %}
+        <p>Aucun reçu pour l'instant : l'association les établit une fois l'année terminée.</p>
+    {% else %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Année</th>
+                    <th>N° d'ordre</th>
+                    <th class="is-numeric">Montant</th>
+                    <th>Établi le</th>
+                    <th><span class="visually-hidden">Télécharger</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for receipt in receipts %}
+                    <tr>
+                        <td>{{ receipt.year }}</td>
+                        <td>{{ receipt.number }}</td>
+                        <td class="is-numeric">{{ receipt.amount|euros }}</td>
+                        <td>{{ receipt.issuedAt|format_date('short') }}</td>
+                        <td><a href="{{ path('volunteer_receipt_download', {organizationSlug: organization.slug, id: receipt.id}) }}">Télécharger (PDF)</a></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+{% endblock %}

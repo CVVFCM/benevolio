@@ -1,0 +1,62 @@
+{% extends 'public/layout.html.twig' %}
+
+{% form_theme form 'form/public_theme.html.twig' %}
+
+{% block title %}Mon profil — {{ organization.name }}{% endblock %}
+
+{% block main %}
+    <h1>Mon profil</h1>
+
+    {{ form_start(form, {attr: {novalidate: 'novalidate'}}) }}
+        {% if not form.vars.valid %}
+            {{ include('public/declaration/_error_summary.html.twig', {form: form}) }}
+        {% endif %}
+
+        {% if person %}
+            <section class="form__section" aria-labelledby="identity-heading">
+                <h2 class="form__legend" id="identity-heading">Vos coordonnées</h2>
+                <p>
+                    {{ person.fullName }}<br>
+                    {{ person.email.value }}<br>
+                    {{ person.address.number }} {{ person.address.street }}<br>
+                    {{ person.address.postcode }} {{ person.address.city }}
+                </p>
+                <p class="field__help">
+                    Elles se mettent à jour avec vos déclarations : changez-les dans la prochaine,
+                    elles seront retenues une fois la déclaration enregistrée.
+                </p>
+            </section>
+        {% else %}
+            <p class="lede">
+                Bienvenue. Complétez votre profil pour créer votre espace bénévole avec
+                l'adresse <strong>{{ new_email }}</strong>.
+            </p>
+
+            <section class="form__section" aria-labelledby="identity-heading">
+                <h2 class="form__legend" id="identity-heading">Vos coordonnées</h2>
+                <div class="form__grid form__grid--person">
+                    {{ form_row(form.identity.firstName, {row_attr: {class: 'field field--span-2'}}) }}
+                    {{ form_row(form.identity.lastName, {row_attr: {class: 'field field--span-2'}}) }}
+                    {{ form_row(form.identity.addressNumber) }}
+                    {{ form_row(form.identity.addressStreet, {row_attr: {class: 'field field--span-3'}}) }}
+                    {{ form_row(form.identity.addressPostcode) }}
+                    {{ form_row(form.identity.addressCity, {row_attr: {class: 'field field--span-3'}}) }}
+                    {{ form_row(form.identity.addressCountry, {row_attr: {class: 'field field--span-2'}}) }}
+                </div>
+            </section>
+        {% endif %}
+
+        <section class="form__section" aria-labelledby="vehicle-heading">
+            <h2 class="form__legend" id="vehicle-heading">Vos déplacements</h2>
+            <div class="form__grid">
+                {{ form_row(form.distanceKm, {row_attr: {class: 'field field--wide'}}) }}
+                {{ form_row(form.fiscalPower, {row_attr: {class: 'field field--wide'}}) }}
+                {{ form_row(form.electricVehicle, {row_attr: {class: 'field field--checkbox field--wide'}}) }}
+            </div>
+        </section>
+
+        <div class="navigator">
+            <button type="submit" class="button">{{ person ? 'Enregistrer' : 'Créer mon espace' }}</button>
+        </div>
+    {{ form_end(form) }}
+{% endblock %}

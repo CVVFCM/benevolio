@@ -1,0 +1,17 @@
+{% extends 'public/layout.html.twig' %}
+
+{% block title %}Vérifiez votre boîte mail — {{ organization.name }}{% endblock %}
+
+{% block main %}
+    <div class="done">
+        <h1>Vérifiez votre boîte mail</h1>
+
+        {# The same page whatever the address: it must not tell who volunteers here. #}
+        <p>
+            Si l'adresse est correcte, un lien de connexion vient d'y être envoyé. Il est
+            valable une heure et ne fonctionne qu'une fois.
+        </p>
+
+        <p>Rien reçu ? Regardez dans les indésirables, ou redemandez un lien.</p>
+    </div>
+{% endblock %}

@@ -57,9 +57,10 @@ Two consequences that are easy to get wrong:
   `MileageRate`. It is applied to the **amount, in the same single division**: 0,529 × 1,2
   is 0,6348 €/km, which no millième holds.
 
-**Volunteers have no account.** They are not `User`s. They identify themselves by
-filling the first step of the public form under `/a/{organizationSlug}/declaration`.
-Only back-office staff log in.
+**Volunteers are not `User`s.** They may declare anonymously, identifying themselves on
+the first step of the public form under `/a/{organizationSlug}/declaration`, or log in to
+their association's volunteer space with a mailed link — see *Volunteer accounts*. Only
+back-office staff have passwords.
 
 ### The declaration model
 
@@ -224,6 +225,11 @@ Submitting stores the declaration in **`awaiting_confirmation`** and emails the
 volunteer a link. Until they open it, the association cannot act on it. The click
 also proves the address works, which is what a CERFA receipt will have to be sent
 to.
+
+**Except for a logged-in volunteer**: their login link already proved the address, so
+`DeclarationSubmitter::submitAs()` files the declaration under their `Person` and confirms
+it at once through `DeclarationConfirmer::confirmBySubmission()` — same `confirm`
+transition, so the lines cascade and the typed identity is applied — and sends no mail.
 
 - The token lives on `Declaration` (`confirmationToken`, its expiry, `confirmedAt`),
   is valid **7 days**, and is **kept after use** rather than cleared — it can only
@@ -549,6 +555,9 @@ still takes a password, because bootstrapping and `composer reset` cannot wait o
 - **`declaration_recipient`**: five confirmation mails per address, per association, per
   day. The public form mails whatever address is typed; the sixth submission answers 429
   and files nothing.
+- **`volunteer_link`**: three volunteer login links per address, per association, per
+  hour, counted before the address is looked up. « Se connecter » answers the same page
+  over the limit.
 - A declaration holds at most `DeclarationDraft::MAX_ACTIONS` (50) lines.
 
 **None is per IP, and login is not throttled yet**, on purpose: behind Cloudflare and the
@@ -559,6 +568,41 @@ Both wait until what `Request::getClientIp()` returns in production has been che
 The counts live in the `cache.rate_limiter` pool, on disk, so they hold across requests —
 and across tests. A test that submits either form uses
 `App\Tests\Support\ResetsRateLimiters` in `setUp()`.
+
+### Volunteer accounts — one association, a mailed link, no password
+
+A volunteer logs in to ONE association's space, `/a/{organizationSlug}/…`: « Mon profil »,
+« Mes déclarations », « Mes reçus ». The account is their `Person`, which implements
+`UserInterface` (`ROLE_VOLUNTEER`) on its own firewall, `volunteer` (pattern `^/a/`).
+
+- **Two firewalls, one browser.** `volunteer` sits before `main` with its own provider
+  (`App\Security\VolunteerProvider`, by id, tenant filter suspended — it runs before the
+  filter is armed, and in worker mode the EntityManager may still carry the previous
+  request's), its own remember-me cookie `REMEMBERME_VOLUNTEER` on path `/a/` (signed with
+  the email: a volunteer has no password), and a logout that leaves the back-office session
+  alone. A treasurer can be both at once.
+- **One login is one association.** The firewall covers every association's prefix, so a
+  token for A is still present on B's pages. There it means nothing:
+  **`App\Volunteer\CurrentVolunteer::get()`** returns the volunteer only when their `Person`
+  belongs to the URL's association, and every controller and template asks it
+  (`current_volunteer()` in Twig) — never `app.user` or the token. The token is not cleared
+  on B's pages: that would log them out of A.
+- **The link is our own, not `login_link`.** It must work for an address with no `Person`
+  yet. `App\Volunteer\VolunteerLink` signs `/a/{slug}/connexion/lien?email=…&version=…`
+  with `UriSigner`, for one hour. `version` is `Person::$loginLinkVersion` (0 without a
+  Person); following a link bumps it — `App\Volunteer\VolunteerLogin` — so a link works once.
+- **« Se connecter » mails any address**, the same page whatever happens: a first link is
+  how an account begins. Following it from an unknown address stores the proven address in
+  the session, and « Mon profil » asks for the name and address once and creates the
+  `Person`. Afterwards the profile edits only the distance (one way, home → association)
+  and the vehicle; the identity changes through a confirmed declaration, as for anyone.
+- **The emailed URL logs nobody in; a button does**, as for back-office links, and the page
+  sends `Referrer-Policy: no-referrer`. Login is `Security::login()` with
+  `App\Security\VolunteerLinkAuthenticator`, which supports no request on its own.
+- **Logged in, the email is the account's**: shown read-only on the form, and
+  `DeclarationSubmitter::submitAs()` ignores what is typed.
+- Receipts are listed and downloaded only for their own `Person`; another volunteer's is a
+  404. Tests: `tests/Controller/Volunteer/VolunteerAccountTest`.
 
 ### Impersonation — « Se connecter en tant que »
 
@@ -665,6 +709,8 @@ the test enforces the last two.
 - `src/Receipt/` — the CERFA: the yearly run, eligibility, numbering, PDF and storage
 - `src/Organization/` — organization-level services (`DefaultTasks`, `SignatureFactory`)
 - `src/User/` — back-office account services (`OwnerAssigner`, `LoginLinkMailer`)
+- `src/Volunteer/` — volunteer accounts (`CurrentVolunteer`, `VolunteerLink`,
+  `VolunteerLogin`, `VolunteerLinkMailer`); their pages are in `src/Controller/Volunteer/`
 - `src/Tenant/` — tenant contract, resolvers, context, request listener
 - `src/Doctrine/Filter/` — the tenant SQL filter; `src/Doctrine/Type/` — DBAL types
 - `src/Security/` — roles, voters, the CSP and action-token listeners
@@ -1070,8 +1116,9 @@ one the chart invented for itself would not be, so the mail would be accepted he
 and dropped there. The template refuses an empty value and refuses a
 `Name <addr>` form.
 
-**The access log redacts two URLs that are credentials** (`log` block of the Caddyfile):
-the `hash` of a login link, and the token of a declaration's confirmation link — in the
+**The access log redacts the URLs that are credentials** (`log` block of the Caddyfile):
+the `hash` of a back-office login link and the `_hash` of a volunteer's (one pattern
+catches both), and the token of a declaration's confirmation link — in the
 request URI and in the `Referer` header, where the same URL reappears on the next request.
 Anyone able to read the pod's log could otherwise replay an invitation nobody had opened
 yet. A new link that authenticates by its URL needs adding to that regexp.

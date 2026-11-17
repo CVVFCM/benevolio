@@ -4,11 +4,15 @@ security:
         Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
 
     providers:
-        # Volunteers have no account: the only users are back-office accounts.
+        # Back-office accounts.
         app_users:
             entity:
                 class: App\Entity\User
                 property: email
+        # Volunteers, logged in to one association's space by a mailed link: a Person,
+        # by id. See App\Security\VolunteerProvider.
+        volunteers:
+            id: App\Security\VolunteerProvider
 
     role_hierarchy:
         # A platform super-admin can do anything an organization admin can.
@@ -21,6 +25,32 @@ security:
             # Ensure dev tools and static assets are always allowed
             pattern: ^/(_profiler|_wdt|assets|build)/
             security: false
+        # The volunteer space, under every association's public prefix. Its own firewall,
+        # so a back-office session and a volunteer session live side by side in one
+        # browser. One login is one association: App\Volunteer\CurrentVolunteer answers
+        # "logged in HERE?", and every page asks it rather than the token.
+        volunteer:
+            pattern: ^/a/
+            lazy: true
+            provider: volunteers
+            # Only Security::login() reaches it — see App\Controller\Volunteer\LinkCheckController.
+            custom_authenticators:
+                - App\Security\VolunteerLinkAuthenticator
+            entry_point: App\Security\VolunteerEntryPoint
+            remember_me:
+                secret: '%kernel.secret%'
+                name: REMEMBERME_VOLUNTEER
+                lifetime: 2592000 # 30 days
+                # A volunteer has no password, the default signature property. Not the
+                # login-link version either: a link login elsewhere would sign this device out.
+                signature_properties: [email]
+                path: /a/
+                samesite: lax
+            logout:
+                path: volunteer_logout
+                enable_csrf: true
+                # Leaves a back-office session in the same browser alone.
+                invalidate_session: false
         main:
             lazy: true
             provider: app_users
@@ -89,9 +119,13 @@ security:
         # Never while impersonating: a super-admin must not set someone else's password,
         # which is the whole point of the invitation link.
         - { path: ^/mot-de-passe$, allow_if: "is_fully_authenticated() and !is_granted('IS_IMPERSONATOR')" }
-        # The volunteer declaration form. Volunteers have no account, so this whole
-        # prefix is anonymous by design; the tenant comes from the {organizationSlug}
-        # in the URL (see App\Tenant\UrlPrefixTenantResolver).
+        # A volunteer's own pages. The role says "logged in"; whether it is for THIS
+        # association, each controller asks App\Volunteer\CurrentVolunteer.
+        - { path: ^/a/[^/]+/(mes-declarations|mes-recus), roles: ROLE_VOLUNTEER }
+        # The rest of the prefix is anonymous: the declaration form, asking for a link,
+        # following it, and « Mon profil » (which a first-time volunteer completes before
+        # any account exists). The tenant comes from the {organizationSlug} in the URL —
+        # see App\Tenant\UrlPrefixTenantResolver.
         - { path: ^/a/, roles: PUBLIC_ACCESS }
         # The platform backoffice manages organizations across every tenant, so it
         # runs with the Doctrine tenant filter disabled (a super-admin resolves to

@@ -24,8 +24,8 @@ use Symfony\Component\Validator\Context\ExecutionContextInterface;
 final class ActionDraft
 {
     public const string GROUP = 'actions';
+    public const int MAX_DISTANCE_KM = 2000;
     private const int MAX_CONSECUTIVE_DAYS = 60;
-    private const int MAX_DISTANCE_KM = 2000;
     private const int MAX_JOURNEYS = 200;
     private const string MAX_WORK_HOURS = '999.99';
 

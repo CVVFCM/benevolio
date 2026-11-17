@@ -7,9 +7,28 @@
         <header class="public__header">
             <p class="public__org">{{ organization.name }}</p>
             <p class="public__app">{{ 'app.name'|trans }}</p>
+            {% set volunteer = current_volunteer() %}
+            <nav class="public__account" aria-label="Espace bénévole">
+                {% if volunteer %}
+                    <span class="public__who">{{ volunteer.fullName }}</span>
+                    <a href="{{ path('declaration', {organizationSlug: organization.slug}) }}">Déclarer</a>
+                    <a href="{{ path('volunteer_declarations', {organizationSlug: organization.slug}) }}">Mes déclarations</a>
+                    <a href="{{ path('volunteer_receipts', {organizationSlug: organization.slug}) }}">Mes reçus</a>
+                    <a href="{{ path('volunteer_profile', {organizationSlug: organization.slug}) }}">Mon profil</a>
+                    <form method="post" action="{{ path('volunteer_logout', {organizationSlug: organization.slug}) }}" class="public__logout">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token('logout') }}" data-controller="csrf-protection">
+                        <button type="submit" class="link-button">Se déconnecter</button>
+                    </form>
+                {% else %}
+                    <a href="{{ path('volunteer_login', {organizationSlug: organization.slug}) }}">Se connecter</a>
+                {% endif %}
+            </nav>
         </header>
 
         <main class="public__main">
+            {% for message in app.flashes('success') %}
+                <p class="alert alert--success" role="status">{{ message }}</p>
+            {% endfor %}
             {% block main %}{% endblock %}
         </main>
 

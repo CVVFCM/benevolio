@@ -1,0 +1,25 @@
+{% extends 'public/layout.html.twig' %}
+
+{#
+    The emailed URL logs nobody in: this page does, with one button. Mail scanners open
+    every link in a message before its reader does, and would otherwise spend it.
+    The form posts back to the same URL, query string and signature included.
+#}
+
+{% block title %}Connexion — {{ organization.name }}{% endblock %}
+
+{% block main %}
+    <div class="done">
+        <h1>Votre espace bénévole</h1>
+
+        <form method="post" action="{{ app.request.requestUri }}">
+            <p>
+                <label class="field--checkbox">
+                    <input type="checkbox" name="_remember_me" value="1">
+                    Rester connecté sur cet appareil (30 jours)
+                </label>
+            </p>
+            <button type="submit" class="button">Continuer</button>
+        </form>
+    </div>
+{% endblock %}

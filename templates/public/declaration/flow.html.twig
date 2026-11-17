@@ -67,7 +67,12 @@
                 <div class="form__grid form__grid--person">
                     {{ form_row(flow.person.firstName, {row_attr: {class: 'field field--span-2'}}) }}
                     {{ form_row(flow.person.lastName, {row_attr: {class: 'field field--span-2'}}) }}
-                    {{ form_row(flow.person.email, {row_attr: {class: 'field field--wide'}}) }}
+                    {% if volunteer %}
+                        {# Logged in: the declaration is filed under the account, whatever is typed here. #}
+                        {{ form_row(flow.person.email, {row_attr: {class: 'field field--wide'}, attr: {readonly: 'readonly'}, value: volunteer.email.value, help: 'L\'adresse de votre espace bénévole.'}) }}
+                    {% else %}
+                        {{ form_row(flow.person.email, {row_attr: {class: 'field field--wide'}}) }}
+                    {% endif %}
                     {{ form_row(flow.person.addressNumber) }}
                     {{ form_row(flow.person.addressStreet, {row_attr: {class: 'field field--span-3'}}) }}
                     {{ form_row(flow.person.addressPostcode) }}

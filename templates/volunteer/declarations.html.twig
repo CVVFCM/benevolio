@@ -1,0 +1,44 @@
+{% extends 'public/layout.html.twig' %}
+
+{% block title %}Mes déclarations — {{ organization.name }}{% endblock %}
+
+{% block main %}
+    <h1>Mes déclarations</h1>
+
+    {% if declarations is empty %}
+        <p>Aucune déclaration pour l'instant.</p>
+    {% else %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Action</th>
+                    <th>Date</th>
+                    <th class="is-numeric">Heures</th>
+                    <th class="is-numeric">Km</th>
+                    <th>État</th>
+                </tr>
+            </thead>
+            {% for declaration in declarations %}
+                <tbody>
+                    <tr>
+                        <th colspan="5" scope="rowgroup">
+                            Déclaration du {{ declaration.submittedAt|format_date('long') }}
+                            — {{ declaration.state.label }}
+                        </th>
+                    </tr>
+                    {% for action in declaration.actions %}
+                        <tr>
+                            <td>{{ action.task.name }} — {{ action.title }}</td>
+                            <td>{{ action.date|format_date('short') }}</td>
+                            <td class="is-numeric">{{ action.hours|hours }}</td>
+                            <td class="is-numeric">{{ action.totalDistanceKm }}</td>
+                            <td>{{ action.state.label }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            {% endfor %}
+        </table>
+    {% endif %}
+
+    <p><a class="button-link" href="{{ path('declaration', {organizationSlug: organization.slug}) }}">Nouvelle déclaration</a></p>
+{% endblock %}

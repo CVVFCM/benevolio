@@ -43,6 +43,7 @@ final readonly class DeclarationSubmitter
         private TaskRepository $tasks,
         private EntityManagerInterface $entityManager,
         private DeclarationConfirmationMailer $mailer,
+        private DeclarationConfirmer $confirmer,
         private ClockInterface $clock,
     ) {
     }
@@ -76,9 +77,29 @@ final readonly class DeclarationSubmitter
         return $declaration;
     }
 
-    private function createDeclaration(Organization $organization, DeclarationDraft $draft): Declaration
+    /**
+     * Files a declaration for a volunteer logged in to this association, and confirms it.
+     *
+     * No confirmation mail: following the login link already proved the address, which is
+     * all the mail would prove. The `confirm` transition runs as on a click — the lines move
+     * with it and the typed identity reaches the Person (ApplySubmittedIdentityOnConfirmation).
+     * The email typed is not looked at: the declaration is the volunteer's.
+     */
+    public function submitAs(Person $volunteer, DeclarationDraft $draft): Declaration
     {
-        $person = $this->findOrCreatePerson($organization, $draft);
+        return $this->entityManager->wrapInTransaction(
+            function () use ($volunteer, $draft): Declaration {
+                $declaration = $this->createDeclaration($volunteer->getOrganization(), $draft, $volunteer);
+                $this->confirmer->confirmBySubmission($declaration);
+
+                return $declaration;
+            },
+        );
+    }
+
+    private function createDeclaration(Organization $organization, DeclarationDraft $draft, ?Person $volunteer = null): Declaration
+    {
+        $person = $volunteer ?? $this->findOrCreatePerson($organization, $draft);
 
         $declaration = new Declaration(
             $organization,

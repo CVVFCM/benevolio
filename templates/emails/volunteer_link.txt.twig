@@ -1,0 +1,13 @@
+Bonjour{{ person ? ' ' ~ person.firstName }},
+
+Ouvrez ce lien pour vous connecter à votre espace bénévole de {{ organization.name }} :
+vos coordonnées et votre véhicule y sont conservés pour vos prochaines déclarations,
+et vous y retrouvez vos déclarations et vos reçus fiscaux.
+
+{{ loginUrl }}
+
+Ce lien est valable jusqu'au {{ expiresAt|format_datetime('long', 'short') }} et ne
+fonctionne qu'une seule fois. Si vous n'êtes pas à l'origine de cette demande, ignorez
+ce message : personne ne sera connecté.
+
+{{ organization.name }}
