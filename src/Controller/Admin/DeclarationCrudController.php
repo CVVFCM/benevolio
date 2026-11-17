@@ -168,16 +168,9 @@ final class DeclarationCrudController extends AbstractCrudController
         yield DateTimeField::new('submittedAt', 'Déposée le');
 
         yield ChoiceField::new('state', 'État')
-            // Built from the enum so a new state cannot be forgotten here.
-            ->setChoices(array_combine(
-                array_map(static fn (DeclarationState $state): string => $state->label(), DeclarationState::cases()),
-                array_map(static fn (DeclarationState $state): string => $state->value, DeclarationState::cases()),
-            ))
+            ->setChoices(DeclarationState::choices())
             ->formatValue(static fn (mixed $value, Declaration $declaration): string => $declaration->getState()->label())
-            ->renderAsBadges(array_combine(
-                array_map(static fn (DeclarationState $state): string => $state->value, DeclarationState::cases()),
-                array_map(static fn (DeclarationState $state): string => $state->badgeStyle(), DeclarationState::cases()),
-            ));
+            ->renderAsBadges(DeclarationState::badgeStyles());
 
         // Who confirmed matters as much as when: a manual confirmation proves less
         // than the volunteer's own click, and the reader has to be able to tell.

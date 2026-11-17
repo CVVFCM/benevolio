@@ -33,6 +33,8 @@ use Finite\Transition\Transition;
  */
 enum DeclarationState: string implements State
 {
+    use DeclarationLifecycle;
+
     case AWAITING_CONFIRMATION = 'awaiting_confirmation';
     case SUBMITTED = 'submitted';
     case VALIDATED = 'validated';
@@ -52,44 +54,5 @@ enum DeclarationState: string implements State
             new Transition(self::TRANSITION_VALIDATE, [self::SUBMITTED], self::VALIDATED),
             new Transition(self::TRANSITION_REFUSE, [self::SUBMITTED], self::REFUSED),
         ];
-    }
-
-    /**
-     * The volunteer has not clicked the link yet, so the association has nothing
-     * to act on.
-     */
-    public function isAwaitingConfirmation(): bool
-    {
-        return self::AWAITING_CONFIRMATION === $this;
-    }
-
-    /**
-     * A verdict has been reached. Not the same as "not submitted": an unconfirmed
-     * declaration is undecided too, which is why callers wanting "can a verdict be
-     * applied" must check both.
-     */
-    public function isDecided(): bool
-    {
-        return self::VALIDATED === $this || self::REFUSED === $this;
-    }
-
-    public function label(): string
-    {
-        return match ($this) {
-            self::AWAITING_CONFIRMATION => 'En attente de confirmation',
-            self::SUBMITTED => 'Soumise',
-            self::VALIDATED => 'Validée',
-            self::REFUSED => 'Refusée',
-        };
-    }
-
-    public function badgeStyle(): string
-    {
-        return match ($this) {
-            self::AWAITING_CONFIRMATION => 'secondary',
-            self::SUBMITTED => 'warning',
-            self::VALIDATED => 'success',
-            self::REFUSED => 'danger',
-        };
     }
 }
