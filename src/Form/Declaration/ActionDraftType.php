@@ -54,6 +54,11 @@ final class ActionDraftType extends AbstractType
             ->add('consecutiveDays', IntegerType::class, [
                 'label' => 'Nombre de jours consécutifs',
                 'help' => 'À partir de la date ci-dessus.',
+                // The three integers below bind to non-nullable ints. Left blank —
+                // or left out of a hand-built request — the field submits null, and
+                // writing null into an int is a TypeError: a 500 on the public form
+                // instead of a message. empty_data gives the blank its meaning.
+                'empty_data' => '1',
             ])
             ->add('workHours', NumberType::class, [
                 'label' => 'Total des heures',
@@ -67,10 +72,12 @@ final class ActionDraftType extends AbstractType
             ->add('journeys', IntegerType::class, [
                 'label' => 'Nombre de trajets',
                 'help' => 'Trajets simples : un aller-retour compte pour 2.',
+                'empty_data' => '0',
             ])
             ->add('distanceKm', IntegerType::class, [
                 'label' => 'Distance d\'un trajet (km)',
                 'help' => 'Aller simple, de votre domicile au lieu de l\'événement.',
+                'empty_data' => '0',
             ])
             ->add('ownVehicle', CheckboxType::class, [
                 'label' => 'Je suis venu avec mon véhicule personnel',

@@ -518,5 +518,53 @@
                 <target>Benevolio pour notre association</target>
             </segment>
         </unit>
+        <unit id="login_link.title">
+            <segment>
+                <source>login_link.title</source>
+                <target>Accéder à votre compte</target>
+            </segment>
+        </unit>
+        <unit id="login_link.intro">
+            <segment>
+                <source>login_link.intro</source>
+                <target>Ce lien ouvre le compte {email} et vous demandera de choisir votre mot de passe. Il ne fonctionne qu'une seule fois.</target>
+            </segment>
+        </unit>
+        <unit id="login_link.submit">
+            <segment>
+                <source>login_link.submit</source>
+                <target>Continuer</target>
+            </segment>
+        </unit>
+        <unit id="login_link.expired.title">
+            <segment>
+                <source>login_link.expired.title</source>
+                <target>Ce lien n'est plus valable</target>
+            </segment>
+        </unit>
+        <unit id="login_link.expired.body">
+            <segment>
+                <source>login_link.expired.body</source>
+                <target>Il a expiré, ou il est incomplet. Demandez-en un nouveau : cela ne prend qu'un instant.</target>
+            </segment>
+        </unit>
+        <unit id="login_link.expired.again">
+            <segment>
+                <source>login_link.expired.again</source>
+                <target>Recevoir un nouveau lien</target>
+            </segment>
+        </unit>
+        <unit id="declaration.too_many.title">
+            <segment>
+                <source>declaration.too_many.title</source>
+                <target>Trop de déclarations pour cette adresse</target>
+            </segment>
+        </unit>
+        <unit id="declaration.too_many.body">
+            <segment>
+                <source>declaration.too_many.body</source>
+                <target>Plusieurs déclarations ont déjà été envoyées aujourd'hui avec cette adresse électronique. Ouvrez les liens de confirmation déjà reçus, ou réessayez demain.</target>
+            </segment>
+        </unit>
     </file>
 </xliff>

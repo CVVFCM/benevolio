@@ -1,0 +1,44 @@
+{% extends 'base.html.twig' %}
+
+{#
+    Where an emailed login link lands — see App\Controller\Security\LoginLinkCheckController.
+
+    A plain <form>, not a Symfony form: the three fields are the link's own
+    parameters, posted back unchanged for the firewall to verify. No CSRF token —
+    the signed link IS the credential, and there is no session yet to bind one to.
+#}
+
+{% block title %}{{ 'login_link.title'|trans }} — {{ 'app.name'|trans }}{% endblock %}
+
+{% block body %}
+    <main class="login">
+        <div class="login__card">
+            <header class="login__brand">
+                <h1>{{ 'app.name'|trans }}</h1>
+                <p>{{ 'app.tagline'|trans }}</p>
+            </header>
+
+            {% if usable %}
+                <form class="login__form" method="post" action="{{ path('login_link_check') }}">
+                    <h2>{{ 'login_link.title'|trans }}</h2>
+                    <p class="login__text">{{ 'login_link.intro'|trans({email: user}) }}</p>
+
+                    <input type="hidden" name="user" value="{{ user }}">
+                    <input type="hidden" name="expires" value="{{ expires }}">
+                    <input type="hidden" name="hash" value="{{ hash }}">
+
+                    <button class="button login__submit" type="submit">{{ 'login_link.submit'|trans }}</button>
+                </form>
+            {% else %}
+                <div class="login__form">
+                    <h2>{{ 'login_link.expired.title'|trans }}</h2>
+                    <p class="login__text" role="status">{{ 'login_link.expired.body'|trans }}</p>
+                </div>
+
+                <p class="login__aside"><a href="{{ path('forgot_password') }}">{{ 'login_link.expired.again'|trans }}</a></p>
+            {% endif %}
+        </div>
+
+        {{ include('_theme_switcher.html.twig') }}
+    </main>
+{% endblock %}
