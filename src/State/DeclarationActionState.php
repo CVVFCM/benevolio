@@ -51,8 +51,8 @@ enum DeclarationActionState: string implements State
     /**
      * A treasurer has ruled on this line, one way or the other.
      *
-     * Spelled out rather than `SUBMITTED !== $this`, which it used to be: with a
-     * state before SUBMITTED that shortcut called an unconfirmed line *decided*.
+     * Spelled out, never `SUBMITTED !== $this`: with a state before SUBMITTED that
+     * shortcut calls an unconfirmed line *decided*.
      * Mirrors App\State\DeclarationState::isDecided().
      */
     public function isDecided(): bool

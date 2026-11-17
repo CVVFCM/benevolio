@@ -7,7 +7,6 @@ namespace App\Controller\Security;
 use App\Entity\User;
 use App\Form\Security\ChoosePasswordType;
 use App\Security\LoginLinkSuccessHandler;
-use App\Security\Role;
 use Doctrine\ORM\EntityManagerInterface;
 use LogicException;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -78,9 +77,8 @@ final readonly class ChoosePasswordController
                 $session->getFlashBag()->add('success', 'Votre mot de passe est enregistré.');
             }
 
-            return new RedirectResponse($this->urlGenerator->generate(
-                $user->hasRole(Role::SUPER_ADMIN) ? 'platform' : 'admin',
-            ));
+            // Through `backoffice`, the one place that decides where an account lands.
+            return new RedirectResponse($this->urlGenerator->generate('backoffice'));
         }
 
         return new Response(

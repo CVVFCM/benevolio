@@ -96,12 +96,10 @@ class Declaration implements TenantAware
     private bool $expensesWaived;
 
     /*
-     * A declaration has NO link to a receipt, and no reason for not having one.
-     *
-     * It used to own both: lot 7 issued a CERFA the moment a declaration was validated. A
-     * receipt is a civil year of one volunteer's waived expenses — several declarations,
-     * possibly none of them decisive on their own — so a per-declaration relation could
-     * only ever mislead. See App\Entity\Receipt and App\Receipt\YearlyReceiptRun.
+     * A declaration has NO link to a receipt, and no reason for not having one. A receipt
+     * is a civil year of one volunteer's waived expenses — several declarations, possibly
+     * none of them decisive on their own — so a per-declaration relation could only
+     * mislead. See App\Entity\Receipt and App\Receipt\YearlyReceiptRun.
      */
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
@@ -316,11 +314,6 @@ class Declaration implements TenantAware
         if (!$this->actions->contains($action)) {
             $this->actions->add($action);
         }
-    }
-
-    public function removeAction(DeclarationAction $action): void
-    {
-        $this->actions->removeElement($action);
     }
 
     public function isAccuracyAttested(): bool

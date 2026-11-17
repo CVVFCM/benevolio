@@ -234,7 +234,7 @@ final class UserCrudController extends AbstractCrudController
         }
 
         return new RedirectResponse(
-            $this->adminUrlGenerator->setController(self::class)->setAction(Action::INDEX)->unset('entityId')->generateUrl(),
+            $this->adminUrlGenerator->setController(self::class)->setAction(Action::INDEX)->generateUrl(),
         );
     }
 }

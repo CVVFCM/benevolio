@@ -80,6 +80,8 @@ final class LoginLinkFlowTest extends WebTestCase
 
         $this->choosePassword(self::NEW_PASSWORD);
 
+        self::assertResponseRedirects('/espace');
+        $this->client->followRedirect();
         self::assertResponseRedirects('/admin');
         $this->client->followRedirect();
         self::assertResponseIsSuccessful();
@@ -196,6 +198,8 @@ final class LoginLinkFlowTest extends WebTestCase
 
         $this->choosePassword(self::NEW_PASSWORD);
 
+        self::assertResponseRedirects('/espace');
+        $this->client->followRedirect();
         self::assertResponseRedirects('/platform');
     }
 

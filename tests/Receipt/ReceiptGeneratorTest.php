@@ -141,7 +141,6 @@ final class ReceiptGeneratorTest extends KernelTestCase
     public function the_layer_puts_the_signature_on_page_two_only(): void
     {
         $layer = $this->gotenberg()->htmlToPdf(
-            'index.html',
             $this->renderOverlay(self::values(), ['signature' => self::signatureDataUri()]),
         );
 

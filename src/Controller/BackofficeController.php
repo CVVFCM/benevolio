@@ -16,10 +16,9 @@ use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
  * Where a login lands when nothing asked for a page first: the platform for a
  * super-admin, the association's back office for everyone else.
  *
- * form_login's default target used to be `/`, which nothing served — a 404 in
- * production after every plain login. Now that `/` is the public home page, sending
- * staff there would be as wrong in a different way. The home page links here too, as
- * « Espace administrateur ».
+ * form_login's default target, and where « Choisissez votre mot de passe » sends a saved
+ * password: the one place that decides. `/` is the public home page, not for staff. The
+ * home page links here too, as « Espace administrateur ».
  */
 #[Route(path: '/espace', name: 'backoffice', methods: [Request::METHOD_GET])]
 final readonly class BackofficeController

@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Controller\Public;
 
+use App\Exception\UnknownOrganizationException;
 use App\Tenant\TenantContext;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\Session;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Twig\Environment;
 
@@ -33,6 +33,8 @@ final readonly class DeclarationConfirmationController
      * Flash key carrying the address the confirmation link went to.
      */
     public const string PENDING_EMAIL_FLASH = 'declaration_pending_email';
+    /** What the page says when the address is no longer known — a reload, or no session. */
+    private const string UNKNOWN_EMAIL = 'votre adresse';
 
     public function __construct(
         private Environment $twig,
@@ -46,7 +48,7 @@ final readonly class DeclarationConfirmationController
         $organization = $this->tenantContext->tryGetOrganization();
 
         if (null === $organization) {
-            throw new NotFoundHttpException('Cette association n\'existe pas ou n\'accepte plus de déclarations.');
+            throw new UnknownOrganizationException();
         }
 
         return new Response($this->twig->render('public/declaration/confirmation.html.twig', [
@@ -65,11 +67,11 @@ final readonly class DeclarationConfirmationController
         $session = $request->getSession();
 
         if (!$session instanceof Session) {
-            return 'votre adresse';
+            return self::UNKNOWN_EMAIL;
         }
 
         $flashes = $session->getFlashBag()->get(self::PENDING_EMAIL_FLASH);
 
-        return is_string($flashes[0] ?? null) ? $flashes[0] : 'votre adresse';
+        return is_string($flashes[0] ?? null) ? $flashes[0] : self::UNKNOWN_EMAIL;
     }
 }

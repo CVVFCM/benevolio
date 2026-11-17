@@ -137,7 +137,6 @@ final class TenantResolverTest extends KernelTestCase
     {
         $context = new TenantContext();
 
-        self::assertFalse($context->hasOrganization());
         self::assertNull($context->tryGetOrganization());
 
         $this->expectException(TenantNotResolvedException::class);
@@ -151,11 +150,11 @@ final class TenantResolverTest extends KernelTestCase
         // where the container survives between requests.
         $context = new TenantContext();
         $context->setOrganization(OrganizationFactory::createOne());
-        self::assertTrue($context->hasOrganization());
+        self::assertNotNull($context->tryGetOrganization());
 
         $context->reset();
 
-        self::assertFalse($context->hasOrganization());
+        self::assertNull($context->tryGetOrganization());
     }
 
     private function urlPrefixResolver(): UrlPrefixTenantResolver

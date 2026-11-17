@@ -21,7 +21,7 @@ use function sprintf;
  * **The number is in the key, and that is what makes the key safe.** Re-running a year
  * issues a new receipt rather than replacing the old one, so a name-only key would leave the
  * earlier row pointing at a PDF that had been overwritten. Two volunteers sharing a name are
- * separated by the same token. The collision risk lot 7 accepted is closed.
+ * separated by the same token.
  *
  * The directory is the **civil year the receipt covers**, which is also what the document
  * says — not the year it was issued in: a 2025 receipt produced in January 2026 files under
@@ -50,7 +50,7 @@ final readonly class ReceiptStorage
         return $this->filesystem->read($path);
     }
 
-    public function pathFor(int $year, Person $person, string $number): string
+    private function pathFor(int $year, Person $person, string $number): string
     {
         // Slugged, because a name reaches this from a public form: accents, spaces and
         // anything else a volunteer might type must not decide an object key.

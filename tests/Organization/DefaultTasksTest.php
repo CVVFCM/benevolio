@@ -74,10 +74,7 @@ final class DefaultTasksTest extends KernelTestCase
     {
         OrganizationFactory::createOne();
 
-        self::assertCount(
-            count(DefaultTasks::NAMES),
-            $this->entityManager->getRepository(Task::class)->findActive(),
-        );
+        self::assertCount(count(DefaultTasks::NAMES), $this->offeredTasks());
     }
 
     #[Test]
@@ -90,7 +87,7 @@ final class DefaultTasksTest extends KernelTestCase
         $retired->setActive(false);
         $this->entityManager->flush();
 
-        $offered = $this->entityManager->getRepository(Task::class)->findActive();
+        $offered = $this->offeredTasks();
 
         self::assertCount(count(DefaultTasks::NAMES) - 1, $offered);
         self::assertNotContains(
@@ -127,5 +124,18 @@ final class DefaultTasksTest extends KernelTestCase
         sort($names);
 
         return $names;
+    }
+
+    /**
+     * What the public form offers: the query its task select is built on.
+     *
+     * @return list<Task>
+     */
+    private function offeredTasks(): array
+    {
+        /** @var list<Task> $tasks */
+        $tasks = $this->entityManager->getRepository(Task::class)->activeQueryBuilder()->getQuery()->getResult();
+
+        return $tasks;
     }
 }

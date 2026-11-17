@@ -28,6 +28,8 @@ use function sprintf;
  */
 final readonly class GotenbergClient
 {
+    private const string ENTRY_FILE = 'index.html';
+
     public function __construct(
         private HttpClientInterface $httpClient,
         private string $baseUri,
@@ -35,15 +37,12 @@ final readonly class GotenbergClient
     }
 
     /**
-     * @param string $entryFileName must be `index.html`; see the class docblock
-     * @param string $html          the document to convert
-     *
      * @return string the PDF
      */
-    public function htmlToPdf(string $entryFileName, string $html): string
+    public function htmlToPdf(string $html): string
     {
         $formData = new FormDataPart([
-            'files' => new DataPart($html, $entryFileName, 'text/html'),
+            'files' => new DataPart($html, self::ENTRY_FILE, 'text/html'),
             // WITHOUT THIS THE PAGE IS LETTER. Gotenberg defaults Chromium to
             // 8.5×11in and ignores `@page { size: A4 }` in the document, so the layer
             // comes back 612×792pt. qpdf then scales that onto the A4 form and every
