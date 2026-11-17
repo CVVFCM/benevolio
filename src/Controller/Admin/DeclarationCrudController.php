@@ -22,6 +22,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\AssociationField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\BooleanField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\ChoiceField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\DateTimeField;
+use EasyCorp\Bundle\EasyAdminBundle\Field\Field;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IntegerField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use EasyCorp\Bundle\EasyAdminBundle\Router\AdminUrlGeneratorInterface;
@@ -154,6 +155,14 @@ final class DeclarationCrudController extends AbstractCrudController
             // form by anyone at all, so unescaped it ran as script in the treasurer's
             // session. Any formatValue() returning text a person typed must do this.
             ->formatValue(static fn (mixed $value, Declaration $declaration): string => htmlspecialchars((string) $declaration->getPerson()->getAddress()))
+            ->onlyOnDetail();
+
+        // What THIS declaration states, which until it is confirmed may differ from
+        // the volunteer's record above — a submission no longer rewrites the record.
+        // Its template says so when it does, because confirming by hand applies it.
+        yield Field::new('submittedFullName', 'Coordonnées saisies')
+            ->setTemplatePath('admin/field/declaration_submitted_identity.html.twig')
+            ->setSortable(false)
             ->onlyOnDetail();
 
         yield DateTimeField::new('submittedAt', 'Déposée le');

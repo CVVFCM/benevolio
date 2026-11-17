@@ -86,6 +86,9 @@ final readonly class DeclarationSubmitter
             $draft->accuracyAttested,
             $draft->expensesWaived,
         );
+        // What was typed lives on the declaration until it is confirmed; see
+        // Declaration::$submittedFirstName for why it must not reach the Person here.
+        $declaration->declareIdentity((string) $draft->firstName, (string) $draft->lastName, $this->buildAddress($draft));
         $this->entityManager->persist($declaration);
 
         foreach ($draft->actions as $action) {
@@ -114,9 +117,9 @@ final readonly class DeclarationSubmitter
         $person = $this->people->findOneByEmail($email);
 
         if (null !== $person) {
-            // They may have moved, or corrected their name, since last time.
-            $person->updateIdentity($firstName, $lastName, $address);
-
+            // Left exactly as it is. They may have moved, or corrected their name —
+            // or this may be someone else typing their email. Only the confirmation
+            // link tells the two apart, so the change waits for it.
             return $person;
         }
 

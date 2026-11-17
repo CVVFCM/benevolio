@@ -1,0 +1,20 @@
+{#
+    The name and address typed on this declaration — which, until it is confirmed,
+    may not be what the volunteer's record says. See Declaration::$submittedFirstName.
+
+    A template and not a formatValue() callback: EasyAdmin prints what a callback
+    returns as raw HTML, and this is text typed by anyone on the public form. Twig
+    escapes it here.
+#}
+{# @var entity \EasyCorp\Bundle\EasyAdminBundle\Dto\EntityDto #}
+{% set declaration = entity.instance %}
+{{ declaration.submittedFullName }}<br>
+{{ declaration.submittedAddress }}
+{% if declaration.hasPendingIdentityChange %}
+    <br>
+    <span class="badge badge-warning">Différentes de la fiche du bénévole</span>
+    <small class="d-block">
+        La fiche indique {{ declaration.person.fullName }}, {{ declaration.person.address }}.
+        Elle ne sera mise à jour que lorsque cette déclaration sera confirmée.
+    </small>
+{% endif %}

@@ -13,9 +13,11 @@ use App\Entity\User;
 use App\Factory\DeclarationActionFactory;
 use App\Factory\DeclarationFactory;
 use App\Factory\OrganizationFactory;
+use App\Factory\PersonFactory;
 use App\Factory\UserFactory;
 use App\State\DeclarationActionState;
 use App\State\DeclarationState;
+use App\ValueObject\Address;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Finite\StateMachine;
@@ -76,6 +78,44 @@ final class DeclarationManualConfirmationTest extends WebTestCase
         // The detail page says who vouched, and the button is gone.
         self::assertStringContainsString('par '.$admin->getEmail().', à la place du bénévole', $this->bodyText());
         self::assertStringNotContainsString('Confirmer à la place du bénévole', $this->bodyText());
+    }
+
+    /**
+     * A submission states a name and address; it does not rewrite the volunteer's
+     * record. The admin is shown the difference before vouching for it, because
+     * confirming by hand is what applies it.
+     */
+    #[Test]
+    public function a_differing_identity_is_flagged_and_applied_only_by_the_confirmation(): void
+    {
+        $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
+        $person = PersonFactory::createOne([
+            'organization' => $organization,
+            'firstName' => 'Jeanne',
+            'lastName' => 'Martin',
+            'address' => new Address('3', 'rue des Lilas', '44000', 'Nantes', 'FR'),
+        ]);
+        $declaration = DeclarationFactory::new()
+            ->forPerson($person)
+            ->stating('Jeanne', 'Martin-Duval', new Address('8', 'quai de la Fosse', '44000', 'Nantes', 'FR'))
+            ->create();
+        DeclarationActionFactory::new()->forDeclaration($declaration)->create();
+        $this->loginAsAdminOf($organization);
+
+        $form = $this->confirmForm($declaration);
+
+        self::assertStringContainsString('Jeanne Martin-Duval', $this->bodyText());
+        self::assertStringContainsString('8 quai de la Fosse', $this->bodyText());
+        self::assertStringContainsString('Différentes de la fiche du bénévole', $this->bodyText());
+        self::assertSame('rue des Lilas', $this->reload($declaration)->getPerson()->getAddress()->street);
+
+        $this->client->submit($form);
+        $this->client->followRedirect();
+
+        $reloaded = $this->reload($declaration);
+        self::assertSame('Jeanne Martin-Duval', $reloaded->getPerson()->getFullName());
+        self::assertSame('quai de la Fosse', $reloaded->getPerson()->getAddress()->street);
+        self::assertStringNotContainsString('Différentes de la fiche du bénévole', $this->bodyText());
     }
 
     /**

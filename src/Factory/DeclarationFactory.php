@@ -8,6 +8,7 @@ use App\Entity\Declaration;
 use App\Entity\Organization;
 use App\Entity\Person;
 use App\State\DeclarationState;
+use App\ValueObject\Address;
 use DateTimeImmutable;
 use Finite\StateMachine;
 use Zenstruck\Foundry\Persistence\PersistentObjectFactory;
@@ -53,6 +54,20 @@ final class DeclarationFactory extends PersistentObjectFactory
             function (Declaration $declaration): void {
                 $this->stateMachine->apply($declaration, DeclarationState::TRANSITION_CONFIRM);
                 $declaration->markConfirmed(new DateTimeImmutable());
+            },
+        );
+    }
+
+    /**
+     * A submission stating a name and address other than its volunteer's — what a
+     * returning volunteer who moved produces, and what a stranger typing their email
+     * produces too. Without this state a declaration states what the Person says.
+     */
+    public function stating(string $firstName, string $lastName, Address $address): self
+    {
+        return $this->afterInstantiate(
+            static function (Declaration $declaration) use ($firstName, $lastName, $address): void {
+                $declaration->declareIdentity($firstName, $lastName, $address);
             },
         );
     }

@@ -6,7 +6,14 @@
         <title>{% block title %}Benevolio{% endblock %}</title>
         {% block meta %}{% endblock %}
         <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>🤝</text></svg>">
+        {#
+            Linked here, not imported from app.js. An `import './styles/app.css'` in
+            JavaScript makes AssetMapper map the file to a `data:` module in the import
+            map, and a script policy would then have to allow `data:` scripts — which
+            is allowing any injected <script src="data:…">, the thing the policy is for.
+        #}
         {% block stylesheets %}
+            <link rel="stylesheet" href="{{ asset('styles/app.css') }}">
         {% endblock %}
 
         {#
@@ -19,8 +26,12 @@
 
             Absent or "auto" leaves no attribute, so the media query in app.css
             decides — which is also what a visitor with JavaScript off gets.
+
+            EVERY <script> below carries csp_nonce(): these pages are served with a
+            script policy (App\Security\ContentSecurityPolicyListener), and a script
+            without the nonce simply does not run — silently, apart from the console.
         #}
-        <script>
+        <script nonce="{{ csp_nonce() }}">
             try {
                 var theme = localStorage.getItem('benevolio-theme');
                 if (theme === 'dark' || theme === 'light') {
@@ -33,14 +44,14 @@
         </script>
 
         {% block javascripts %}
-            {% block importmap %}{{ importmap('app') }}{% endblock %}
+            {% block importmap %}{{ importmap('app', {nonce: csp_nonce()}) }}{% endblock %}
         {% endblock %}
 
         {% set frankenphp_hot_reload = app.request.server.get('FRANKENPHP_HOT_RELOAD') %}
         {% if frankenphp_hot_reload %}
             <meta name="frankenphp-hot-reload:url" content="{{ frankenphp_hot_reload }}">
-            <script src="https://cdn.jsdelivr.net/npm/idiomorph"></script>
-            <script src="https://cdn.jsdelivr.net/npm/frankenphp-hot-reload/+esm" type="module"></script>
+            <script src="https://cdn.jsdelivr.net/npm/idiomorph" nonce="{{ csp_nonce() }}"></script>
+            <script src="https://cdn.jsdelivr.net/npm/frankenphp-hot-reload/+esm" type="module" nonce="{{ csp_nonce() }}"></script>
         {% endif %}
     </head>
     <body>

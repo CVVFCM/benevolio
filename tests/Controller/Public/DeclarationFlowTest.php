@@ -226,17 +226,54 @@ final class DeclarationFlowTest extends WebTestCase
         $this->completeFlow();
         $this->client->followRedirect();
 
-        // Same email, different case and a new address — the Person must be reused
-        // and updated, not duplicated.
+        // Same email, different case and a new address — the Person must be reused,
+        // not duplicated.
         $this->completeFlow(['email' => 'Jean.Dupont@Example.TEST', 'addressStreet' => 'quai de la Fosse']);
 
         $entityManager = $this->entityManager();
+        self::assertCount(1, $entityManager->getRepository(Person::class)->findAll());
+        self::assertCount(2, $entityManager->getRepository(Declaration::class)->findAll());
+    }
+
+    /**
+     * The form is anonymous and recognises a volunteer by email alone, so a
+     * submission proves nothing about who typed it. It used to rewrite the
+     * volunteer's name and address at once: anyone who knew their email could change
+     * the identity printed on their next CERFA without clicking anything. What is
+     * typed now stays on the declaration until the confirmation link is opened.
+     */
+    #[Test]
+    public function a_known_volunteers_identity_changes_only_once_the_new_declaration_is_confirmed(): void
+    {
+        OrganizationFactory::createOne(['slug' => 'les-jardins']);
+
+        $this->completeFlow();
+        $this->client->followRedirect();
+
+        $this->completeFlow(['firstName' => 'Quelqu\'un', 'lastName' => 'D\'autre', 'addressStreet' => 'quai de la Fosse']);
+
+        $entityManager = $this->entityManager();
+        $entityManager->clear();
+        $second = $entityManager->getRepository(Declaration::class)->findOneBy([], ['id' => 'DESC']);
+        self::assertNotNull($second);
+
+        // Submitted, not confirmed: the record is untouched, the declaration says what was typed.
+        self::assertSame('Jean Dupont', $second->getPerson()->getFullName());
+        self::assertSame('rue des Jardins', $second->getPerson()->getAddress()->street);
+        self::assertSame('Quelqu\'un D\'autre', $second->getSubmittedFullName());
+        self::assertSame('quai de la Fosse', $second->getSubmittedAddress()->street);
+        self::assertTrue($second->hasPendingIdentityChange());
+
+        $token = $second->getConfirmationToken();
+        self::assertNotNull($token);
+        $this->client->request('GET', '/a/les-jardins/declaration/confirmer/'.$token->value);
+        self::assertResponseIsSuccessful();
+
+        $entityManager->clear();
         $people = $entityManager->getRepository(Person::class)->findAll();
         self::assertCount(1, $people);
-        self::assertCount(2, $entityManager->getRepository(Declaration::class)->findAll());
-
-        $person = reset($people);
-        self::assertSame('quai de la Fosse', $person->getAddress()->street);
+        self::assertSame('Quelqu\'un D\'autre', $people[0]->getFullName());
+        self::assertSame('quai de la Fosse', $people[0]->getAddress()->street);
     }
 
     /**

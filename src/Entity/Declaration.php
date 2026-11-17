@@ -10,6 +10,7 @@ use App\State\DeclarationActionState;
 use App\State\DeclarationState;
 use App\Tenant\TenantAware;
 use App\Tenant\TenantAwareTrait;
+use App\ValueObject\Address;
 use DateTimeImmutable;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -44,6 +45,32 @@ class Declaration implements TenantAware
     #[ORM\ManyToOne(targetEntity: Person::class, inversedBy: 'declarations')]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private Person $person;
+
+    /**
+     * The name and address AS TYPED on this submission — not a copy kept for history,
+     * but the only place they live until the declaration is confirmed.
+     *
+     * The public form is anonymous, and a volunteer is recognised by their email
+     * alone. Writing what was typed straight onto the Person — which is what happened
+     * until this existed — let anyone who knew a volunteer's address rewrite the
+     * identity printed on their next CERFA, without clicking anything. So a submission
+     * only states an identity; App\State\Listener\ApplySubmittedIdentityOnConfirmation
+     * copies it to the Person when the declaration is confirmed, which takes access to
+     * the mailbox (or an admin vouching by hand).
+     *
+     * Never null: the constructor starts them from the Person, so a declaration built
+     * without declareIdentity() — every factory — states what the Person already says.
+     * Nullable "pending" columns would not work anyway: Doctrine hydrates an embeddable
+     * without its constructor, and Address has no nullable property to put a NULL in.
+     */
+    #[ORM\Column(length: Person::NAME_MAX_LENGTH)]
+    private string $submittedFirstName;
+
+    #[ORM\Column(length: Person::NAME_MAX_LENGTH)]
+    private string $submittedLastName;
+
+    #[ORM\Embedded(class: Address::class, columnPrefix: 'submitted_address_')]
+    private Address $submittedAddress;
 
     #[ORM\Column(enumType: DeclarationState::class)]
     private DeclarationState $state = DeclarationState::AWAITING_CONFIRMATION;
@@ -127,6 +154,9 @@ class Declaration implements TenantAware
         $this->id = Uuid::v7();
         $this->organization = $organization;
         $this->person = $person;
+        $this->submittedFirstName = $person->getFirstName();
+        $this->submittedLastName = $person->getLastName();
+        $this->submittedAddress = $person->getAddress();
         $this->accuracyAttested = $accuracyAttested;
         $this->expensesWaived = $expensesWaived;
         $this->actions = new ArrayCollection();
@@ -136,6 +166,53 @@ class Declaration implements TenantAware
     public function __toString(): string
     {
         return sprintf('%s — %s', $this->person->getFullName(), $this->submittedAt->format('d/m/Y'));
+    }
+
+    /**
+     * Records what the volunteer typed, when it may differ from what the Person says.
+     * Called by DeclarationSubmitter; it changes nothing on the Person.
+     */
+    public function declareIdentity(string $firstName, string $lastName, Address $address): void
+    {
+        $this->submittedFirstName = $firstName;
+        $this->submittedLastName = $lastName;
+        $this->submittedAddress = $address;
+    }
+
+    public function getSubmittedFirstName(): string
+    {
+        return $this->submittedFirstName;
+    }
+
+    public function getSubmittedLastName(): string
+    {
+        return $this->submittedLastName;
+    }
+
+    public function getSubmittedFullName(): string
+    {
+        return trim($this->submittedFirstName.' '.$this->submittedLastName);
+    }
+
+    public function getSubmittedAddress(): Address
+    {
+        return $this->submittedAddress;
+    }
+
+    /**
+     * True while this submission states an identity the Person does not have yet:
+     * unconfirmed, and typed differently. What the back office warns about.
+     */
+    public function hasPendingIdentityChange(): bool
+    {
+        return $this->state->isAwaitingConfirmation() && !$this->statesThePersonsIdentity();
+    }
+
+    public function statesThePersonsIdentity(): bool
+    {
+        return $this->submittedFirstName === $this->person->getFirstName()
+            && $this->submittedLastName === $this->person->getLastName()
+            && $this->submittedAddress->equals($this->person->getAddress());
     }
 
     /**
