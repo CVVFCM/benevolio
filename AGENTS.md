@@ -612,6 +612,14 @@ A volunteer logs in to ONE association's space, `/a/{organizationSlug}/…`: « 
   distance, fiscal power and electric flag on each line — the first one, and through the
   collection's `prototype_data` every line added. « Véhicule personnel » stays unticked:
   nothing is valued until the volunteer says they drove. Never from a typed email.
+- **TRAP — FormFlow restores the draft over the data you pass.** An unfinished declaration
+  lives in the session (`SessionDataStorage`) and replaces the pre-filled draft when the form
+  is built; one started before logging in would open with nothing filled. So a
+  `PRE_SET_DATA` listener in `DeclarationFlowType` fills the restored draft's **blanks**
+  (`fillBlanksFrom()`), **once** — `DeclarationDraft::$prefilledFor` remembers it, or a line
+  set to 0 km would be refilled with the profile distance on every step. The same listener
+  re-reads each line's `Task`: the session copy is detached, and the task select refuses an
+  unmanaged entity (going back to the actions step was a 500).
 - Receipts are listed and downloaded only for their own `Person`; another volunteer's is a
   404. Tests: `tests/Controller/Volunteer/VolunteerAccountTest`.
 

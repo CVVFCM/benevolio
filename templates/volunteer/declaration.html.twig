@@ -1,0 +1,57 @@
+{% extends 'public/layout.html.twig' %}
+
+{% block title %}Déclaration du {{ declaration.submittedAt|format_date('long') }} — {{ organization.name }}{% endblock %}
+
+{% block main %}
+    <p class="back-link">
+        <a href="{{ path('volunteer_declarations', {organizationSlug: organization.slug}) }}">← Mes déclarations</a>
+    </p>
+
+    <div class="page-head">
+        <h1>Déclaration du {{ declaration.submittedAt|format_date('long') }}</h1>
+        {{ include('volunteer/_state_badge.html.twig', {state: declaration.state}) }}
+    </div>
+
+    <dl class="summary">
+        <div><dt>Actions</dt><dd>{{ declaration.actions|length }}</dd></div>
+        <div><dt>Heures</dt><dd>{{ declaration.totalHours|hours }}</dd></div>
+        <div><dt>Kilomètres</dt><dd>{{ declaration.totalDistanceKm }}</dd></div>
+    </dl>
+
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th scope="col">Date</th>
+                <th scope="col">Action</th>
+                <th scope="col" class="is-numeric">Heures</th>
+                <th scope="col" class="is-numeric">Km</th>
+                <th scope="col">Véhicule</th>
+                <th scope="col">État</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for action in declaration.actions %}
+                <tr>
+                    <td>{{ action.date|format_date('short') }}</td>
+                    <td>
+                        {{ action.title }}
+                        <br><small class="muted">{{ action.task.name }}</small>
+                    </td>
+                    <td class="is-numeric">{{ action.hours|hours }}</td>
+                    <td class="is-numeric">
+                        {{ action.totalDistanceKm }}
+                        {% if action.journeys > 0 %}<br><small class="muted">{{ action.distanceKm }} × {{ action.journeys }}</small>{% endif %}
+                    </td>
+                    <td>
+                        {% if action.usesOwnVehicle %}
+                            Personnel{% if action.fiscalPower %}, {{ action.fiscalPower.label }}{% endif %}{{ action.electricVehicle ? ', électrique' }}
+                        {% else %}
+                            <span class="muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ include('volunteer/_state_badge.html.twig', {state: action.state}) }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

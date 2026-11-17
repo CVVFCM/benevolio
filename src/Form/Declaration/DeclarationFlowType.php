@@ -7,13 +7,17 @@ namespace App\Form\Declaration;
 use App\Form\Declaration\Step\ActionsStepType;
 use App\Form\Declaration\Step\LegalStepType;
 use App\Form\Declaration\Step\PersonStepType;
+use App\Repository\TaskRepository;
 use App\Tenant\TenantContext;
+use App\Volunteer\CurrentVolunteer;
 use Symfony\Component\Form\Flow\AbstractFlowType;
 use Symfony\Component\Form\Flow\DataStorage\SessionDataStorage;
 use Symfony\Component\Form\Flow\FormFlowBuilderInterface;
 use Symfony\Component\Form\Flow\Type\FinishFlowType;
 use Symfony\Component\Form\Flow\Type\NextFlowType;
 use Symfony\Component\Form\Flow\Type\PreviousFlowType;
+use Symfony\Component\Form\FormEvent;
+use Symfony\Component\Form\FormEvents;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
@@ -38,6 +42,8 @@ final class DeclarationFlowType extends AbstractFlowType
     public function __construct(
         private readonly TenantContext $tenantContext,
         private readonly RequestStack $requestStack,
+        private readonly CurrentVolunteer $currentVolunteer,
+        private readonly TaskRepository $tasks,
     ) {
     }
 
@@ -64,6 +70,33 @@ final class DeclarationFlowType extends AbstractFlowType
         // started on one association's public form reappear on another's, in the
         // same browser session — the flow keeps its data in the session, and the
         // session is not scoped to the URL prefix.
+        // A logged-in volunteer's draft is filled from their profile where it is blank —
+        // including a draft restored from the session, started anonymously or before the
+        // profile had a distance. PRE_SET_DATA sees the draft as restored. Once per draft:
+        // see DeclarationDraft::$prefilledFor.
+        $builder->addEventListener(FormEvents::PRE_SET_DATA, function (FormEvent $event): void {
+            $draft = $event->getData();
+            if (!$draft instanceof DeclarationDraft) {
+                return;
+            }
+
+            // The session storage deep-clones the draft, which detaches the Task each line
+            // holds, and the task select refuses an unmanaged entity: going back to the
+            // actions step answered 500. Re-read each one — through the tenant-filtered
+            // repository, so a task gone in the meantime, or another association's, is
+            // simply unset. DeclarationSubmitter re-reads it again at the end.
+            foreach ($draft->actions as $action) {
+                if (null !== $action->task) {
+                    $action->task = $this->tasks->find($action->task->getId());
+                }
+            }
+
+            $volunteer = $this->currentVolunteer->get();
+            if (null !== $volunteer) {
+                $draft->fillBlanksFrom($volunteer);
+            }
+        });
+
         $builder->setDataStorage(new SessionDataStorage(
             self::SESSION_KEY_PREFIX.'.'.$this->tenantContext->getOrganization()->getId()->toRfc4122(),
             $this->requestStack,

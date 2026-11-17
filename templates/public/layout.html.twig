@@ -1,28 +1,46 @@
 {% extends 'base.html.twig' %}
 
-{# Layout for the anonymous volunteer pages. #}
+{#
+    Layout for the public pages of one association: the declaration form, and the volunteer
+    space. Logged in for this association (current_volunteer(), never app.user), the header
+    has two rows — the association and the account, then the space's tabs.
+#}
 
 {% block body %}
+    {% set volunteer = current_volunteer() %}
+    {% set route = app.request.attributes.get('_route') %}
     <div class="public">
         <header class="public__header">
-            <p class="public__org">{{ organization.name }}</p>
-            <p class="public__app">{{ 'app.name'|trans }}</p>
-            {% set volunteer = current_volunteer() %}
-            <nav class="public__account" aria-label="Espace bénévole">
-                {% if volunteer %}
-                    <span class="public__who">{{ volunteer.fullName }}</span>
-                    <a href="{{ path('declaration', {organizationSlug: organization.slug}) }}">Déclarer</a>
-                    <a href="{{ path('volunteer_declarations', {organizationSlug: organization.slug}) }}">Mes déclarations</a>
-                    <a href="{{ path('volunteer_receipts', {organizationSlug: organization.slug}) }}">Mes reçus</a>
-                    <a href="{{ path('volunteer_profile', {organizationSlug: organization.slug}) }}">Mon profil</a>
-                    <form method="post" action="{{ path('volunteer_logout', {organizationSlug: organization.slug}) }}" class="public__logout">
-                        <input type="hidden" name="_csrf_token" value="{{ csrf_token('logout') }}" data-controller="csrf-protection">
-                        <button type="submit" class="link-button">Se déconnecter</button>
-                    </form>
-                {% else %}
-                    <a href="{{ path('volunteer_login', {organizationSlug: organization.slug}) }}">Se connecter</a>
-                {% endif %}
-            </nav>
+            <div class="public__bar">
+                <p class="public__org">{{ organization.name }}</p>
+
+                <div class="public__account">
+                    {% if volunteer %}
+                        <span class="public__who">{{ volunteer.fullName }}</span>
+                        <form method="post" action="{{ path('volunteer_logout', {organizationSlug: organization.slug}) }}">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token('logout') }}" data-controller="csrf-protection">
+                            <button type="submit" class="button button--quiet button--small">Se déconnecter</button>
+                        </form>
+                    {% else %}
+                        <a class="button-link button--quiet button--small" href="{{ path('volunteer_login', {organizationSlug: organization.slug}) }}">Se connecter</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if volunteer %}
+                <nav class="public__tabs" aria-label="Espace bénévole">
+                    {% for tab in [
+                        {route: 'declaration', label: 'Déclarer', also: []},
+                        {route: 'volunteer_declarations', label: 'Mes déclarations', also: ['volunteer_declaration']},
+                        {route: 'volunteer_receipts', label: 'Mes reçus', also: []},
+                        {route: 'volunteer_profile', label: 'Mon profil', also: []},
+                    ] %}
+                        {% set current = route == tab.route or route in tab.also %}
+                        <a class="public__tab" href="{{ path(tab.route, {organizationSlug: organization.slug}) }}"
+                           {%- if current %} aria-current="page"{% endif %}>{{ tab.label }}</a>
+                    {% endfor %}
+                </nav>
+            {% endif %}
         </header>
 
         <main class="public__main">
@@ -33,7 +51,7 @@
         </main>
 
         <footer class="public__footer">
-            <p>{{ 'app.tagline'|trans }}</p>
+            <p>{{ 'app.name'|trans }} — {{ 'app.tagline'|trans }}</p>
 
             {{ include('_theme_switcher.html.twig') }}
         </footer>

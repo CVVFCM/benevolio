@@ -37,6 +37,14 @@ final class DeclarationDraft
      */
     public ?string $step = null;
 
+    /**
+     * The volunteer whose profile already filled this draft, if any — so it is filled once.
+     * The draft lives in the session between steps (FormFlow's SessionDataStorage) and is
+     * restored on every request; filling it again each time would put the profile distance
+     * back on a line the volunteer had set to 0, changing what they declared without a word.
+     */
+    public ?string $prefilledFor = null;
+
     #[Assert\NotBlank(message: 'Indiquez votre prénom.', groups: [self::STEP_PERSON])]
     #[Assert\Length(max: Person::NAME_MAX_LENGTH, groups: [self::STEP_PERSON])]
     public ?string $firstName = null;
@@ -133,21 +141,51 @@ final class DeclarationDraft
     {
         $draft = new self();
 
-        if (null === $volunteer) {
-            return $draft;
+        if (null !== $volunteer) {
+            $draft->fillBlanksFrom($volunteer);
+        }
+
+        return $draft;
+    }
+
+    /**
+     * Fills what the draft leaves empty from the volunteer's profile, once (see
+     * $prefilledFor). What was typed stays: a declaration started anonymously and finished
+     * logged in keeps its values, and only its blanks are filled. The email is always the
+     * account's — DeclarationSubmitter::submitAs() files under it whatever is typed.
+     */
+    public function fillBlanksFrom(Person $volunteer): void
+    {
+        $this->email = $volunteer->getEmail()->value;
+
+        $id = $volunteer->getId()->toRfc4122();
+        if ($id === $this->prefilledFor) {
+            return;
         }
 
         $address = $volunteer->getAddress();
-        $draft->firstName = $volunteer->getFirstName();
-        $draft->lastName = $volunteer->getLastName();
-        $draft->email = $volunteer->getEmail()->value;
-        $draft->addressNumber = $address->number;
-        $draft->addressStreet = $address->street;
-        $draft->addressPostcode = $address->postcode;
-        $draft->addressCity = $address->city;
-        $draft->addressCountry = $address->country;
-        $draft->actions = [ActionDraft::startingFrom($volunteer)];
+        $this->firstName = self::blank($this->firstName) ? $volunteer->getFirstName() : $this->firstName;
+        $this->lastName = self::blank($this->lastName) ? $volunteer->getLastName() : $this->lastName;
 
-        return $draft;
+        // The address as a whole: half of a typed one completed from the profile would be
+        // nobody's address.
+        if (self::blank($this->addressStreet) && self::blank($this->addressPostcode) && self::blank($this->addressCity)) {
+            $this->addressNumber = $address->number;
+            $this->addressStreet = $address->street;
+            $this->addressPostcode = $address->postcode;
+            $this->addressCity = $address->city;
+            $this->addressCountry = $address->country;
+        }
+
+        foreach ($this->actions as $action) {
+            $action->fillBlanksFrom($volunteer);
+        }
+
+        $this->prefilledFor = $id;
+    }
+
+    private static function blank(?string $value): bool
+    {
+        return null === $value || '' === trim($value);
     }
 }

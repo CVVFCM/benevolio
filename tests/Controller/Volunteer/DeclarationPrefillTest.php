@@ -114,6 +114,54 @@ final class DeclarationPrefillTest extends WebTestCase
         self::assertSame('', $this->value($crawler, self::FORM.'[person][email]'));
     }
 
+    /**
+     * The reported bug: a declaration started before logging in is restored from the
+     * session over the pre-filled one. Its blanks are filled now, its typed values kept.
+     */
+    #[Test]
+    public function a_draft_started_anonymously_is_filled_where_blank_after_logging_in(): void
+    {
+        $organization = $this->association('les-jardins');
+        $person = $this->volunteer($organization, distanceKm: 17, fiscalPower: FiscalPower::FIVE_CV, electric: true);
+
+        $this->client->request(Request::METHOD_GET, '/a/les-jardins/declaration');
+        $this->client->submitForm('Suivant', $this->personStep(['firstName' => 'Camille-Typed']));
+
+        $this->login($person);
+        $crawler = $this->client->request(Request::METHOD_GET, '/a/les-jardins/declaration');
+
+        // Still on the actions step, the line now carrying the profile.
+        self::assertSame('17', $this->value($crawler, self::LINE.'[distanceKm]'));
+        self::assertSame(FiscalPower::FIVE_CV->value, $crawler->filter('[name="'.self::LINE.'[fiscalPower]"] option[selected]')->attr('value'));
+
+        // And the identity typed before logging in is kept.
+        $crawler = $this->client->submitForm('Précédent');
+        self::assertSame('Camille-Typed', $this->value($crawler, self::FORM.'[person][firstName]'));
+    }
+
+    #[Test]
+    public function a_line_set_to_zero_stays_zero(): void
+    {
+        $organization = $this->association('les-jardins');
+        $this->login($this->volunteer($organization, distanceKm: 17));
+
+        $this->client->request(Request::METHOD_GET, '/a/les-jardins/declaration');
+        $this->client->submitForm('Suivant');
+        $this->client->submitForm('Suivant', [
+            self::LINE.'[task]' => $this->firstTaskId(),
+            self::LINE.'[title]' => 'Sur place',
+            self::LINE.'[date]' => new DateTimeImmutable('-10 days')->format('Y-m-d'),
+            self::LINE.'[consecutiveDays]' => '1',
+            self::LINE.'[workHours]' => '2',
+            self::LINE.'[distanceKm]' => '0',
+            self::LINE.'[journeys]' => '0',
+        ]);
+
+        $crawler = $this->client->submitForm('Précédent');
+
+        self::assertSame('0', $this->value($crawler, self::LINE.'[distanceKm]'));
+    }
+
     private function association(string $slug): Organization
     {
         return OrganizationFactory::createOne(['slug' => $slug]);
