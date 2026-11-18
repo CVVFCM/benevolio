@@ -179,10 +179,62 @@ final class DeclarationActivityTest extends WebTestCase
 
         $crawler = $this->actionsStep();
 
-        self::assertCount(1, $crawler->filter('fieldset[data-controller="activity-title"] select[data-activity-title-target="select"][data-action="activity-title#toggle"]'));
-        self::assertCount(1, $crawler->filter('fieldset[data-controller="activity-title"] [data-activity-title-target="title"] input'));
+        self::assertCount(1, $crawler->filter('fieldset[data-controller~="activity-title"] select[data-activity-title-target="select"][data-action~="activity-title#toggle"]'));
+        self::assertCount(1, $crawler->filter('fieldset[data-controller~="activity-title"] [data-activity-title-target="title"] input'));
         $prototype = (string) $crawler->filter('[data-form-collection-prototype-value]')->attr('data-form-collection-prototype-value');
         self::assertStringContainsString('data-activity-title-target="title"', $prototype);
+    }
+
+    /**
+     * #46: what activity_defaults_controller.js reads and writes. An option carries only
+     * the figures its activity has; the three fields are its targets, on the first row
+     * and on the prototype « Ajouter une action » clones.
+     */
+    #[Test]
+    public function the_row_is_wired_to_pre_fill_days_journeys_and_hours(): void
+    {
+        $organization = $this->association();
+        $full = ActivityFactory::new()->for($organization)->withDefaults(2, '14.00')->create(['name' => 'Avec les deux']);
+        $hoursOnly = ActivityFactory::new()->for($organization)->withDefaults(null, '3.50')->create(['name' => 'Heures seules']);
+        $none = ActivityFactory::new()->for($organization)->create(['name' => 'Sans rien']);
+
+        $crawler = $this->actionsStep();
+        $option = static fn (Activity $activity): Crawler => $crawler->filter('[name="'.self::LINE.'[activity]"] option[value="'.$activity->getId()->toRfc4122().'"]');
+
+        self::assertSame('2', $option($full)->attr('data-days'));
+        self::assertSame('14.00', $option($full)->attr('data-hours'));
+        self::assertNull($option($hoursOnly)->attr('data-days'));
+        self::assertSame('3.50', $option($hoursOnly)->attr('data-hours'));
+        self::assertNull($option($none)->attr('data-days'));
+        self::assertNull($option($none)->attr('data-hours'));
+
+        $row = $crawler->filter('fieldset[data-controller~="activity-defaults"]');
+        self::assertCount(1, $row->filter('select[data-action~="activity-defaults#fill"]'));
+        self::assertSame(self::LINE.'[consecutiveDays]', $row->filter('[data-activity-defaults-target="days"]')->attr('name'));
+        self::assertSame(self::LINE.'[journeys]', $row->filter('[data-activity-defaults-target="journeys"]')->attr('name'));
+        self::assertSame(self::LINE.'[workHours]', $row->filter('[data-activity-defaults-target="hours"]')->attr('name'));
+
+        $prototype = (string) $crawler->filter('[data-form-collection-prototype-value]')->attr('data-form-collection-prototype-value');
+        self::assertStringContainsString('data-activity-defaults-target="journeys"', $prototype);
+        self::assertStringContainsString('data-days="2"', $prototype);
+    }
+
+    /**
+     * Browser only, by decision: the server fills nothing in for a chosen activity.
+     */
+    #[Test]
+    public function the_server_does_not_fill_in_the_defaults(): void
+    {
+        $activity = ActivityFactory::new()->for($this->association())->withDefaults(3, '21.00')->create();
+
+        $this->actionsStep();
+        $this->submitLine(['activity' => $activity->getId()->toRfc4122(), 'workHours' => '2']);
+        $this->finish();
+
+        $line = $this->findOne(DeclarationAction::class, []);
+        self::assertSame('2.00', $line->getWorkHours());
+        self::assertSame(1, $line->getConsecutiveDays());
+        self::assertSame(0, $line->getJourneys());
     }
 
     private function association(): Organization

@@ -76,6 +76,28 @@ final class DeclarationActionRepository extends ServiceEntityRepository
     }
 
     /**
+     * Every validated line given for one of the association's events or actions, with
+     * its activity, declaration and volunteer — what App\Accounting\ActivitySummaryBuilder
+     * adds up. Lines named by a free title belong to no activity and are left out.
+     *
+     * @return list<DeclarationAction>
+     */
+    public function findValidatedWithActivity(Organization $organization): array
+    {
+        /** @var list<DeclarationAction> $lines */
+        $lines = $this->createTenantScopedQueryBuilder($organization)
+            ->innerJoin('declaration_action.activity', 'activity')
+            ->innerJoin('scoped_declaration.person', 'scoped_person')
+            ->addSelect('activity', 'scoped_declaration', 'scoped_person')
+            ->andWhere('declaration_action.state = :state')
+            ->setParameter('state', DeclarationActionState::VALIDATED->value)
+            ->getQuery()
+            ->getResult();
+
+        return $lines;
+    }
+
+    /**
      * The civil years this association has validated contributions in, most recent first.
      *
      * Feeds the year field on the generation form: offering a year with nothing in it would
