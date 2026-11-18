@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Form\Declaration;
 
+use App\Entity\Activity;
 use App\Entity\DeclarationAction;
 use App\Entity\Person;
 use App\Entity\Task;
@@ -38,7 +39,12 @@ final class ActionDraft
     #[Assert\NotNull(message: 'Choisissez la tâche effectuée.', groups: [self::GROUP])]
     public ?Task $task = null;
 
-    #[Assert\NotBlank(message: 'Indiquez l\'intitulé de l\'événement.', groups: [self::GROUP])]
+    /**
+     * One of the association's events or actions, or null for « Autre » — the title
+     * below then names the occasion, and is required (validateIsNamed()).
+     */
+    public ?Activity $activity = null;
+
     #[Assert\Length(max: DeclarationAction::TITLE_MAX_LENGTH, groups: [self::GROUP])]
     public ?string $title = null;
 
@@ -118,6 +124,22 @@ final class ActionDraft
 
         $context->buildViolation('Cette action n\'est pas terminée : sa date de fin est dans le futur.')
             ->atPath('consecutiveDays')
+            ->addViolation();
+    }
+
+    /**
+     * A title is required exactly when no activity is chosen. With one, whatever was
+     * typed is ignored — the field is hidden then, and DeclarationAction drops it.
+     */
+    #[Assert\Callback(groups: [self::GROUP])]
+    public function validateIsNamed(ExecutionContextInterface $context): void
+    {
+        if (null !== $this->activity || '' !== trim((string) $this->title)) {
+            return;
+        }
+
+        $context->buildViolation('Choisissez un événement ou une action, ou indiquez un intitulé.')
+            ->atPath('title')
             ->addViolation();
     }
 

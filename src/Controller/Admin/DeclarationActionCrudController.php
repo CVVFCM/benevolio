@@ -17,6 +17,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Collection\FilterCollection;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
+use EasyCorp\Bundle\EasyAdminBundle\Config\Filters;
 use EasyCorp\Bundle\EasyAdminBundle\Context\AdminContext;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
 use EasyCorp\Bundle\EasyAdminBundle\Dto\EntityDto;
@@ -27,6 +28,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\ChoiceField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\DateField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IntegerField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
+use EasyCorp\Bundle\EasyAdminBundle\Filter\EntityFilter;
 use EasyCorp\Bundle\EasyAdminBundle\Router\AdminUrlGeneratorInterface;
 use Finite\StateMachine;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -85,7 +87,8 @@ final class DeclarationActionCrudController extends AbstractCrudController
             ->setEntityLabelInSingular('Action déclarée')
             ->setEntityLabelInPlural('Actions déclarées')
             ->setDefaultSort(['date' => 'DESC'])
-            ->setSearchFields(['title', 'description'])
+            // The occasion is the activity's name or the free title, never both.
+            ->setSearchFields(['title', 'description', 'activity.name'])
             // Guards detail/edit/delete, which do not go through
             // createIndexQueryBuilder(). See the class docblock.
             ->setEntityPermission(DeclarationActionVoter::VIEW)
@@ -136,9 +139,21 @@ final class DeclarationActionCrudController extends AbstractCrudController
             ->add(Crud::PAGE_DETAIL, $refuse);
     }
 
+    /**
+     * Everything declared for one event or action. The choices come from an EntityType
+     * on Activity, which is TenantAware: the filter offers this association's only.
+     */
+    public function configureFilters(Filters $filters): Filters
+    {
+        return $filters->add(EntityFilter::new('activity', 'Événement ou action'));
+    }
+
     public function configureFields(string $pageName): iterable
     {
         yield DateField::new('date', 'Date');
+        // Two columns for one idea: a line is named by a listed activity or, for
+        // « Autre », by its own title. Exactly one of the two is filled.
+        yield AssociationField::new('activity', 'Événement ou action');
         yield TextField::new('title', 'Intitulé');
 
         yield AssociationField::new('task', 'Tâche');
@@ -226,9 +241,9 @@ final class DeclarationActionCrudController extends AbstractCrudController
             $this->stateMachine->apply($action, $transition);
             $this->entityManager->flush();
 
-            $this->addFlash('success', sprintf('« %s » : %s.', $action->getTitle(), $action->getState()->label()));
+            $this->addFlash('success', sprintf('« %s » : %s.', $action->getLabel(), $action->getState()->label()));
         } else {
-            $this->addFlash('warning', sprintf('« %s » a déjà été traitée.', $action->getTitle()));
+            $this->addFlash('warning', sprintf('« %s » a déjà été traitée.', $action->getLabel()));
         }
 
         return new RedirectResponse(

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\DataFixtures;
 
 use App\Entity\Organization;
+use App\Factory\ActivityFactory;
 use App\Factory\DeclarationActionFactory;
 use App\Factory\DeclarationFactory;
 use App\Factory\FiscalYearFactory;
@@ -53,6 +54,24 @@ final class AppFixtures extends Fixture
         UserFactory::new()
             ->superAdmin()
             ->create(['email' => self::SUPER_ADMIN_EMAIL]);
+
+        // Events and actions for the public form's list (#44): a past event with its
+        // dates, standing work with none, and an event still to come — which the form
+        // does not offer yet.
+        $regatta = ActivityFactory::new()->for($organization)->event()
+            ->dated(new DateTimeImmutable('-40 days'), new DateTimeImmutable('-39 days'))
+            ->create(['name' => 'Régate de printemps']);
+        ActivityFactory::new()->for($organization)->action()->create(['name' => 'Entretien des bateaux']);
+        ActivityFactory::new()->for($organization)->event()
+            ->dated(new DateTimeImmutable('+30 days'))
+            ->create(['name' => 'Fête du club']);
+
+        $atRegatta = DeclarationFactory::new()->for($organization)->confirmed()->create();
+        DeclarationActionFactory::new()
+            ->forDeclaration($atRegatta)
+            ->forActivity($regatta)
+            ->confirmed()
+            ->create(['date' => new DateTimeImmutable('-40 days'), 'consecutiveDays' => 2]);
 
         // Confirmed declarations: what a treasurer actually works through.
         //

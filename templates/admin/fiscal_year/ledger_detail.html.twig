@@ -65,7 +65,7 @@
                                     <td class="ledger__account">{{ pcg_account('864').display }}</td>
                                     <td>
                                         {{ entry.action.task.name }} — {{ entry.action.hours|hours }}
-                                        <br><small class="ledger__note">{{ entry.action.title }}</small>
+                                        <br><small class="ledger__note">{{ entry.action.label }}</small>
                                     </td>
                                     <td class="is-numeric">{{ entry.valuation.hours|euros }}</td>
                                     <td class="is-numeric"></td>

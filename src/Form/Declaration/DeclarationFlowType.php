@@ -7,6 +7,7 @@ namespace App\Form\Declaration;
 use App\Form\Declaration\Step\ActionsStepType;
 use App\Form\Declaration\Step\LegalStepType;
 use App\Form\Declaration\Step\PersonStepType;
+use App\Repository\ActivityRepository;
 use App\Repository\TaskRepository;
 use App\Tenant\TenantContext;
 use App\Volunteer\CurrentVolunteer;
@@ -44,6 +45,7 @@ final class DeclarationFlowType extends AbstractFlowType
         private readonly RequestStack $requestStack,
         private readonly CurrentVolunteer $currentVolunteer,
         private readonly TaskRepository $tasks,
+        private readonly ActivityRepository $activities,
     ) {
     }
 
@@ -88,6 +90,11 @@ final class DeclarationFlowType extends AbstractFlowType
             foreach ($draft->actions as $action) {
                 if (null !== $action->task) {
                     $action->task = $this->tasks->find($action->task->getId());
+                }
+
+                // The same trap, for the event or action a line was given for.
+                if (null !== $action->activity) {
+                    $action->activity = $this->activities->find($action->activity->getId());
                 }
             }
 

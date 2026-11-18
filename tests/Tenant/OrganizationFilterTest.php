@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Tests\Tenant;
 
 use App\Doctrine\Filter\OrganizationFilter;
+use App\Entity\Activity;
 use App\Entity\Declaration;
 use App\Entity\DeclarationAction;
 use App\Entity\Organization;
 use App\Entity\Person;
 use App\Entity\Task;
 use App\Entity\User;
+use App\Factory\ActivityFactory;
 use App\Factory\DeclarationActionFactory;
 use App\Factory\DeclarationFactory;
 use App\Factory\OrganizationFactory;
@@ -133,6 +135,25 @@ final class OrganizationFilterTest extends KernelTestCase
 
         self::assertCount(2, $this->entityManager->getRepository(Organization::class)->findAll());
         self::assertCount(2, $this->entityManager->getRepository(User::class)->findAll());
+    }
+
+    /**
+     * The isolation test for Activity (#44), as for every TenantAware entity.
+     */
+    #[Test]
+    public function it_hides_activities_belonging_to_another_organization(): void
+    {
+        $first = OrganizationFactory::createOne(['slug' => 'first']);
+        $second = OrganizationFactory::createOne(['slug' => 'second']);
+        ActivityFactory::new()->for($first)->create(['name' => 'Régate des premiers']);
+        ActivityFactory::new()->for($second)->create(['name' => 'Régate des seconds']);
+        $this->entityManager->clear();
+
+        $this->armFilterFor($first);
+        $activities = $this->entityManager->getRepository(Activity::class)->findAll();
+
+        self::assertCount(1, $activities);
+        self::assertSame('Régate des premiers', $activities[0]->getName());
     }
 
     /**

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Factory;
 
+use App\Entity\Activity;
 use App\Entity\Declaration;
 use App\Entity\DeclarationAction;
 use App\Entity\Organization;
@@ -120,6 +121,15 @@ final class DeclarationActionFactory extends PersistentObjectFactory
         ]);
     }
 
+    /**
+     * A line given for one of the association's events or actions rather than named by
+     * a free title. The activity must belong to the declaration's association.
+     */
+    public function forActivity(Activity $activity): self
+    {
+        return $this->with(['activity' => $activity, 'title' => null]);
+    }
+
     public function withOwnVehicle(FiscalPower $fiscalPower = FiscalPower::FIVE_CV): self
     {
         return $this->with([
@@ -165,6 +175,7 @@ final class DeclarationActionFactory extends PersistentObjectFactory
     protected function defaults(): array
     {
         return [
+            'activity' => null,
             'title' => self::faker()->sentence(4),
             'description' => self::faker()->optional()->sentence(),
             // Firmly in the past, and far enough back that consecutiveDays cannot

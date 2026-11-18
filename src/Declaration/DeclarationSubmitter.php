@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Declaration;
 
+use App\Declaration\Exception\ActivityNoLongerAvailableException;
 use App\Declaration\Exception\TaskNoLongerAvailableException;
+use App\Entity\Activity;
 use App\Entity\Declaration;
 use App\Entity\DeclarationAction;
 use App\Entity\Organization;
@@ -12,6 +14,7 @@ use App\Entity\Person;
 use App\Entity\Task;
 use App\Form\Declaration\ActionDraft;
 use App\Form\Declaration\DeclarationDraft;
+use App\Repository\ActivityRepository;
 use App\Repository\PersonRepository;
 use App\Repository\TaskRepository;
 use App\ValueObject\Address;
@@ -41,6 +44,7 @@ final readonly class DeclarationSubmitter
     public function __construct(
         private PersonRepository $people,
         private TaskRepository $tasks,
+        private ActivityRepository $activities,
         private EntityManagerInterface $entityManager,
         private DeclarationConfirmationMailer $mailer,
         private DeclarationConfirmer $confirmer,
@@ -182,6 +186,20 @@ final readonly class DeclarationSubmitter
             ?? throw TaskNoLongerAvailableException::forId($detached->getId());
     }
 
+    /**
+     * Same re-read as resolveTask(), for the same two reasons. Null stays null: the
+     * line is then named by its title.
+     */
+    private function resolveActivity(?Activity $detached): ?Activity
+    {
+        if (null === $detached) {
+            return null;
+        }
+
+        return $this->activities->find($detached->getId())
+            ?? throw ActivityNoLongerAvailableException::forId($detached->getId());
+    }
+
     private function createAction(Declaration $declaration, ActionDraft $draft): DeclarationAction
     {
         assert(null !== $draft->date);
@@ -189,7 +207,8 @@ final readonly class DeclarationSubmitter
         return new DeclarationAction(
             $declaration,
             $this->resolveTask($draft->task),
-            (string) $draft->title,
+            $this->resolveActivity($draft->activity),
+            $draft->title,
             '' === $draft->description ? null : $draft->description,
             $draft->date,
             $draft->consecutiveDays,

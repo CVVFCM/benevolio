@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Tests\Controller\Admin;
 
+use App\Entity\Activity;
 use App\Entity\Declaration;
 use App\Entity\DeclarationAction;
 use App\Entity\FiscalYear;
 use App\Entity\Organization;
 use App\Entity\Person;
 use App\Entity\Task;
+use App\Factory\ActivityFactory;
 use App\Factory\DeclarationActionFactory;
 use App\Factory\DeclarationFactory;
 use App\Factory\FiscalYearFactory;
@@ -59,6 +61,7 @@ final class NoRawUserTextTest extends WebTestCase
     private Organization $organization;
     private Person $person;
     private Task $task;
+    private Activity $activity;
     private FiscalYear $fiscalYear;
     private Declaration $confirmed;
     private DeclarationAction $line;
@@ -89,6 +92,12 @@ final class NoRawUserTextTest extends WebTestCase
             'description' => 'Description '.self::MARKER,
         ]);
 
+        // A line named by an activity, whose name is as free as a title.
+        $this->activity = ActivityFactory::new()->for($this->organization)->create(['name' => 'Événement '.self::MARKER]);
+        DeclarationActionFactory::new()->forDeclaration($this->confirmed)->forActivity($this->activity)->confirmed()->create([
+            'task' => $this->task,
+        ]);
+
         $this->unconfirmed = DeclarationFactory::new()->for($this->organization)->forPerson($this->person)->create();
         DeclarationActionFactory::new()->forDeclaration($this->unconfirmed)->create([
             'task' => $this->task,
@@ -115,6 +124,8 @@ final class NoRawUserTextTest extends WebTestCase
             '/admin/declaration-action/'.$this->line->getId()->toRfc4122(),
             '/admin/person',
             '/admin/person/'.$this->person->getId()->toRfc4122(),
+            '/admin/activity',
+            '/admin/activity/'.$this->activity->getId()->toRfc4122(),
             '/admin/task',
             '/admin/task/'.$this->task->getId()->toRfc4122(),
             '/admin/fiscal-year',
