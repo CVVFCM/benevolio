@@ -21,8 +21,8 @@ use Symfony\Component\Validator\Constraints as Assert;
  *
  * Named for the work, not the occasion: a valuation rate attaches to a kind of
  * work, not to a kind of gathering. The rate itself lives on App\Entity\FiscalYear —
- * it holds for a financial year, not forever. The occasion keeps its own free-text
- * title on the line (`DeclarationAction::$title`).
+ * it holds for a financial year, not forever. The occasion is the line's
+ * App\Entity\Activity, or its own free-text title (`DeclarationAction::getLabel()`).
  *
  * An entity, not an enum, so each association manages its own list: a sailing club and
  * a neighbourhood association have nothing in common here, and adding one should not

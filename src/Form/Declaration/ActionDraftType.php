@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Form\Declaration;
 
+use App\Entity\Activity;
 use App\Entity\Task;
 use App\Enum\FiscalPower;
+use App\Repository\ActivityRepository;
 use App\Repository\TaskRepository;
+use Psr\Clock\ClockInterface;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
@@ -26,6 +29,11 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
  */
 final class ActionDraftType extends AbstractType
 {
+    public function __construct(
+        private readonly ClockInterface $clock,
+    ) {
+    }
+
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
@@ -38,8 +46,24 @@ final class ActionDraftType extends AbstractType
                 // offered on new ones. The tenant scope is the filter's job.
                 'query_builder' => static fn (TaskRepository $repository) => $repository->activeQueryBuilder(),
             ])
+            ->add('activity', EntityType::class, [
+                'class' => Activity::class,
+                'label' => 'Événement ou action',
+                'required' => false,
+                // The empty choice is an answer, not a prompt: nothing on the list fits,
+                // and the title below names the occasion instead.
+                'placeholder' => 'Autre',
+                'choice_label' => ActivityChoiceLabel::for(...),
+                'group_by' => static fn (Activity $activity): ?string => $activity->getType()?->pluralLabel(),
+                // Active and already begun, in the order the groups and their choices
+                // are to appear. The tenant scope is the filter's job.
+                'query_builder' => fn (ActivityRepository $repository) => $repository->offeredQueryBuilder($this->clock->now()),
+            ])
             ->add('title', TextType::class, [
-                'label' => 'Intitulé de l\'événement',
+                'label' => 'Intitulé',
+                // Required only for « Autre » — ActionDraft::validateIsNamed() — so the
+                // browser must not mark it required when it is hidden.
+                'required' => false,
             ])
             ->add('description', TextareaType::class, [
                 'label' => 'Ce que vous avez fait',

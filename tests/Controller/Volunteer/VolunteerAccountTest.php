@@ -8,6 +8,7 @@ use App\Entity\Declaration;
 use App\Entity\Organization;
 use App\Entity\Person;
 use App\Enum\FiscalPower;
+use App\Factory\ActivityFactory;
 use App\Factory\DeclarationActionFactory;
 use App\Factory\DeclarationFactory;
 use App\Factory\OrganizationFactory;
@@ -345,11 +346,16 @@ final class VolunteerAccountTest extends WebTestCase
         $person = $this->loginVolunteer($organization, 'connu@example.test');
         $mine = DeclarationFactory::new()->forPerson($person)->confirmed()->create();
         DeclarationActionFactory::new()->forDeclaration($mine)->confirmed()->create(['title' => 'Régate de printemps']);
+        // A line given for one of the association's activities reads by its name (#44).
+        DeclarationActionFactory::new()->forDeclaration($mine)->confirmed()
+            ->forActivity(ActivityFactory::new()->for($organization)->create(['name' => 'Entretien des bateaux']))
+            ->create();
         $theirs = DeclarationFactory::new()->forPerson($this->volunteerOf($organization, 'autre@example.test'))->confirmed()->create();
 
         $crawler = $this->client->request(Request::METHOD_GET, '/a/les-jardins/mes-declarations/'.$mine->getId()->toRfc4122());
         self::assertResponseIsSuccessful();
         self::assertStringContainsString('Régate de printemps', $crawler->filter('main')->text());
+        self::assertStringContainsString('Entretien des bateaux', $crawler->filter('main')->text());
 
         $this->client->request(Request::METHOD_GET, '/a/les-jardins/mes-declarations/'.$theirs->getId()->toRfc4122());
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);

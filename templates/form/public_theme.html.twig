@@ -8,7 +8,9 @@
     {#- row_attr is honoured so a caller can widen a field in a grid without
         reaching past the theme. -#}
     {%- set row_class = (row_attr.class|default('field') ~ (has_errors ? ' field--invalid' : ''))|trim -%}
-    <div class="{{ row_class }}">
+    {#- Any other row attribute is printed as given — a Stimulus target, for one. -#}
+    <div class="{{ row_class }}"
+        {%- for name, value in row_attr|filter((value, name) => name != 'class') %} {{ name }}="{{ value }}"{% endfor %}>
         {{- form_label(form) -}}
         {{- form_errors(form) -}}
         {{- form_widget(form) -}}

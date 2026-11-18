@@ -81,6 +81,7 @@ differently, so never sum them together:
 | `electricVehicle` | The volunteer's own vehicle is electric, and the barème is « majoré » — see below. Forced false without `ownVehicle`, as `fiscalPower` is forced null. |
 | `consecutiveDays` | The action may span several days from `date`. The action must be **over**: `DeclarationAction::endDateFor()` is the shared arithmetic, applied on the DTO *and* the entity, and it normalises to midnight — an end date of "today at 17:30" would otherwise read as later than "today". |
 | `task` | The *tâche effectuée* — a per-association **entity**, not an enum. Its hourly rate lives on the exercice, not on it. See below. |
+| `activity` / `title` | The occasion: one of the association's events or actions (`App\Entity\Activity`), **or** — « Autre » — a free-text title. Exactly one is set; print `getLabel()`. See *Activities*. |
 
 **Tasks are rows, not code.** `Task` is `TenantAware`; each association
 manages its own list in `/admin`. `App\Organization\DefaultTasks` seeds five
@@ -91,13 +92,44 @@ one place instead of three, but persisting from inside `postPersist` needs a sec
 flush and is fragile; the cost is that a fourth creation path would silently skip
 seeding, which `DefaultTasksTest` exists to catch.
 
-A task is a kind of *work*, not a kind of gathering: the occasion keeps its own free-text
-title on the line (`DeclarationAction::$title`), which is why *"Intitulé de l'événement"*
-is the label there.
+A task is a kind of *work*, not a kind of gathering: the occasion is the line's activity
+or, failing one, its own free-text title — see *Activities*.
 
 Deleting a task an action references is refused by the FK: a filed declaration must
 not lose the label it was filed under. Retire one with `active` instead — it
 vanishes from new forms and still renders on old actions.
+
+### Activities — the occasion, from the association's own list (#44)
+
+`App\Entity\Activity` is an event or an action of the association (`ActivityType`), with an
+optional begin and end date, managed from « Événements et actions » in `/admin`. `TenantAware`,
+built like `Task`, and retired the same way: `active`, and a delete the FK refuses once a line
+uses it. It carries no rate — a rate belongs to the kind of work (`Task`), not to where it
+was done.
+
+- **A line is named by an activity or by a title, never both.** `DeclarationAction`'s
+  constructor drops a title given beside an activity and refuses a line with neither, and
+  `title` is null on a linked line. **Everything prints `getLabel()`** — never `getTitle()`,
+  which is empty for half the lines.
+- **The name is read live**, by decision: renaming an activity renames it on the lines
+  already filed. Nothing is copied onto the line.
+- **Unique by (name, begin date)** per association: a yearly event repeats its name, two
+  undated ones may not. Two partial unique indexes, because a plain one treats NULL dates
+  as distinct; `UniqueEntity(ignoreNull: false)` says it in French first.
+- **Dates: none, a begin alone, or both.** An end without a begin is refused.
+- **The public form offers the active ones that have begun**
+  (`ActivityRepository::offeredQueryBuilder()`): a line must be over to be declared, so an
+  event still to come has nothing to declare against. Old ones stay until unticked. The dates
+  decide nothing else — a line's own date is not checked against them.
+- The select groups « Événements » then « Actions », dated ones most recent first, each
+  written with its dates (`App\Form\Declaration\ActivityChoiceLabel`). Its empty choice is
+  « Autre », which requires the title (`ActionDraft::validateIsNamed()`).
+  `activity_title_controller.js` hides the title while an activity is chosen; without
+  JavaScript it stays, and what is typed is dropped. An association with no activity to
+  offer renders no select at all.
+- **`Activity::$type` is left uninitialised on purpose** — no default, so an admin chooses;
+  the getter answers null until then. Hence the one `property.uninitialized` suppression.
+- Nothing is seeded for a new association, and lines filed before #44 keep their title.
 
 ### Money — cents for amounts, millièmes for a mileage rate
 
@@ -713,7 +745,7 @@ the test enforces the last two.
 - `src/ValueObject/` — value objects: `Address`, `Email` (self-validating; `Address` is
   also an `#[ORM\Embeddable]`), and the figures `Money`, `HourlyRate`, `MileageRate`,
   `WorkHours` — see *Money*
-- `src/Enum/` — closed business sets (`FiscalPower`)
+- `src/Enum/` — closed business sets (`FiscalPower`, `ActivityType`)
 - `src/State/` — finite state enums, the `DeclarationLifecycle` trait they share, and
   `Listener/` for their guards and cascades
 - `src/Repository/` — Doctrine repositories

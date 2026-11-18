@@ -56,6 +56,12 @@
                 <target>Tâches effectuées</target>
             </segment>
         </unit>
+        <unit id="menu.activities">
+            <segment>
+                <source>menu.activities</source>
+                <target>Événements et actions</target>
+            </segment>
+        </unit>
         <unit id="menu.fiscal_years">
             <segment>
                 <source>menu.fiscal_years</source>

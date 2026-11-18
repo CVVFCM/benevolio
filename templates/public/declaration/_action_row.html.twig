@@ -5,7 +5,7 @@
    inner element. A <legend> is rendered in the fieldset's border slot whatever CSS
    says, so keeping the border off the fieldset is what lets the title sit in
    normal flow. #}
-<fieldset class="action" data-form-collection-row>
+<fieldset class="action" data-form-collection-row data-controller="activity-title">
     {# The visible number comes from a CSS counter, so a cloned row is numbered
        correctly without JavaScript renaming anything. #}
     <legend class="action__legend"><span class="action__legend-text">Action bénévole</span></legend>
@@ -14,7 +14,20 @@
         <div class="action__grid">
             {{ form_row(action.task) }}
             {{ form_row(action.date) }}
-            {{ form_row(action.title, {row_attr: {class: 'field field--wide'}}) }}
+            {# An association with no event or action to offer keeps the plain title:
+               a list holding only « Autre » would ask a question with one answer. #}
+            {% if action.activity.vars.choices is empty %}
+                {% do action.activity.setRendered %}
+            {% else %}
+                {{ form_row(action.activity, {
+                    row_attr: {class: 'field field--wide'},
+                    attr: {'data-activity-title-target': 'select', 'data-action': 'activity-title#toggle'},
+                }) }}
+            {% endif %}
+            {# Named by the title only for « Autre »: activity_title_controller.js hides
+               this row while something is chosen above. Without JavaScript it stays,
+               and what is typed beside a chosen activity is dropped. #}
+            {{ form_row(action.title, {row_attr: {class: 'field field--wide', 'data-activity-title-target': 'title'}}) }}
             {{ form_row(action.workHours) }}
             {{ form_row(action.consecutiveDays) }}
             {{ form_row(action.description, {row_attr: {class: 'field field--wide'}}) }}

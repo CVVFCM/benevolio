@@ -141,6 +141,7 @@ final class DashboardController extends AbstractDashboardController
 
         yield MenuItem::section('menu.configuration');
         yield MenuItem::linkTo(TaskCrudController::class, 'menu.tasks', 'fa fa-tags');
+        yield MenuItem::linkTo(ActivityCrudController::class, 'menu.activities', 'fa fa-calendar-check');
         yield MenuItem::linkTo(FiscalYearCrudController::class, 'menu.fiscal_years', 'fa fa-calendar-days');
         yield MenuItem::linkTo(UserCrudController::class, 'menu.users', 'fa fa-user-shield');
 

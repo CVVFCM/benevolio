@@ -11,6 +11,7 @@ use App\ValueObject\WorkHours;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use InvalidArgumentException;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -81,8 +82,24 @@ class DeclarationAction
     #[ORM\JoinColumn(nullable: false, onDelete: 'NO ACTION')]
     private Task $task;
 
-    #[ORM\Column(length: self::TITLE_MAX_LENGTH)]
-    private string $title;
+    /**
+     * The association's event or action this line was given for, when the volunteer
+     * picked one from its list (#44). Null is « Autre »: the occasion is then named by
+     * $title. Exactly one of the two is set — see the constructor.
+     *
+     * NO ACTION for the reason given on $task: an activity in use is retired with
+     * Activity::$active, never deleted.
+     */
+    #[ORM\ManyToOne(targetEntity: Activity::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'NO ACTION')]
+    private ?Activity $activity;
+
+    /**
+     * The occasion in the volunteer's own words, and null when $activity names it.
+     * Print getLabel(), which answers for both.
+     */
+    #[ORM\Column(length: self::TITLE_MAX_LENGTH, nullable: true)]
+    private ?string $title;
 
     /** What the volunteer actually did, in their own words. */
     #[ORM\Column(type: Types::TEXT, nullable: true)]
@@ -132,7 +149,8 @@ class DeclarationAction
     public function __construct(
         Declaration $declaration,
         Task $task,
-        string $title,
+        ?Activity $activity,
+        ?string $title,
         ?string $description,
         DateTimeImmutable $date,
         int $consecutiveDays,
@@ -146,7 +164,10 @@ class DeclarationAction
         $this->id = Uuid::v7();
         $this->declaration = $declaration;
         $this->task = $task;
-        $this->title = $title;
+        // An activity names the occasion by itself: a title typed beside it is dropped,
+        // so the two can never disagree about what the line was for.
+        $this->activity = $activity;
+        $this->title = null === $activity ? self::requireTitle($title) : null;
         $this->description = $description;
         // Only the day matters; a stray time component would break date grouping.
         $this->date = $date->setTime(0, 0);
@@ -163,7 +184,7 @@ class DeclarationAction
 
     public function __toString(): string
     {
-        return $this->title;
+        return $this->getLabel();
     }
 
     public function getId(): Uuid
@@ -217,9 +238,25 @@ class DeclarationAction
         return $this->task;
     }
 
-    public function getTitle(): string
+    public function getActivity(): ?Activity
+    {
+        return $this->activity;
+    }
+
+    /** The free-text title, null when an activity names the occasion. See getLabel(). */
+    public function getTitle(): ?string
     {
         return $this->title;
+    }
+
+    /**
+     * What the line was given for, whichever way it was named: the activity's name, read
+     * live — renaming an activity renames it on the lines already filed — or the title.
+     * This is what every screen and mail prints.
+     */
+    public function getLabel(): string
+    {
+        return $this->activity?->getName() ?? (string) $this->title;
     }
 
     public function getDescription(): ?string
@@ -305,5 +342,14 @@ class DeclarationAction
         // DECIMAL(5,2) always comes back from PostgreSQL with two decimals, but a value
         // assigned in PHP may be a bare "7" — WorkHours::fromDecimal() takes both.
         return WorkHours::fromDecimal($this->workHours);
+    }
+
+    private static function requireTitle(?string $title): string
+    {
+        if (null === $title || '' === trim($title)) {
+            throw new InvalidArgumentException('A declaration action needs an activity or a title.');
+        }
+
+        return $title;
     }
 }

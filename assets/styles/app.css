@@ -407,6 +407,12 @@ body {
     min-width: 0;
 }
 
+/* A row a script hides — the title of a line given for a listed event. The UA's own
+   [hidden] rule loses to the display above. */
+.field[hidden] {
+    display: none;
+}
+
 .field__label {
     font-size: 0.9375rem;
     font-weight: 600;
