@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Enum\ActivityType;
+use App\Form\Declaration\ActionDraft;
 use App\Repository\ActivityRepository;
 use App\Tenant\TenantAware;
 use App\Tenant\TenantAwareTrait;
@@ -97,6 +98,29 @@ class Activity implements TenantAware
     private ?DateTimeImmutable $endsOn = null;
 
     /**
+     * What the activity usually asks of a volunteer: a number of consecutive days, and
+     * the hours given in total over them (#46). Both optional, and only a suggestion —
+     * choosing the activity on the declaration form pre-fills the line with them (and
+     * two journeys a day), in the browser; the volunteer still declares what they did.
+     *
+     * Independent of the dates above: a three-day event may ask two days of each
+     * volunteer. Held to a line's own limits, so a pre-filled line is always a valid one.
+     */
+    #[ORM\Column(type: Types::SMALLINT, nullable: true)]
+    #[Assert\Range(
+        notInRangeMessage: 'Le nombre de jours doit être compris entre {{ min }} et {{ max }}.',
+        min: 1,
+        max: ActionDraft::MAX_CONSECUTIVE_DAYS,
+    )]
+    private ?int $defaultDays = null;
+
+    /** A DECIMAL(5,2) string, as DeclarationAction::$workHours — never a float. */
+    #[ORM\Column(type: Types::DECIMAL, precision: 5, scale: 2, nullable: true)]
+    #[Assert\Positive(message: 'Le nombre d\'heures doit être supérieur à zéro.')]
+    #[Assert\LessThanOrEqual(ActionDraft::MAX_WORK_HOURS)]
+    private ?string $defaultWorkHours = null;
+
+    /**
      * An inactive activity disappears from the public form but stays readable on the
      * lines that reference it — the alternative to deleting, which the FK refuses once
      * it is used. Nothing retires one automatically, however old.
@@ -175,6 +199,30 @@ class Activity implements TenantAware
     public function setEndsOn(?DateTimeImmutable $endsOn): self
     {
         $this->endsOn = $endsOn?->setTime(0, 0);
+
+        return $this;
+    }
+
+    public function getDefaultDays(): ?int
+    {
+        return $this->defaultDays;
+    }
+
+    public function setDefaultDays(?int $defaultDays): self
+    {
+        $this->defaultDays = $defaultDays;
+
+        return $this;
+    }
+
+    public function getDefaultWorkHours(): ?string
+    {
+        return $this->defaultWorkHours;
+    }
+
+    public function setDefaultWorkHours(?string $defaultWorkHours): self
+    {
+        $this->defaultWorkHours = $defaultWorkHours;
 
         return $this;
     }

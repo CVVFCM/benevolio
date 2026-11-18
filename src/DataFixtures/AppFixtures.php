@@ -60,6 +60,8 @@ final class AppFixtures extends Fixture
         // does not offer yet.
         $regatta = ActivityFactory::new()->for($organization)->event()
             ->dated(new DateTimeImmutable('-40 days'), new DateTimeImmutable('-39 days'))
+            // Pre-filled on the form when chosen (#46): two days, fourteen hours.
+            ->withDefaults(2, '14.00')
             ->create(['name' => 'Régate de printemps']);
         ActivityFactory::new()->for($organization)->action()->create(['name' => 'Entretien des bateaux']);
         ActivityFactory::new()->for($organization)->event()

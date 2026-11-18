@@ -7,8 +7,10 @@ namespace App\Tests\Controller\Admin;
 use App\Entity\Activity;
 use App\Entity\Organization;
 use App\Enum\ActivityType;
+use App\Enum\FiscalPower;
 use App\Factory\ActivityFactory;
 use App\Factory\DeclarationActionFactory;
+use App\Factory\FiscalYearFactory;
 use App\Factory\OrganizationFactory;
 use App\Tests\Support\LogsInAdmins;
 use App\Tests\Support\ReadsAdminPages;
@@ -17,6 +19,7 @@ use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Zenstruck\Foundry\Test\Factories;
@@ -117,6 +120,85 @@ final class ActivityAdminTest extends WebTestCase
         $activity = $this->findOne(Activity::class, ['name' => 'Entretien des bateaux']);
         self::assertSame(ActivityType::ACTION, $activity->getType());
         self::assertNull($activity->getBeginsOn());
+    }
+
+    /**
+     * #46: what the declaration form pre-fills. Optional, and held to a line's limits.
+     */
+    #[Test]
+    public function the_default_days_and_hours_are_saved(): void
+    {
+        $this->loggedInAssociation();
+
+        $this->create(['name' => 'Régate', 'type' => 'event', 'defaultDays' => '2', 'defaultWorkHours' => '14,5']);
+
+        self::assertResponseRedirects();
+        $activity = $this->findOne(Activity::class, ['name' => 'Régate']);
+        self::assertSame(2, $activity->getDefaultDays());
+        self::assertSame('14.50', $activity->getDefaultWorkHours());
+    }
+
+    #[Test]
+    public function default_days_and_hours_out_of_a_lines_range_are_refused(): void
+    {
+        $this->loggedInAssociation();
+
+        $this->create(['name' => 'Trop long', 'type' => 'event', 'defaultDays' => '61']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('compris entre 1 et 60', $this->bodyText());
+
+        $this->create(['name' => 'Zéro heure', 'type' => 'event', 'defaultWorkHours' => '0']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('supérieur à zéro', $this->bodyText());
+    }
+
+    /**
+     * #47: the list shows the two amounts and the volunteers — two columns, never a
+     * total — and the detail page all five figures. Validated lines only.
+     */
+    #[Test]
+    public function the_list_and_the_detail_page_show_the_activitys_summary(): void
+    {
+        $organization = $this->loggedInAssociation();
+        FiscalYearFactory::new()->for($organization)->calendarYear(2025)
+            ->create(['defaultHourlyRateCents' => 1000, 'defaultMilliEurosPerKm' => 500]);
+        $regatta = ActivityFactory::new()->for($organization)->create(['name' => 'Régate']);
+        ActivityFactory::new()->for($organization)->create(['name' => 'Sans déclaration']);
+        // 3 h → 30 €; 2 × 10 km in their own car → 20 km, 10 €.
+        DeclarationActionFactory::new()->for($organization)->forActivity($regatta)->validated()->create([
+            'date' => new DateTimeImmutable('2025-05-10'), 'workHours' => '3.00',
+            'journeys' => 2, 'distanceKm' => 10, 'ownVehicle' => true, 'fiscalPower' => FiscalPower::FIVE_CV,
+        ]);
+        // Not ruled on: counts for nothing.
+        DeclarationActionFactory::new()->for($organization)->forActivity($regatta)->create([
+            'date' => new DateTimeImmutable('2025-05-11'), 'workHours' => '8.00',
+        ]);
+
+        $crawler = $this->requestFresh(Request::METHOD_GET, '/admin/activity');
+        self::assertResponseIsSuccessful();
+        $headers = $crawler->filter('table thead')->text();
+        self::assertStringContainsString('Bénévolat valorisé', $headers);
+        self::assertStringContainsString('Abandon de frais', $headers);
+        self::assertStringContainsString('Bénévoles', $headers);
+        self::assertStringNotContainsString('Créé le', $headers);
+        self::assertStringNotContainsString('Inaccessible', $crawler->filter('table')->text());
+
+        $row = self::normalise($crawler->filter('table tbody tr')->reduce(
+            static fn (Crawler $tr): bool => str_contains($tr->text(), 'Régate'),
+        )->text());
+        self::assertStringContainsString('30,00 €', $row);
+        self::assertStringContainsString('10,00 €', $row);
+        $empty = self::normalise($crawler->filter('table tbody tr')->reduce(
+            static fn (Crawler $tr): bool => str_contains($tr->text(), 'Sans déclaration'),
+        )->text());
+        self::assertStringContainsString('0,00 €', $empty);
+
+        $detail = self::normalise($this->requestFresh(Request::METHOD_GET, '/admin/activity/'.$regatta->getId()->toRfc4122())->filter('.activity-summary')->text());
+        self::assertStringContainsString('Heures validées 3,00 h', $detail);
+        self::assertStringContainsString('Bénévolat valorisé 30,00 €', $detail);
+        self::assertStringContainsString('Kilomètres valorisés 20 km', $detail);
+        self::assertStringContainsString('Abandon de frais 10,00 €', $detail);
+        self::assertStringContainsString('Bénévoles 1', $detail);
     }
 
     #[Test]
@@ -264,6 +346,12 @@ final class ActivityAdminTest extends WebTestCase
         $text = $this->textOf('/admin/declaration/'.$line->getDeclaration()->getId()->toRfc4122());
         self::assertStringContainsString('Nouveau nom', $text);
         self::assertStringNotContainsString('Ancien nom', $text);
+    }
+
+    /** Figures are written with no-break spaces; a test reads better with plain ones. */
+    private static function normalise(string $text): string
+    {
+        return str_replace(["\u{a0}", "\u{202f}"], ' ', $text);
     }
 
     private function loggedInAssociation(): Organization

@@ -1,0 +1,32 @@
+{# What the validated lines given for this activity add up to (#47).
+   field.formattedValue is an App\Accounting\ActivitySummary.
+
+   Two amounts and no total, on purpose: valued hours and waived mileage are accounted
+   for differently and must never be summed — see App\Accounting\ContributionValuation. #}
+{% set summary = field.formattedValue %}
+<dl class="activity-summary">
+    <div class="activity-summary__item">
+        <dt>Heures validées</dt>
+        <dd>{{ summary.hours|hours }}</dd>
+    </div>
+    <div class="activity-summary__item">
+        <dt>Bénévolat valorisé</dt>
+        <dd>{{ summary.hoursAmount|euros }}</dd>
+    </div>
+    <div class="activity-summary__item">
+        <dt>Kilomètres valorisés</dt>
+        <dd>{{ summary.valuedKm }}&nbsp;km</dd>
+    </div>
+    <div class="activity-summary__item">
+        <dt>Abandon de frais</dt>
+        <dd>{{ summary.mileageAmount|euros }}</dd>
+    </div>
+    <div class="activity-summary__item">
+        <dt>Bénévoles</dt>
+        <dd>{{ summary.volunteers }}</dd>
+    </div>
+</dl>
+<p class="activity-summary__note">
+    Lignes validées uniquement. Les kilomètres sont ceux parcourus avec le véhicule
+    personnel du bénévole ; les deux montants ne s'additionnent pas.
+</p>

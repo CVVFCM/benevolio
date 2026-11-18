@@ -131,6 +131,30 @@ was done.
   the getter answers null until then. Hence the one `property.uninitialized` suppression.
 - Nothing is seeded for a new association, and lines filed before #44 keep their title.
 
+**Defaults (#46).** An activity may carry `defaultDays` and `defaultWorkHours` — what it usually
+asks of a volunteer, the hours being the total over those days. Both optional, independent of
+its dates, and held to a line's own limits. They are a **browser convenience and nothing
+else**: the select's options carry `data-days` / `data-hours`, and
+`activity_defaults_controller.js` writes the days, the hours and **two journeys a day** into
+the line. It fills on the select's **change, never on connect** — a draft restored from the
+session, or a step redisplayed with errors, holds what the volunteer typed — and a choice
+then **overwrites** the three fields, by decision. « Autre » and an activity with no figure
+leave them alone. The server fills nothing in: `DeclarationSubmitter` never reads them.
+
+**Summary (#47).** `App\Accounting\ActivitySummaryBuilder` adds up, per activity, the
+**validated** lines given for it — hours, **valued** kilometres (own vehicle, so they reconcile
+with the amount), the number of volunteers, and the **two amounts side by side, never a
+total** (`ActivitySummary` has no sum, like `ContributionValuation`). It covers **all time**:
+an activity has no exercice, and each line is priced by the exercice of its own date. A line
+no exercice covers counts its hours, kilometres and volunteer and adds no amount. The list of
+activities shows the two amounts and the volunteers, the detail page all five.
+
+- These columns are not properties of `Activity`. Each is a virtual field **naming its own
+  template** (`admin/field/computed.html.twig`), or EasyAdmin prints « Inaccessible ».
+- **The summaries are memoised on the request, not on the controller.** A CRUD controller is
+  a service and outlives the request in worker mode; a property there would show one
+  association's figures to the next.
+
 ### Money — cents for amounts, millièmes for a mileage rate
 
 **Every monetary *amount* is an integer number of cents**, named `…Cents`. Never a

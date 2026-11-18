@@ -27,9 +27,9 @@ final class ActionDraft
 {
     public const string GROUP = 'actions';
     public const int MAX_DISTANCE_KM = 2000;
-    private const int MAX_CONSECUTIVE_DAYS = 60;
+    public const int MAX_CONSECUTIVE_DAYS = 60;
+    public const string MAX_WORK_HOURS = '999.99';
     private const int MAX_JOURNEYS = 200;
-    private const string MAX_WORK_HOURS = '999.99';
 
     /**
      * The entity, not an enum: each association manages its own list. The form's

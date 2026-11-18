@@ -1,0 +1,4 @@
+{# A column computed by the controller rather than read from the entity: EasyAdmin shows
+   « Inaccessible » for a property it cannot read unless the field names its own
+   template. Prints what the field's formatValue() returned, escaped. #}
+{{ field.formattedValue }}

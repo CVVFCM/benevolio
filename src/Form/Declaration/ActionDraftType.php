@@ -54,6 +54,12 @@ final class ActionDraftType extends AbstractType
                 // and the title below names the occasion instead.
                 'placeholder' => 'Autre',
                 'choice_label' => ActivityChoiceLabel::for(...),
+                // What activity_defaults_controller.js pre-fills the line with when this
+                // choice is made (#46). Only what the activity has: no attribute, no fill.
+                'choice_attr' => static fn (Activity $activity): array => array_filter([
+                    'data-days' => $activity->getDefaultDays(),
+                    'data-hours' => $activity->getDefaultWorkHours(),
+                ], static fn (int|string|null $value): bool => null !== $value),
                 'group_by' => static fn (Activity $activity): ?string => $activity->getType()?->pluralLabel(),
                 // Active and already begun, in the order the groups and their choices
                 // are to appear. The tenant scope is the filter's job.

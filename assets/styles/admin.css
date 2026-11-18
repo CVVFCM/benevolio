@@ -119,6 +119,33 @@
     font-size: 1.0625rem;
 }
 
+/* An activity's summary on its detail page: five figures in a row, wrapping. */
+.activity-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem 2.5rem;
+    margin: 0;
+}
+
+.activity-summary__item dt {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-muted-color, #6c6f7d);
+}
+
+.activity-summary__item dd {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.activity-summary__note {
+    margin: 0.75rem 0 0;
+    font-size: 0.8125rem;
+    color: var(--text-muted-color, #6c6f7d);
+}
+
 .ledger__note {
     color: var(--text-muted-color, #6c6f7d);
     font-size: 0.8125rem;

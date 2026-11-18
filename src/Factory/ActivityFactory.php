@@ -41,6 +41,12 @@ final class ActivityFactory extends PersistentObjectFactory
         return $this->with(['beginsOn' => $beginsOn, 'endsOn' => $endsOn]);
     }
 
+    /** What the declaration form pre-fills when this activity is chosen (#46). */
+    public function withDefaults(?int $days, ?string $workHours): self
+    {
+        return $this->with(['defaultDays' => $days, 'defaultWorkHours' => $workHours]);
+    }
+
     public function inactive(): self
     {
         return $this->with(['active' => false]);
@@ -58,6 +64,8 @@ final class ActivityFactory extends PersistentObjectFactory
             'type' => ActivityType::EVENT,
             'beginsOn' => null,
             'endsOn' => null,
+            'defaultDays' => null,
+            'defaultWorkHours' => null,
             'active' => true,
         ];
     }
