@@ -1,0 +1,128 @@
+{% extends 'site/layout.html.twig' %}
+
+{#
+    « C'est gratuit » — App\Controller\PricingController. What Benevolio costs: nothing, and
+    nothing later either. Supporting it is optional and changes nothing in the service.
+#}
+
+{% set indexable = true %}
+
+{% set sponsors_url = 'https://github.com/sponsors/yohang' %}
+{% set helloasso_url = 'https://www.helloasso.com/associations/cvvfcm/formulaires/4' %}
+
+{% block title %}Benevolio est gratuit — sans abonnement ni frais{% endblock %}
+
+{% block description %}Benevolio est gratuit pour les associations et leurs bénévoles : aucun abonnement, aucun frais. Fait par une association, pour les associations.{% endblock %}
+
+{% block structured_data %}
+    {% set publisher = {
+        '@type': 'Organization',
+        '@id': 'https://www.cvvfcm.fr/#organization',
+        name: 'Club de Voile des Vieilles-Forges de Charleville-Mézières',
+        alternateName: 'CVVFCM',
+        url: 'https://www.cvvfcm.fr/',
+    } %}
+    {% set developer = {
+        '@type': 'Person',
+        '@id': 'https://github.com/yohang#person',
+        name: 'Yohan Giarelli',
+        sameAs: ['https://github.com/yohang'],
+    } %}
+    {{ include('site/_json_ld.html.twig', {data: {
+        '@context': 'https://schema.org',
+        '@graph': [
+            publisher,
+            developer,
+            {
+                '@type': 'WebPage',
+                url: url('pricing'),
+                name: 'Benevolio est gratuit',
+                inLanguage: 'fr',
+                about: {
+                    '@type': 'SoftwareApplication',
+                    name: 'app.name'|trans,
+                    url: url('home'),
+                    applicationCategory: 'BusinessApplication',
+                    operatingSystem: 'Web',
+                    offers: {'@type': 'Offer', price: '0', priceCurrency: 'EUR'},
+                    author: {'@id': developer['@id']},
+                    publisher: {'@id': publisher['@id']},
+                },
+            },
+        ],
+    }}) }}
+{% endblock %}
+
+{% block content %}
+    <article class="guide home__wrap">
+        <header class="guide__header">
+            <h1 class="guide__title">Benevolio est gratuit</h1>
+        </header>
+
+        <div class="guide__answer">
+            <p>
+                <strong>Aucun abonnement, aucun frais, ni aujourd'hui ni plus tard.</strong> Une
+                association utilise Benevolio sans payer, quel que soit le nombre de ses bénévoles,
+                de ses déclarations ou de ses reçus fiscaux.
+            </p>
+        </div>
+
+        <div class="guide__body">
+            <h2>Pourquoi c'est gratuit</h2>
+            <p>
+                Benevolio est fait par une association, pour les associations. Nous savons qu'un
+                logiciel en location n'est ni simple ni souhaité : un abonnement de plus à faire
+                voter, à budgéter chaque année, pour des comptes souvent tenus au centime près.
+            </p>
+            <p>
+                Benevolio est développé par Yohan Giarelli et édité par le
+                <a href="https://www.cvvfcm.fr/">Club de Voile des Vieilles-Forges de Charleville-Mézières</a>,
+                qui l'utilise pour ses propres bénévoles.
+            </p>
+
+            <h2>Ce qui est inclus</h2>
+            <ul>
+                <li>Le formulaire de déclaration des bénévoles, avec ou sans compte.</li>
+                <li>La validation des déclarations par l'association.</li>
+                <li>La valorisation du bénévolat dans les comptes et les écritures de l'exercice.</li>
+                <li>Les reçus fiscaux CERFA des frais abandonnés, émis et envoyés par courriel.</li>
+                <li>Autant d'administrateurs que l'association le souhaite.</li>
+            </ul>
+            <p><a href="{{ path('home') }}#fonctionnalites">Voir toutes les fonctionnalités</a></p>
+        </div>
+
+        <section class="support" aria-labelledby="soutenir">
+            <h2 id="soutenir">Soutenir Benevolio, si vous le souhaitez</h2>
+            <p class="support__lede">
+                Rien n'est demandé, et soutenir Benevolio ne change rien au service. Mais si
+                l'outil vous rend service, un don aide à le faire vivre.
+            </p>
+
+            <div class="support__options">
+                <div class="support__option">
+                    <h3>Le développeur</h3>
+                    <p>
+                        Soutenez Yohan Giarelli (yohang sur GitHub), qui développe et maintient
+                        Benevolio, par GitHub Sponsors.
+                    </p>
+                    <a class="button-link" href="{{ sponsors_url }}" rel="noopener">Soutenir sur GitHub Sponsors</a>
+                </div>
+
+                <div class="support__option">
+                    <h3>Le CVVFCM</h3>
+                    <p>
+                        Faites un don au Club de Voile des Vieilles-Forges de Charleville-Mézières,
+                        l'association qui édite Benevolio, par HelloAsso.
+                    </p>
+                    <a class="button-link" href="{{ helloasso_url }}" rel="noopener">Faire un don sur HelloAsso</a>
+                </div>
+            </div>
+        </section>
+
+        <aside class="guide__cta">
+            <h2>Utiliser Benevolio dans votre association</h2>
+            <p>Écrivez-nous : nous créons l'espace de votre association.</p>
+            <a class="button-link button--quiet" href="{{ path('home') }}#contact">Nous contacter</a>
+        </aside>
+    </article>
+{% endblock %}

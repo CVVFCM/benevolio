@@ -85,7 +85,7 @@ final class CrawlerFilesTest extends WebTestCase
             return $values;
         };
 
-        $expected = ['http://benevolat.example.org/', 'http://benevolat.example.org/guides'];
+        $expected = ['http://benevolat.example.org/', 'http://benevolat.example.org/guides', 'http://benevolat.example.org/gratuit'];
         $lastmods = [];
         foreach (new GuideCatalog()->all() as $guide) {
             $expected[] = 'http://benevolat.example.org/guides/'.$guide->slug;
@@ -102,6 +102,7 @@ final class CrawlerFilesTest extends WebTestCase
 
         $llms = (string) $this->client->getResponse()->getContent();
         self::assertStringStartsWith("# Benevolio\n\n> ", $llms);
+        self::assertStringContainsString("- [C'est gratuit](<http://benevolat.example.org/gratuit>)", $llms);
         foreach (new GuideCatalog()->all() as $guide) {
             self::assertStringContainsString('- ['.$guide->title.'](<http://benevolat.example.org/guides/'.$guide->slug.'>)', $llms);
         }

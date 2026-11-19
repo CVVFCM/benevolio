@@ -1856,6 +1856,53 @@ body {
     color: var(--ink-muted);
 }
 
+/* « C'est gratuit »: the two ways to support Benevolio, side by side, neither first. */
+.support {
+    margin-top: var(--space-7);
+}
+
+.support h2 {
+    margin: 0 0 var(--space-3);
+    font-size: 1.375rem;
+    font-weight: 650;
+    letter-spacing: -0.015em;
+}
+
+.support__lede {
+    max-width: 62ch;
+    margin: 0 0 var(--space-5);
+    color: var(--ink-muted);
+}
+
+.support__options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    gap: var(--space-4);
+}
+
+.support__option {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: var(--space-5);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-lg);
+    background-color: var(--surface-raised);
+}
+
+.support__option h3 {
+    margin: 0 0 var(--space-2);
+    font-size: 1.0625rem;
+    font-weight: 650;
+}
+
+.support__option p {
+    flex: 1;
+    margin: 0 0 var(--space-4);
+    color: var(--ink-muted);
+    font-size: 0.9375rem;
+}
+
 @media (width < 40rem) {
     .guide__table {
         display: block;

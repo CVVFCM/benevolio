@@ -92,9 +92,12 @@ final class HomeTest extends WebTestCase
     }
 
     #[Test]
-    public function it_links_every_guide(): void
+    public function it_links_the_pricing_page_and_every_guide(): void
     {
         $crawler = $this->client->request(Request::METHOD_GET, '/');
+
+        self::assertGreaterThan(0, $crawler->filter('.home__nav a[href="/gratuit"]')->count(), 'The header says it is free.');
+        self::assertGreaterThan(0, $crawler->filter('#faq a[href="/gratuit"]')->count());
 
         foreach (new GuideCatalog()->all() as $guide) {
             self::assertGreaterThan(0, $crawler->filter('#guides a[href="/guides/'.$guide->slug.'"]')->count(), $guide->slug);

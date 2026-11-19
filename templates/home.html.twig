@@ -24,7 +24,8 @@
     },
     {
         question: 'Benevolio est-il gratuit ?',
-        answer: 'Oui. Benevolio est gratuit pour l\'association comme pour ses bénévoles.',
+        answer: 'Oui, sans abonnement ni frais, pour l\'association comme pour ses bénévoles : Benevolio est fait par une association, pour les associations. Ceux qui le souhaitent peuvent soutenir le développeur ou le CVVFCM par un don.',
+        page: 'pricing',
     },
     {
         question: 'Les bénévoles doivent-ils créer un compte ?',
@@ -90,6 +91,7 @@
                 inLanguage: 'fr',
                 image: absolute_url(asset('images/brand/social-card.png')),
                 offers: {'@type': 'Offer', price: '0', priceCurrency: 'EUR'},
+                author: {'@type': 'Person', '@id': 'https://github.com/yohang#person', name: 'Yohan Giarelli', sameAs: ['https://github.com/yohang']},
                 publisher: {'@id': publisher['@id']},
             },
             {
@@ -232,6 +234,9 @@
                         <summary class="faq__question">{{ item.question }}</summary>
                         <div class="faq__answer">
                             <p>{{ item.answer }}</p>
+                            {% if item.page is defined %}
+                                <p><a href="{{ path(item.page) }}">Pourquoi Benevolio est gratuit, et comment le soutenir</a></p>
+                            {% endif %}
                             {% if item.guide is defined %}
                                 {% set guide = guides|filter(guide => guide.slug == item.guide)|first %}
                                 <p><a href="{{ path('guide', {slug: guide.slug}) }}">{{ guide.title }}</a></p>

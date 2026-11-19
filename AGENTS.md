@@ -919,11 +919,13 @@ each linking to its declaration form.
 
 ## SEO & GEO — what is found, and how it is described
 
-The home page and the guides are the only pages meant to be found, by search engines and by AI
-answer engines (ChatGPT search, Perplexity, Google AI Overviews, Bing Copilot).
+The home page, « C'est gratuit » (`/gratuit`) and the guides are the only pages meant to be found,
+by search engines and by AI answer engines (ChatGPT search, Perplexity, Google AI Overviews, Bing
+Copilot).
 
 - **Noindex by default.** `base.html.twig` prints `<meta name="robots" content="noindex">`
-  unless the page sets `indexable` to true at its top — the home page, `/guides`, each guide.
+  unless the page sets `indexable` to true at its top — the home page, `/gratuit`, `/guides`, each
+  guide.
   A new page stays out of search results until someone decides otherwise. The back offices
   (EasyAdmin, which does not use `base.html.twig`) get `X-Robots-Tag: noindex, nofollow` from
   the Caddyfile on `/admin*` and `/platform*`.
@@ -958,6 +960,10 @@ answer engines (ChatGPT search, Perplexity, Google AI Overviews, Bing Copilot).
   there; the vector mark is `assets/images/brand/mark.svg`. The PNGs are drawn from the same
   geometry; redraw them if the mark changes. The link preview is
   `assets/images/brand/social-card.png`, 1200 × 630, captured from an HTML composition.
+- **`/gratuit` is the pricing page**, and the price is nothing: no subscription, no fee, by
+  decision. It names the two ways to support the project — the developer, Yohan Giarelli, on
+  GitHub Sponsors (`yohang`), and the CVVFCM on HelloAsso — as optional, changing nothing in the
+  service. Its structured data adds the developer as a `Person`, author of the application.
 - **Measurement is outside the code**: the domain is verified in Google Search Console and Bing
   Webmaster Tools by DNS TXT record, and `/sitemap.xml` submitted there. No analytics on the site.
 

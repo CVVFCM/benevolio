@@ -50,6 +50,7 @@ final class IndexingTest extends WebTestCase
     {
         yield 'home' => ['/'];
         yield 'guides' => ['/guides'];
+        yield 'pricing' => ['/gratuit'];
         yield 'a guide' => ['/guides/recu-fiscal-abandon-de-frais'];
     }
 
