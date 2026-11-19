@@ -5,14 +5,17 @@ declare(strict_types=1);
 namespace App\Tests\Controller\Public;
 
 use App\Entity\Declaration;
+use App\Entity\Person;
 use App\Factory\DeclarationActionFactory;
 use App\Factory\DeclarationFactory;
 use App\Factory\OrganizationFactory;
+use App\Factory\PersonFactory;
 use App\State\DeclarationState;
 use App\Tests\Support\LogsInAdmins;
 use App\Tests\Support\ReloadsEntities;
 use App\Tests\Support\ResetsRateLimiters;
 use App\Tests\Support\WalksDeclarationFlow;
+use App\ValueObject\Email as EmailAddress;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -69,14 +72,41 @@ final class DeclarationConfirmationTest extends WebTestCase
         self::assertStringContainsString('Régate du printemps', (string) $email->getTextBody());
     }
 
+    /**
+     * Mail scanners open every link in a message before its reader does. Opening the
+     * link must therefore change nothing — or anyone who knows a volunteer's email could
+     * have a made-up identity applied to their record by a machine.
+     */
     #[Test]
-    public function following_the_link_confirms_the_declaration(): void
+    public function opening_the_link_confirms_nothing(): void
     {
         OrganizationFactory::createOne(['slug' => 'les-jardins']);
         $this->completeFlow();
 
         $this->client->request('GET', $this->confirmationUrl());
+        $this->client->request('GET', $this->confirmationUrl());
 
+        self::assertResponseIsSuccessful();
+        self::assertSelectorTextContains('h1', 'Confirmez votre déclaration');
+        self::assertSelectorExists('form[method="post"] button');
+
+        $declaration = $this->reloadDeclaration();
+        self::assertSame(DeclarationState::AWAITING_CONFIRMATION, $declaration->getState());
+        self::assertFalse($declaration->isConfirmed());
+    }
+
+    #[Test]
+    public function the_button_confirms_the_declaration(): void
+    {
+        OrganizationFactory::createOne(['slug' => 'les-jardins']);
+        $this->completeFlow();
+
+        $this->client->request('GET', $this->confirmationUrl());
+        $this->client->submitForm('Confirmer ma déclaration');
+
+        // Back to the link itself, which now reads « confirmée »: a reload repeats nothing.
+        self::assertResponseRedirects($this->confirmationUrl(), Response::HTTP_SEE_OTHER);
+        $this->client->followRedirect();
         self::assertResponseIsSuccessful();
         self::assertSelectorTextContains('h1', 'Votre déclaration est confirmée');
 
@@ -86,24 +116,104 @@ final class DeclarationConfirmationTest extends WebTestCase
     }
 
     /**
-     * Volunteers click twice and mail clients prefetch links. Neither must look
-     * like a failure.
+     * The attack the button exists to stop: someone files a declaration under a known
+     * volunteer's email, with another name and address. A prefetch of the mailed link
+     * leaves the record alone, and the page says whose identity is being confirmed.
      */
     #[Test]
-    public function a_second_click_still_shows_success(): void
+    public function a_prefetch_does_not_apply_an_identity_typed_by_someone_else(): void
+    {
+        $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
+        PersonFactory::new()->for($organization)->create([
+            'email' => new EmailAddress('jean.dupont@example.test'),
+            'firstName' => 'Jean',
+            'lastName' => 'Dupont',
+        ]);
+
+        $this->completeFlow(['firstName' => 'Mallory', 'lastName' => 'Usurpe', 'addressStreet' => 'rue du Pirate']);
+        $crawler = $this->client->request('GET', $this->confirmationUrl());
+
+        $person = $this->findOne(Person::class, ['email' => 'jean.dupont@example.test']);
+        self::assertSame('Jean', $person->getFirstName());
+        self::assertSame('Dupont', $person->getLastName());
+        self::assertStringNotContainsString('Pirate', (string) $person->getAddress());
+
+        $page = $crawler->filter('.done')->text();
+        self::assertStringContainsString('Mallory Usurpe', $page);
+        self::assertStringContainsString('rue du Pirate', $page);
+        self::assertStringContainsString('remplaceront celles que l\'association a enregistrées', $page);
+        self::assertStringContainsString('Jean Dupont', $page);
+    }
+
+    /**
+     * Nothing to warn about when the declaration states what the record already says.
+     */
+    #[Test]
+    public function the_page_does_not_warn_when_the_identity_is_unchanged(): void
+    {
+        OrganizationFactory::createOne(['slug' => 'les-jardins']);
+        $this->completeFlow();
+
+        $crawler = $this->client->request('GET', $this->confirmationUrl());
+
+        $page = $crawler->filter('.done')->text();
+        self::assertStringContainsString('Jean Dupont', $page);
+        self::assertStringNotContainsString('remplaceront', $page);
+    }
+
+    /**
+     * The address is the credential: it must not leak through a Referer, nor sit in a cache.
+     */
+    #[Test]
+    public function the_page_keeps_its_address_out_of_referers_and_caches(): void
+    {
+        OrganizationFactory::createOne(['slug' => 'les-jardins']);
+        $this->completeFlow();
+
+        $this->client->request('GET', $this->confirmationUrl());
+
+        self::assertResponseHeaderSame('Referrer-Policy', 'no-referrer');
+        self::assertStringContainsString('no-store', (string) $this->client->getResponse()->headers->get('Cache-Control'));
+    }
+
+    /**
+     * The mail does not greet by a name: for a new address that name is whatever the
+     * sender of the form typed, and for a known one it would vouch for a declaration
+     * its holder may not have made.
+     */
+    #[Test]
+    public function the_mail_greets_nobody_by_name(): void
+    {
+        OrganizationFactory::createOne(['slug' => 'les-jardins']);
+        $this->completeFlow(['firstName' => 'URGENT votre compte']);
+
+        $email = self::getMailerMessage();
+        self::assertInstanceOf(Email::class, $email);
+        self::assertStringContainsString('Bonjour,', (string) $email->getTextBody());
+        self::assertStringNotContainsString('Bonjour URGENT', $email->getHtmlBody().$email->getTextBody());
+    }
+
+    /**
+     * Volunteers come back to the link. That must not look like a failure, nor confirm twice.
+     */
+    #[Test]
+    public function a_second_visit_still_shows_success(): void
     {
         OrganizationFactory::createOne(['slug' => 'les-jardins']);
         $this->completeFlow();
         $url = $this->confirmationUrl();
 
-        $this->client->request('GET', $url);
+        $this->client->request('POST', $url);
         $firstConfirmedAt = $this->reloadDeclaration()->getConfirmedAt();
+        self::assertNotNull($firstConfirmedAt);
 
+        $this->client->request('POST', $url);
         $this->client->request('GET', $url);
 
         self::assertResponseIsSuccessful();
         self::assertSelectorTextContains('h1', 'Votre déclaration est confirmée');
-        // Idempotent: the second visit does not restamp the confirmation.
+        self::assertSelectorNotExists('form[method="post"]');
+        // Idempotent: the second click does not restamp the confirmation.
         self::assertEquals($firstConfirmedAt, $this->reloadDeclaration()->getConfirmedAt());
     }
 
@@ -112,9 +222,11 @@ final class DeclarationConfirmationTest extends WebTestCase
     {
         OrganizationFactory::createOne(['slug' => 'les-jardins']);
 
-        $this->client->request('GET', '/a/les-jardins/declaration/confirmer/'.str_repeat('a', 43));
+        foreach (['GET', 'POST'] as $method) {
+            $this->client->request($method, '/a/les-jardins/declaration/confirmer/'.str_repeat('a', 43));
 
-        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+            self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        }
     }
 
     /**
@@ -155,6 +267,10 @@ final class DeclarationConfirmationTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(Response::HTTP_GONE);
         self::assertSelectorTextContains('h1', 'Ce lien a expiré');
+        self::assertSelectorNotExists('form[method="post"]');
+
+        // And the button's request, sent anyway, confirms nothing either.
+        $this->client->request('POST', '/a/les-jardins/declaration/confirmer/'.$token->value);
         self::assertTrue($this->reloadDeclaration()->getState()->isAwaitingConfirmation());
     }
 
@@ -173,10 +289,12 @@ final class DeclarationConfirmationTest extends WebTestCase
         $token = $this->reloadDeclaration()->getConfirmationToken();
         self::assertNotNull($token);
 
-        $this->client->request('GET', '/a/les-voiles/declaration/confirmer/'.$token->value);
+        foreach (['GET', 'POST'] as $method) {
+            $this->client->request($method, '/a/les-voiles/declaration/confirmer/'.$token->value);
 
-        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
-        self::assertTrue($this->reloadDeclaration()->getState()->isAwaitingConfirmation());
+            self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+            self::assertTrue($this->reloadDeclaration()->getState()->isAwaitingConfirmation());
+        }
     }
 
     /**

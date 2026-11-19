@@ -1,0 +1,66 @@
+{% extends 'public/layout.html.twig' %}
+
+{#
+    What the emailed link opens while the declaration is still to confirm.
+
+    The link itself confirms nothing — mail scanners open every address in a message
+    before its reader does. The button below posts back to this same address, and that
+    is what confirms. No CSRF token: the address is the credential, and whoever can
+    post it already holds it.
+
+    It shows the name and address THIS declaration states, because confirming is what
+    applies them to the volunteer's record, and the mail does not say whose they are.
+#}
+
+{% block title %}Confirmez votre déclaration — {{ organization.name }}{% endblock %}
+
+{% block main %}
+    <div class="done">
+        <div class="done__mark done__mark--pending" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 6h16v12H4z"/>
+                <path d="m4 7 8 6 8-6"/>
+            </svg>
+        </div>
+
+        <h1>Confirmez votre déclaration</h1>
+
+        <p>
+            Cette déclaration de bénévolat auprès de {{ organization.name }} a été
+            déposée avec votre adresse électronique. Elle ne sera transmise à
+            l'association qu'une fois confirmée.
+        </p>
+
+        <div class="done__note">
+            <p><strong>Déclaration faite au nom de</strong></p>
+            <p>
+                {{ declaration.submittedFullName }}<br>
+                {{ declaration.submittedAddress }}
+            </p>
+            {% if declaration.hasPendingIdentityChange %}
+                <p>
+                    <strong>Ces coordonnées remplaceront celles que l'association a
+                    enregistrées pour vous</strong>
+                    ({{ declaration.person.fullName }}, {{ declaration.person.address }}).
+                    Elles figureront sur vos prochains reçus fiscaux.
+                </p>
+            {% endif %}
+            <p>
+                {{ declaration.actions|length }}
+                {{ declaration.actions|length > 1 ? 'actions déclarées' : 'action déclarée' }} :
+                {{ declaration.totalHours|hours }}{% if declaration.totalDistanceKm > 0 %}
+                et {{ declaration.totalDistanceKm }} km{% endif %}.
+            </p>
+        </div>
+
+        <form method="post" action="{{ app.request.requestUri }}">
+            <button type="submit" class="button">Confirmer ma déclaration</button>
+        </form>
+
+        <p>
+            Ce n'est pas vous, ou ces coordonnées ne sont pas les vôtres ? Fermez
+            cette page : rien ne sera transmis.
+        </p>
+    </div>
+{% endblock %}

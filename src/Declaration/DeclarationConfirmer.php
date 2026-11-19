@@ -32,10 +32,17 @@ final readonly class DeclarationConfirmer
     }
 
     /**
-     * @return array{Declaration, DeclarationConfirmationResult}|null null when no
-     *                                                                declaration matches the token at all
+     * What following the link would do, without doing it.
+     *
+     * The emailed URL is opened by more than its reader — mail scanners fetch every
+     * link in a message — so a GET must change nothing. It shows a page with one
+     * button, and that page needs to know which of the three it is looking at.
+     *
+     * @return array{Declaration, DeclarationConfirmationResult|null}|null null when no declaration
+     *                                                                     matches the token at all; a null result when the
+     *                                                                     declaration is still there to be confirmed
      */
-    public function confirm(string $token): ?array
+    public function look(string $token): ?array
     {
         $declaration = $this->declarations->findOneByConfirmationToken($token);
 
@@ -50,13 +57,36 @@ final readonly class DeclarationConfirmer
             return [$declaration, DeclarationConfirmationResult::ALREADY_CONFIRMED];
         }
 
-        $now = $this->clock->now();
-
-        if ($declaration->isConfirmationTokenExpired($now)) {
+        if ($declaration->isConfirmationTokenExpired($this->clock->now())) {
             // The token stays on the row: the declaration is still there, and a
             // future "resend" feature will need something to attach to.
             return [$declaration, DeclarationConfirmationResult::EXPIRED];
         }
+
+        return [$declaration, null];
+    }
+
+    /**
+     * Confirms. Only ever called for the button's POST — see look().
+     *
+     * @return array{Declaration, DeclarationConfirmationResult}|null null when no
+     *                                                                declaration matches the token at all
+     */
+    public function confirm(string $token): ?array
+    {
+        $found = $this->look($token);
+
+        if (null === $found) {
+            return null;
+        }
+
+        [$declaration, $result] = $found;
+
+        if (null !== $result) {
+            return [$declaration, $result];
+        }
+
+        $now = $this->clock->now();
 
         $this->entityManager->wrapInTransaction(function () use ($declaration, $now): void {
             $this->stateMachine->apply($declaration, DeclarationState::TRANSITION_CONFIRM);
