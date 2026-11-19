@@ -26,7 +26,6 @@ use EasyCorp\Bundle\EasyAdminBundle\Dto\EntityDto;
 use EasyCorp\Bundle\EasyAdminBundle\Dto\SearchDto;
 use EasyCorp\Bundle\EasyAdminBundle\Field\EmailField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\Field;
-use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use EasyCorp\Bundle\EasyAdminBundle\Router\AdminUrlGeneratorInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -148,12 +147,12 @@ final class UserCrudController extends AbstractCrudController
             ->setSortable(false)
             ->hideOnForm();
 
-        // The hash itself is never shown: only whether one exists.
-        yield TextField::new('password', 'État')
-            ->formatValue(static fn (mixed $value, User $user): string => $user->hasPassword()
-                ? 'Actif'
-                : 'Invitation en attente')
-            // Sorting would order accounts by password hash.
+        // NOT a field on `password`: EasyAdmin's text template prints a field's raw value
+        // in a `title` attribute beside the formatted one, so the hash was in the page
+        // source of every account listed. The status reads hasPassword() — a boolean —
+        // through its own template, and no field is bound to the hash at all.
+        yield Field::new('hasPassword', 'État')
+            ->setTemplatePath('admin/field/user_status.html.twig')
             ->setSortable(false)
             ->hideOnForm();
     }

@@ -733,6 +733,14 @@ someone typed, and each was a stored XSS:
   edit — and a platform super-admin impersonating that association loads it too, with the
   exit-impersonation form and its token in the page. `Admin\DashboardController` escapes it.
 
+**And a field's raw value goes into a `title` attribute.** EasyAdmin's text template prints
+`<span title="{{ field.value }}">` beside the formatted value, so `formatValue()` hides nothing:
+« État » was once a `TextField` on `password` reading « Actif », and every listed account's hash
+sat in the page source, for any admin of the association to read. **No field is bound to
+`password`.** The status reads `User::hasPassword()` through `admin/field/user_status.html.twig`;
+`NoPasswordHashInPagesTest` reads the whole response of both back offices, and refuses such a
+field in any CRUD controller.
+
 `tests/Controller/Admin/NoRawUserTextTest` seeds one association with a marker tag in every
 free-text field and walks every `/admin` page and flash. **A new page under `/admin` goes in
 its list**, and a new free-text field in its `setUp()`.
