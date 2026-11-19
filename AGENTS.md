@@ -392,6 +392,48 @@ The switcher ships `hidden` and its controller reveals it, so it never shows whe
 would not work. It covers **the public pages and login only** — EasyAdmin has its own
 switcher inside `/admin` and `/platform`.
 
+## Guided tours (#50, #51)
+
+A first visit to the declaration form, to « Mes déclarations » or to the `/admin` dashboard
+opens a short tour: **driver.js** (importmap, vendored, served from `'self'`) highlights one
+element at a time with a text beside it. `assets/controllers/tour_controller.js` holds the
+mechanics; **the steps and their French texts are in Twig**, one partial per tour
+(`templates/public/tour/`, `templates/admin/tour/`), rendered as the controller's JSON value.
+
+- **One tour per page**: each form step (`declaration-person`, `-actions`, `-legal`),
+  `volunteer-declarations`, and `admin`. A public page sets `tour` (the partial) and
+  `tour_autostart` at its top; `public/layout.html.twig` then puts the controller on the
+  whole page and adds « Aide » to the header, which replays it.
+- **Steps point at `data-tour-step="…"` hooks**, not at styling classes, so a CSS refactor
+  does not silently empty a tour. The admin menu entries carry `tour-*` classes instead,
+  because `UrlMenuItem` has no `setHtmlAttribute()`. Moving or renaming a hooked element
+  means updating its tour: `TourTest` and `DashboardTourTest` fail when a step points at
+  nothing — apart from the steps a page legitimately lacks (« Se connecter » when logged in,
+  the activity select with no activity), which the controller leaves out before counting.
+- **TRAP — driver.js renders a step's title and description as HTML.** Authored strings
+  only; nothing a person typed, not even an association's name.
+- **Seen once a year, per browser**: `localStorage` key `benevolio-tour:<id>`, holding the
+  date it opened (closing it early counts as seen). No storage, no auto-open — it would
+  otherwise open on every page view. Nothing is stored server-side, by decision.
+- **When it does not open by itself**: a form step redisplayed with its errors (the error
+  summary comes first), the form for a logged-in volunteer (« Mes déclarations » still opens:
+  only logged-in volunteers see it), any screen under 40rem, and the admin dashboard for a
+  super-admin impersonating. The admin tour opens on the dashboard only, never on a CRUD page.
+- **Its stylesheet is listed in `importmap.php` and linked, never imported** from JavaScript
+  (see *Security headers*). Listed so that AssetMapper downloads it into `assets/vendor/`
+  with the script — and so every page's import map carries an **inert** entry for it, a
+  `data:application/javascript` URL nothing imports. `ContentSecurityPolicyTest` allows
+  exactly that entry (`LINKED_NOT_IMPORTED`) and still refuses any other `data:` module; a
+  new linked-only stylesheet goes in that list. It is linked in the public layout before
+  `app.css`, and in `/admin` through `configureAssets()` before `admin.css`. Both files restyle `.tour` (the `popoverClass`) with their own colours, so the
+  popover follows each theme.
+- **`/admin` has its own entrypoint, `admin`** (`assets/admin.js`), registering the tour
+  controller only. `app.js` starts every controller in `assets/controllers/`, which EasyAdmin
+  pages have no use for.
+- « Aide » and « Revoir la visite guidée » ship `hidden` and the controller reveals them, as
+  the theme switcher does. **`.button[hidden]`** is restated in `app.css`: `.button`'s
+  `display` would otherwise outrank the browser's own `[hidden]` rule.
+
 ## Security headers, and the script policy
 
 Two layers, because two things can answer a request:
@@ -444,6 +486,7 @@ ownership of an association, and changing an account's email. When you add one, 
   `assets/controllers/csrf_protection_controller.js`, which is what makes the
   stateless CSRF token work in a browser — the token renders as a placeholder that
   JavaScript fills from a cookie, falling back to an `Origin` check.
+- **driver.js** (importmap), for the guided tours — see *Guided tours*.
 - **symfony/expression-language**, required by `Assert\Expression` and
   `Assert\When`. Without it those constraints throw at validation time rather
   than failing to load, so the gap is invisible until something is validated.

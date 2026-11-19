@@ -5,6 +5,12 @@
 {% set current_step = flow.vars.cursor.currentStep %}
 {% set current_index = flow.vars.cursor.stepIndex %}
 
+{# One tour per step (templates/public/tour/). It opens by itself only on a clean page for
+   a visitor who is not logged in: a step redisplayed with its errors has the error summary
+   to read first, and a logged-in volunteer has been here before. « Aide » replays it. #}
+{% set tour = 'public/tour/_declaration_' ~ current_step ~ '.html.twig' %}
+{% set tour_autostart = flow.vars.valid and volunteer is null %}
+
 {% block title %}Déclarer mon bénévolat — {{ organization.name }}{% endblock %}
 
 {% block main %}
@@ -18,7 +24,7 @@
 
     {# Built from the view vars FormFlowType exposes, so the indicator cannot drift
        out of sync with the steps actually configured. #}
-    <nav aria-label="Progression">
+    <nav aria-label="Progression" data-tour-step="steps">
         <ol class="steps">
             {% for name, step in flow.vars.visible_steps %}
                 {% set state = step.is_current_step ? 'current' : (step.index < current_index ? 'done' : 'todo') %}
@@ -69,24 +75,24 @@
                     {{ form_row(flow.person.lastName, {row_attr: {class: 'field field--span-2'}}) }}
                     {% if volunteer %}
                         {# Logged in: the declaration is filed under the account, whatever is typed here. #}
-                        {{ form_row(flow.person.email, {row_attr: {class: 'field field--wide'}, attr: {readonly: 'readonly'}, value: volunteer.email.value, help: 'L\'adresse de votre espace bénévole.'}) }}
+                        {{ form_row(flow.person.email, {row_attr: {class: 'field field--wide', 'data-tour-step': 'email'}, attr: {readonly: 'readonly'}, value: volunteer.email.value, help: 'L\'adresse de votre espace bénévole.'}) }}
                     {% else %}
-                        {{ form_row(flow.person.email, {row_attr: {class: 'field field--wide'}}) }}
+                        {{ form_row(flow.person.email, {row_attr: {class: 'field field--wide', 'data-tour-step': 'email'}}) }}
                     {% endif %}
                     {{ form_row(flow.person.addressNumber) }}
-                    {{ form_row(flow.person.addressStreet, {row_attr: {class: 'field field--span-3'}}) }}
+                    {{ form_row(flow.person.addressStreet, {row_attr: {class: 'field field--span-3', 'data-tour-step': 'address'}}) }}
                     {{ form_row(flow.person.addressPostcode) }}
                     {{ form_row(flow.person.addressCity, {row_attr: {class: 'field field--span-3'}}) }}
                     {{ form_row(flow.person.addressCountry, {row_attr: {class: 'field field--span-2'}}) }}
                 </div>
             {% else %}
-                <div class="form__grid">
+                <div class="form__grid"{% if current_step == 'legal' %} data-tour-step="legal"{% endif %}>
                     {{ form_widget(attribute(flow, current_step)) }}
                 </div>
             {% endif %}
         </section>
 
-        <div class="navigator">
+        <div class="navigator" data-tour-step="submit">
             {# Only the buttons valid for this step still exist — FormFlow removed
                the others through their include_if option — so form_rest() renders
                exactly the right set without the template knowing which. #}

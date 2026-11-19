@@ -689,6 +689,12 @@ body {
     background-color: var(--accent-hover);
 }
 
+/* A button that only works with JavaScript ships hidden (« Aide »); the display above
+   would otherwise outrank the browser's own [hidden] rule. */
+.button[hidden] {
+    display: none;
+}
+
 .button--quiet {
     border-color: var(--rule-strong);
     background-color: transparent;
@@ -1463,4 +1469,106 @@ body {
         display: block;
         overflow-x: auto;
     }
+}
+
+/* ------------------------------------------------------------------ tour -- */
+
+/* driver.js's popover, in the site's tokens so it follows the theme. Its own stylesheet
+   is linked before this one (public/layout.html.twig); `.tour` is the popoverClass the
+   tour controller sets, which also out-specifies driver's single-class rules. */
+.driver-popover.tour {
+    max-width: min(22rem, calc(100vw - 2 * var(--space-4)));
+    padding: var(--space-5);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-lg);
+    background-color: var(--surface-raised);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    box-shadow: var(--shadow-raised);
+}
+
+.tour .driver-popover-title {
+    padding-inline-end: var(--space-6);
+    font-size: 1.0625rem;
+    line-height: 1.4;
+}
+
+.tour .driver-popover-description {
+    color: var(--ink-muted);
+    font-size: 0.9375rem;
+}
+
+.tour .driver-popover-close-btn {
+    color: var(--ink-faint);
+}
+
+.tour .driver-popover-close-btn:hover,
+.tour .driver-popover-close-btn:focus-visible {
+    color: var(--ink);
+}
+
+.tour .driver-popover-progress-text {
+    color: var(--ink-faint);
+}
+
+.tour .driver-popover-footer-btn {
+    min-height: 2rem;
+    padding-inline: var(--space-3);
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--radius);
+    background-color: transparent;
+    color: var(--ink);
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.tour .driver-popover-footer-btn:hover {
+    background-color: var(--surface-sunken);
+}
+
+.tour .driver-popover-footer-btn:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+}
+
+.tour .driver-popover-next-btn {
+    border-color: transparent;
+    background-color: var(--accent);
+    color: var(--accent-contrast);
+}
+
+.tour .driver-popover-next-btn:hover {
+    background-color: var(--accent-hover);
+}
+
+/* The arrow is drawn with borders: one side takes the popover's colour, the other three
+   are transparent. Recolouring the whole border outranks driver's per-side rules, so they
+   are restated here at the same specificity. */
+.tour .driver-popover-arrow {
+    border-color: var(--surface-raised);
+}
+
+.tour .driver-popover-arrow-side-left {
+    border-top-color: transparent;
+    border-right-color: transparent;
+    border-bottom-color: transparent;
+}
+
+.tour .driver-popover-arrow-side-right {
+    border-top-color: transparent;
+    border-bottom-color: transparent;
+    border-left-color: transparent;
+}
+
+.tour .driver-popover-arrow-side-top {
+    border-right-color: transparent;
+    border-bottom-color: transparent;
+    border-left-color: transparent;
+}
+
+.tour .driver-popover-arrow-side-bottom {
+    border-top-color: transparent;
+    border-right-color: transparent;
+    border-left-color: transparent;
 }

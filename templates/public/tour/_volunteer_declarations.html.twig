@@ -1,0 +1,29 @@
+{#
+    Tour of « Mes déclarations ». See _declaration_person.html.twig.
+#}
+{{ stimulus_controller('tour', {
+    id: 'volunteer-declarations',
+    autostart: autostart,
+    steps: [
+        {
+            element: '[data-tour-step="list"]',
+            title: 'Vos déclarations',
+            description: 'Chacune avec son état : en attente de confirmation, soumise, validée ou refusée par l\'association. Ouvrez-en une pour voir le détail de ses actions.',
+        },
+        {
+            element: '[data-tour-step="new"]',
+            title: 'Nouvelle déclaration',
+            description: 'Le formulaire s\'ouvre prérempli avec vos coordonnées et votre véhicule.',
+        },
+        {
+            element: '[data-tour-step="space"]',
+            title: 'Votre espace',
+            description: '« Mes reçus » pour télécharger vos reçus fiscaux, « Mon profil » pour la distance jusqu\'à l\'association et votre véhicule, repris dans chaque déclaration.',
+        },
+        {
+            element: '[data-tour-step="help"]',
+            title: 'Revoir ce guide',
+            description: 'Le bouton « Aide » le relance à tout moment.',
+        },
+    ],
+}) }}

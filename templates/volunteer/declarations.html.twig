@@ -1,17 +1,20 @@
 {% extends 'public/layout.html.twig' %}
 
+{# Only logged-in volunteers reach this page, so its tour opens by itself, once. #}
+{% set tour = 'public/tour/_volunteer_declarations.html.twig' %}
+
 {% block title %}Mes déclarations — {{ organization.name }}{% endblock %}
 
 {% block main %}
     <div class="page-head">
         <h1>Mes déclarations</h1>
-        <a class="button-link" href="{{ path('declaration', {organizationSlug: organization.slug}) }}">Nouvelle déclaration</a>
+        <a class="button-link" data-tour-step="new" href="{{ path('declaration', {organizationSlug: organization.slug}) }}">Nouvelle déclaration</a>
     </div>
 
     {% if declarations is empty %}
-        <p class="empty-state">Aucune déclaration pour l'instant.</p>
+        <p class="empty-state" data-tour-step="list">Aucune déclaration pour l'instant.</p>
     {% else %}
-        <table class="data-table">
+        <table class="data-table" data-tour-step="list">
             <thead>
                 <tr>
                     <th scope="col">Déposée le</th>

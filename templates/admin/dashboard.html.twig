@@ -3,19 +3,30 @@
 {% block content_title %}{{ organization.name }}{% endblock %}
 
 {% block main %}
-    <p>
-        {{ 'dashboard.intro'|trans({}, 'admin') }}
-    </p>
-
     {#
-        The once-a-year job, on the page a treasurer lands on. It sits here because it is the
-        only task with a season: everything else is opened when there is something to do,
-        this is opened when a year is over.
+        The guided tour of the menu (templates/admin/tour/). It opens by itself on this page
+        only — where logging in lands — and never for a super-admin impersonating the
+        account: they are inspecting, not arriving. The button replays it.
     #}
-    <p class="dashboard__actions">
-        <a href="{{ generate_receipts_url }}" class="btn btn-primary">
-            <i class="fa fa-file-invoice"></i>
-            Générer les reçus fiscaux d'une année
-        </a>
-    </p>
+    <div {{ include('admin/tour/_dashboard.html.twig', {autostart: not is_granted('IS_IMPERSONATOR')}) }}>
+        <p>
+            {{ 'dashboard.intro'|trans({}, 'admin') }}
+        </p>
+
+        {#
+            The once-a-year job, on the page a treasurer lands on. It sits here because it is the
+            only task with a season: everything else is opened when there is something to do,
+            this is opened when a year is over.
+        #}
+        <p class="dashboard__actions">
+            <a href="{{ generate_receipts_url }}" class="btn btn-primary">
+                <i class="fa fa-file-invoice"></i>
+                Générer les reçus fiscaux d'une année
+            </a>
+            <button type="button" class="btn btn-secondary" data-tour-step="replay" data-tour-target="replay" data-action="tour#start" hidden>
+                <i class="fa fa-circle-question"></i>
+                Revoir la visite guidée
+            </button>
+        </p>
+    </div>
 {% endblock %}

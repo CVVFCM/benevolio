@@ -1,0 +1,45 @@
+{#
+    Tour of the second step, « Vos actions bénévoles ». See _declaration_person.html.twig.
+    The fields pointed at are those of the first action line.
+#}
+{{ stimulus_controller('tour', {
+    id: 'declaration-actions',
+    autostart: autostart,
+    steps: [
+        {
+            element: '[data-tour-step="action"]',
+            title: 'Une action bénévole',
+            description: 'Une ligne par action : une journée de travaux, une régate, un encadrement… Une déclaration peut en regrouper plusieurs.',
+        },
+        {
+            element: '[data-tour-step="task"]',
+            title: 'Tâche effectuée',
+            description: 'Le type de travail réalisé. C\'est lui qui fixe la valeur de vos heures dans les comptes de l\'association.',
+        },
+        {
+            element: '[data-tour-step="activity"]',
+            title: 'Événement ou action',
+            description: 'L\'occasion, choisie dans la liste de l\'association : elle peut préremplir les jours, les heures et les trajets. « Autre » vous laisse la décrire vous-même.',
+        },
+        {
+            element: '[data-tour-step="hours"]',
+            title: 'Total des heures',
+            description: 'Le temps donné, sur l\'ensemble des jours. Il est valorisé dans les comptes de l\'association, mais n\'ouvre droit à aucune réduction d\'impôt.',
+        },
+        {
+            element: '[data-tour-step="travel"]',
+            title: 'Déplacements',
+            description: 'La distance d\'un aller simple, et le nombre de trajets : un aller-retour compte pour deux. Faits avec votre véhicule personnel, ces frais auxquels vous renoncez peuvent vous valoir un reçu fiscal.',
+        },
+        {
+            element: '[data-tour-step="add"]',
+            title: 'Ajouter une action',
+            description: 'Pour déclarer une autre action dans la même déclaration. « Retirer cette action » supprime une ligne.',
+        },
+        {
+            element: '[data-tour-step="help"]',
+            title: 'Revoir ce guide',
+            description: 'Le bouton « Aide » le relance à tout moment.',
+        },
+    ],
+}) }}
