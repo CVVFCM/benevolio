@@ -12,8 +12,10 @@ use App\Factory\DeclarationFactory;
 use App\Factory\FiscalYearFactory;
 use App\Factory\OrganizationFactory;
 use App\Factory\PersonFactory;
+use App\Receipt\Exception\ReceiptAlreadyStoredException;
 use App\Receipt\ReceiptRunOutcome;
 use App\Receipt\ReceiptRunReport;
+use App\Receipt\ReceiptStorage;
 use App\Receipt\YearlyReceiptRun;
 use App\Tests\Support\FailingGotenberg;
 use DateTimeImmutable;
@@ -24,6 +26,8 @@ use Zenstruck\Foundry\Test\Factories;
 use Zenstruck\Foundry\Test\ResetDatabase;
 
 use function array_map;
+use function sprintf;
+use function strlen;
 
 /**
  * Issuing a whole civil year of reçus fiscaux.
@@ -344,7 +348,7 @@ final class YearlyReceiptRunTest extends KernelTestCase
     }
 
     #[Test]
-    public function the_object_key_carries_the_year_and_the_number(): void
+    public function the_object_key_carries_the_association_the_year_and_the_number(): void
     {
         $organization = $this->association();
         $this->yearAtPublishedBareme($organization, 2025);
@@ -356,7 +360,101 @@ final class YearlyReceiptRunTest extends KernelTestCase
 
         $receipt = $this->firstIssued($this->run->run($organization, 2025));
 
-        self::assertSame('2025/cerfa-camille-berthier-0001.pdf', $receipt->getStoragePath());
+        self::assertSame(
+            sprintf('%s/2025/cerfa-camille-berthier-0001.pdf', $organization->getId()->toRfc4122()),
+            $receipt->getStoragePath(),
+        );
+    }
+
+    /**
+     * Every association numbers from 0001 and they share one bucket. Two of them with a
+     * volunteer of the same name, the same year: each must keep its own PDF. They once
+     * wrote the same object, and the first association then handed out the second's receipt.
+     */
+    #[Test]
+    public function two_associations_with_a_same_named_volunteer_keep_their_own_receipts(): void
+    {
+        $storage = self::getContainer()->get(ReceiptStorage::class);
+        $receipts = [];
+        $pdfs = [];
+
+        foreach (['Les Jardins Partagés', 'Le Cercle Nautique'] as $name) {
+            $organization = OrganizationFactory::new()->withCerfaIdentity()->create(['name' => $name]);
+            $this->yearAtPublishedBareme($organization, 2025);
+            $person = PersonFactory::new()->for($organization)->create([
+                'firstName' => 'Camille',
+                'lastName' => 'Berthier',
+            ]);
+            $this->waivedLine($person, '2025-06-21');
+
+            $receipts[$name] = $this->firstIssued($this->run->run($organization, 2025));
+            // Read at once: what this association filed, before the other one runs.
+            $pdfs[$name] = $storage->read($receipts[$name]->getStoragePath());
+        }
+
+        $first = $receipts['Les Jardins Partagés'];
+        $second = $receipts['Le Cercle Nautique'];
+
+        // Same name, same year, same number — and two objects.
+        self::assertSame($first->getNumber(), $second->getNumber());
+        self::assertNotSame($first->getStoragePath(), $second->getStoragePath());
+        self::assertStringStartsWith($first->getPerson()->getOrganization()->getId()->toRfc4122().'/', $first->getStoragePath());
+
+        // Read back AFTER both runs: the first PDF is still, byte for byte, the first
+        // association's — and not the second's, which states another association.
+        self::assertSame($pdfs['Les Jardins Partagés'], $storage->read($first->getStoragePath()));
+        self::assertNotSame($pdfs['Les Jardins Partagés'], $pdfs['Le Cercle Nautique']);
+    }
+
+    #[Test]
+    public function a_stored_receipt_is_never_overwritten(): void
+    {
+        $storage = self::getContainer()->get(ReceiptStorage::class);
+        $person = PersonFactory::new()->for($this->association())->create();
+
+        $path = $storage->store(2025, $person, '0001', '%PDF-first');
+
+        try {
+            $storage->store(2025, $person, '0001', '%PDF-second');
+            self::fail('The second write should have been refused.');
+        } catch (ReceiptAlreadyStoredException) {
+            self::assertSame('%PDF-first', $storage->read($path));
+        }
+    }
+
+    /**
+     * Transliteration lengthens some letters: two hundred « ß » slug to four hundred
+     * characters, past the column the path is recorded in. That once failed the
+     * volunteer's receipt on every run and stopped the run for everyone after them.
+     */
+    #[Test]
+    public function a_name_that_slugs_long_still_gets_its_receipt(): void
+    {
+        $organization = $this->association();
+        $this->yearAtPublishedBareme($organization, 2025);
+        $person = PersonFactory::new()->for($organization)->create([
+            'firstName' => str_repeat('ß', 100),
+            'lastName' => str_repeat('ß', 100),
+        ]);
+        $this->waivedLine($person, '2025-06-21');
+
+        $receipt = $this->firstIssued($this->run->run($organization, 2025));
+
+        self::assertLessThanOrEqual(255, strlen($receipt->getStoragePath()));
+        self::assertStringEndsWith('-0001.pdf', $receipt->getStoragePath());
+    }
+
+    /**
+     * A receipt issued before the association joined the key keeps the path on its row.
+     */
+    #[Test]
+    public function a_receipt_filed_under_the_earlier_key_is_still_read(): void
+    {
+        $filesystem = self::getContainer()->get('receipts.storage');
+        $legacy = sprintf('2025/cerfa-ancien-recu-%s.pdf', bin2hex(random_bytes(4)));
+        $filesystem->write($legacy, '%PDF-legacy');
+
+        self::assertSame('%PDF-legacy', self::getContainer()->get(ReceiptStorage::class)->read($legacy));
     }
 
     /**
