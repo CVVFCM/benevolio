@@ -17,7 +17,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
 use EasyCorp\Bundle\EasyAdminBundle\Field\AssociationField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\ChoiceField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\EmailField;
-use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
+use EasyCorp\Bundle\EasyAdminBundle\Field\Field;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
@@ -96,11 +96,12 @@ final class UserCrudController extends AbstractCrudController
             ->autocomplete()
             ->setHelp('user.organization.help');
 
-        yield TextField::new('password', 'user.status')
-            ->formatValue(static fn (mixed $value, User $user): string => $user->hasPassword()
-                ? 'Actif'
-                : 'Invitation en attente')
-            // Sorting would order accounts by password hash.
+        // NOT a field on `password`: EasyAdmin's text template prints a field's raw value
+        // in a `title` attribute beside the formatted one, so the hash was in the page
+        // source of every account listed. The status reads hasPassword() — a boolean —
+        // through its own template, and no field is bound to the hash at all.
+        yield Field::new('hasPassword', 'user.status')
+            ->setTemplatePath('admin/field/user_status.html.twig')
             ->setSortable(false)
             ->hideOnForm();
     }

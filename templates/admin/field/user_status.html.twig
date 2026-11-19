@@ -1,0 +1,7 @@
+{#
+    Whether an account can log in with a password, or is still waiting on its invitation.
+    Read from User::hasPassword(), never from the password itself: nothing here may print
+    the hash, not even in an attribute.
+#}
+{# @var entity \EasyCorp\Bundle\EasyAdminBundle\Dto\EntityDto #}
+{{ entity.instance.hasPassword ? 'Actif' : 'Invitation en attente' }}
