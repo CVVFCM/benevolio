@@ -50,7 +50,7 @@ final readonly class DeclarationConfirmationMailer
             // the mail in spam.
             ->from(new Address($this->from, $organization->getName()))
             ->to(new Address($person->getEmail()->value, $person->getFullName()))
-            ->subject(sprintf('Confirmez votre déclaration de bénévolat — %s', $organization->getName()))
+            ->subject(sprintf('Confirmez votre déclaration de bénévolat · %s', $organization->getName()))
             ->htmlTemplate('emails/declaration_confirmation.html.twig')
             ->textTemplate('emails/declaration_confirmation.txt.twig')
             ->context([

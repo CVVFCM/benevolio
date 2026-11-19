@@ -42,7 +42,7 @@ final readonly class ReceiptMailer
             ->from(new Address($this->from, $organization->getName()))
             ->to(new Address($person->getEmail()->value, $person->getFullName()))
             ->subject(sprintf(
-                'Votre reçu fiscal %d n° %s — %s',
+                'Votre reçu fiscal %d n° %s · %s',
                 $receipt->getYear(),
                 $receipt->getNumber(),
                 $organization->getName(),

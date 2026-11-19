@@ -43,7 +43,7 @@
 {% endmacro %}
 
 {% block content_title %}
-    Écritures comptables — {{ fiscal_year.name }}
+    Écritures comptables · {{ fiscal_year.name }}
 {% endblock %}
 
 {% block main %}
@@ -72,13 +72,13 @@
 
         {% if summary.offBalanceSheetEntries is not empty %}
             <section class="ledger__entry">
-                <h2>Contributions volontaires en nature — hors bilan</h2>
+                <h2>Contributions volontaires en nature (hors bilan)</h2>
 
                 {{ fmt.entries(summary.offBalanceSheetEntries) }}
 
                 <p class="ledger__note">
                     Comptes {{ pcg_account('864').value }} / {{ pcg_account('875').value }},
-                    règlement ANC 2018-06 — et non le 870 du règlement 99-01, abrogé. Ces
+                    règlement ANC 2018-06, et non le 870 du règlement 99-01, abrogé. Ces
                     écritures ne passent pas par le bilan : elles sont présentées au pied du
                     compte de résultat, en deux colonnes de totaux égaux (art. 211-3).
                     <strong>Jamais de reçu fiscal</strong> : le temps donné n'ouvre aucun
@@ -89,7 +89,7 @@
 
         {% if summary.realFlowEntries is not empty %}
             <section class="ledger__entry">
-                <h2>Abandon de frais — ouvre droit à reçu fiscal</h2>
+                <h2>Abandon de frais, ouvrant droit à reçu fiscal</h2>
 
                 {{ fmt.entries(summary.realFlowEntries) }}
 
@@ -98,7 +98,7 @@
                     l'art. 141-4 : la renonciation éteint la dette de l'association envers le
                     bénévole, la ressource n'est donc pas créditée sans origine. C'est le
                     solde du {{ pcg_account('75412').value }} qui ouvre droit au reçu fiscal
-                    (CERFA 2041-RD), où il figure en euros — le nombre de kilomètres n'y
+                    (CERFA 2041-RD), où il figure en euros. Le nombre de kilomètres n'y
                     apparaît pas, mais son détail doit être conservé par l'association.
                 </p>
             </section>

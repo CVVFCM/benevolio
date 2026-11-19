@@ -71,7 +71,7 @@ final class CreateUserCommand extends Command
                 'organization',
                 null,
                 InputOption::VALUE_REQUIRED,
-                'Raccourci de l\'association — obligatoire pour un administrateur d\'association',
+                'Raccourci de l\'association, obligatoire pour un administrateur d\'association',
             )
             ->addOption(
                 'password',

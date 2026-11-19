@@ -48,7 +48,7 @@
     },
     {
         question: 'Et si l\'exercice de l\'association ne suit pas l\'année civile ?',
-        answer: 'C\'est prévu. Les écritures comptables suivent l\'exercice de l\'association — de septembre à août par exemple — et les reçus fiscaux suivent l\'année civile, celle de la déclaration de revenus du bénévole.',
+        answer: 'C\'est prévu. Les écritures comptables suivent l\'exercice de l\'association (de septembre à août par exemple), et les reçus fiscaux suivent l\'année civile, celle de la déclaration de revenus du bénévole.',
         guide: 'valoriser-le-benevolat',
     },
     {
@@ -109,26 +109,41 @@
 {% block content %}
     {% set mailto = 'mailto:' ~ contact_email ~ '?subject=' ~ ('home.contact.subject'|trans|url_encode) %}
 
-    <section class="hero home__wrap">
-        <div class="hero__text">
-            <p class="eyebrow">{{ 'home.hero.eyebrow'|trans }}</p>
-            <h1 class="hero__title">{{ 'home.hero.title'|trans }}</h1>
-            <p class="hero__lede">{{ 'home.hero.lede'|trans }}</p>
+    {#
+        The first screen is the sports hall every club shares: the season on the scoreboard,
+        the headline painted on the court. The counters are an example, labelled as such; the
+        receipt figure follows the real barème (48 km at 5 CV, 0,636 €/km; 108 km at 4 CV,
+        0,606 €/km).
+    #}
+    <section class="court court--hero" aria-labelledby="hero-title">
+        <div class="court__grid home__wrap">
+            <figure class="scoreboard" {{ stimulus_controller('scoreboard') }}>
+                <dl class="scoreboard__counters">
+                    <div class="scoreboard__cell">
+                        <dt class="scoreboard__label">Heures données</dt>
+                        <dd class="scoreboard__value" data-scoreboard-target="value">20,5<span class="scoreboard__unit">h</span></dd>
+                    </div>
+                    <div class="scoreboard__cell">
+                        <dt class="scoreboard__label">Kilomètres</dt>
+                        <dd class="scoreboard__value" data-scoreboard-target="value">156<span class="scoreboard__unit">km</span></dd>
+                    </div>
+                    <div class="scoreboard__cell">
+                        <dt class="scoreboard__label">Reçus fiscaux</dt>
+                        <dd class="scoreboard__value scoreboard__value--hot" data-scoreboard-target="value">95,98<span class="scoreboard__unit">€</span></dd>
+                    </div>
+                </dl>
+                <figcaption class="scoreboard__caption">Exemple : une saison fictive de trois bénévoles. Les heures sont valorisées, seuls les frais abandonnés deviennent des reçus.</figcaption>
+            </figure>
 
-            <div class="hero__actions">
-                <a class="button-link" href="{{ mailto }}">{{ 'home.hero.contact'|trans }}</a>
-                <a class="button-link button--quiet" href="#fonctionnalites">{{ 'home.hero.discover'|trans }}</a>
+            <div>
+                <h1 id="hero-title" class="court__title">{{ 'home.hero.title'|trans }}</h1>
+                <p class="court__lede">{{ 'home.hero.lede'|trans }}</p>
+                <div class="court__actions">
+                    <a class="button-link button--tape" href="{{ mailto }}">{{ 'home.hero.contact'|trans }}</a>
+                    <a class="button-link button--line" href="#fonctionnalites">{{ 'home.hero.discover'|trans }}</a>
+                </div>
             </div>
         </div>
-
-        <figure class="shot hero__shot">
-            <img
-                src="{{ asset('images/landing/declaration-form.webp') }}"
-                alt="{{ 'home.hero.screenshot_alt'|trans }}"
-                width="1280" height="800"
-                fetchpriority="high"
-            >
-        </figure>
     </section>
 
     <section class="home__section home__wrap" aria-labelledby="principe">
@@ -145,7 +160,8 @@
         </ol>
     </section>
 
-    <section id="fonctionnalites" class="home__section home__section--tinted" aria-labelledby="fonctionnalites-titre">
+    {# The features are the court itself: a blue field, each feature a lane between painted lines. #}
+    <section id="fonctionnalites" class="home__section court court--field" aria-labelledby="fonctionnalites-titre">
         <div class="home__wrap">
             <h2 id="fonctionnalites-titre" class="home__heading">{{ 'home.features.title'|trans }}</h2>
             <p class="home__lede">{{ 'home.features.lede'|trans }}</p>
@@ -248,8 +264,9 @@
         </div>
     </section>
 
-    <section class="home__section home__wrap" aria-labelledby="contact">
-        <div class="contact">
+    {# The closing call, inside the painted key under the basket: the zone where you score. #}
+    <section class="home__section court court--field" aria-labelledby="contact">
+        <div class="contact home__wrap">
             <h2 id="contact" class="home__heading">{{ 'home.contact.title'|trans }}</h2>
             <p>{{ 'home.contact.text'|trans }}</p>
             <a class="button-link" href="{{ mailto }}">{{ 'home.contact.button'|trans }}</a>

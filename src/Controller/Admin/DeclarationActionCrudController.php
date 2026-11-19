@@ -179,7 +179,7 @@ final class DeclarationActionCrudController extends AbstractCrudController
             ->onlyOnDetail();
 
         yield ChoiceField::new('fiscalPower', 'Puissance fiscale')
-            ->formatValue(static fn (mixed $value, DeclarationAction $action): string => $action->getFiscalPower()?->label() ?? '—')
+            ->formatValue(static fn (mixed $value, DeclarationAction $action): string => $action->getFiscalPower()?->label() ?? 'Aucune')
             ->onlyOnDetail();
 
         yield BooleanField::new('electricVehicle', 'Véhicule électrique')

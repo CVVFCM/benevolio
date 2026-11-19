@@ -1,6 +1,6 @@
 {% extends 'public/layout.html.twig' %}
 
-{% block title %}Déclaration du {{ declaration.submittedAt|format_date('long') }} — {{ organization.name }}{% endblock %}
+{% block title %}Déclaration du {{ declaration.submittedAt|format_date('long') }} · {{ organization.name }}{% endblock %}
 
 {% block main %}
     <p class="back-link">
@@ -46,7 +46,7 @@
                         {% if action.usesOwnVehicle %}
                             Personnel{% if action.fiscalPower %}, {{ action.fiscalPower.label }}{% endif %}{{ action.electricVehicle ? ', électrique' }}
                         {% else %}
-                            <span class="muted">—</span>
+                            <span class="muted">Aucun</span>
                         {% endif %}
                     </td>
                     <td>{{ include('volunteer/_state_badge.html.twig', {state: action.state}) }}</td>

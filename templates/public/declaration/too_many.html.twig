@@ -3,7 +3,7 @@
 {# Shown with a 429 when one address has been sent too many confirmation mails today
    — see the `declaration_recipient` limiter in config/packages/rate_limiter.yaml. #}
 
-{% block title %}{{ 'declaration.too_many.title'|trans }} — {{ organization.name }}{% endblock %}
+{% block title %}{{ 'declaration.too_many.title'|trans }} · {{ organization.name }}{% endblock %}
 
 {% block main %}
     <div class="done">

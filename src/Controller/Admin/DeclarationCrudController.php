@@ -114,7 +114,7 @@ final class DeclarationCrudController extends AbstractCrudController
             ->setHtmlAttributes([
                 'data-action-confirmation-content' => 'Ce n\'est pas une opération normale. D\'ordinaire, le bénévole '
                     .'confirme lui-même en cliquant sur le lien reçu par courriel : ce clic prouve que son adresse '
-                    .'fonctionne — c\'est à elle que sera envoyé le reçu fiscal — et qu\'il a bien voulu envoyer '
+                    .'fonctionne (c\'est à elle que sera envoyé le reçu fiscal) et qu\'il a bien voulu envoyer '
                     .'cette déclaration. Ne le faites que si ce courriel ne lui est jamais parvenu et que vous avez '
                     .'vérifié avec lui. Votre compte sera enregistré sur la déclaration comme l\'ayant confirmée.',
             ])

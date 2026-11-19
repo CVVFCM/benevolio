@@ -24,8 +24,8 @@
         >
         <figcaption class="signature__caption">
             {{ signature.originalFilename ?? 'Sans nom de fichier' }}
-            — déposée le {{ signature.uploadedAt|format_datetime('short', 'short') }}
-            — {{ (signature.approximateByteSize / 1024)|round }} Ko
+            · déposée le {{ signature.uploadedAt|format_datetime('short', 'short') }}
+            · {{ (signature.approximateByteSize / 1024)|round }} Ko
         </figcaption>
     </figure>
 {% endif %}

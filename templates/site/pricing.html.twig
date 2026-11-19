@@ -10,7 +10,7 @@
 {% set sponsors_url = 'https://github.com/sponsors/yohang' %}
 {% set helloasso_url = 'https://www.helloasso.com/associations/cvvfcm/formulaires/4' %}
 
-{% block title %}Benevolio est gratuit — sans abonnement ni frais{% endblock %}
+{% block title %}Benevolio est gratuit, sans abonnement ni frais{% endblock %}
 
 {% block description %}Benevolio est gratuit pour les associations et leurs bénévoles : aucun abonnement, aucun frais. Fait par une association, pour les associations.{% endblock %}
 
@@ -55,15 +55,25 @@
 
 {% block content %}
     {# The answer, at the size of the question an association actually asks. #}
-    <section class="price-hero" aria-labelledby="price-title">
+    <section class="price-hero court court--ends" aria-labelledby="price-title">
         <div class="home__wrap">
-            <p class="price-hero__figure"><span class="price-hero__zero">0</span><span class="price-hero__currency">€</span></p>
+            {# The scoreboard, with the price as its one lit figure and the fees an association
+               expects to pay, each at nothing, on the line under it. #}
+            <figure class="scoreboard price-hero__board">
+                <p class="price-hero__figure scoreboard__value">0<span class="scoreboard__unit">€</span></p>
+                <p class="scoreboard__label">Ce que coûte Benevolio</p>
+                <dl class="price-hero__fees">
+                    <div><dt>Abonnement</dt><dd>0 €</dd></div>
+                    <div><dt>Installation</dt><dd>0 €</dd></div>
+                    <div><dt>Par bénévole ou par reçu</dt><dd>0 €</dd></div>
+                </dl>
+            </figure>
             <h1 id="price-title" class="price-hero__title">Oui, c'est gratuit.</h1>
             <p class="price-hero__lede">
-                Sans abonnement ni frais, ni aujourd'hui ni plus tard — quel que soit le nombre de
+                Sans abonnement ni frais, ni aujourd'hui ni plus tard, quel que soit le nombre de
                 vos bénévoles, de vos déclarations ou de vos reçus fiscaux.
             </p>
-            <a class="button-link" href="{{ path('home') }}#contact">Nous contacter</a>
+            <a class="button-link button--tape" href="{{ path('home') }}#contact">Nous contacter</a>
         </div>
     </section>
 

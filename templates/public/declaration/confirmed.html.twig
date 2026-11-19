@@ -3,7 +3,7 @@
 {% set expired = result is same as constant('App\\Declaration\\DeclarationConfirmationResult::EXPIRED') %}
 
 {% block title %}
-    {{ expired ? 'Lien expiré' : 'Déclaration confirmée' }} — {{ organization.name }}
+    {{ expired ? 'Lien expiré' : 'Déclaration confirmée' }} · {{ organization.name }}
 {% endblock %}
 
 {% block main %}
@@ -25,7 +25,7 @@
             </p>
 
             <p>
-                Vous pouvez la refaire — cela ne prend que quelques minutes.
+                Vous pouvez la refaire : cela ne prend que quelques minutes.
             </p>
 
             <p>

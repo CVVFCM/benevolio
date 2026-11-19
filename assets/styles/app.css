@@ -1,49 +1,78 @@
 /*
- * Benevolio — public volunteer surface.
+ * Benevolio, public surface: the sports hall.
  *
- * The people using these pages are association volunteers filling in paperwork
- * once or twice a year, usually at home, on a phone as often as a laptop. So the
- * surface is built to read like an official document that respects them: warm
- * paper, ink-navy text, one deep-sea accent for the things you press, generous
- * room around anything you have to think about.
+ * Every club shares the municipal sports hall: a court-blue floor with painted white lines, a
+ * light surround where people sit and read, and one scoreboard. These pages are that hall. The
+ * association's season is the score (hours given, kilometres, receipts), the sections are zones
+ * of the court, and the line-marking tapes have jobs: yellow for the one thing to press, green
+ * for valued hours, red only for what just changed or must be corrected.
  *
- * Typography is the system font stack on purpose. A French association must not
- * pull fonts from a third-party CDN (the CNIL has ruled on exactly that), and
- * self-hosting a variable font for a form nobody lingers on is weight this page
- * has not earned. The character comes from scale, weight and measure instead.
+ * Headings are set in Big Shoulders Display, a condensed signage grotesk, self-hosted: a French
+ * association must not pull fonts from a third-party CDN (the CNIL has ruled on exactly that).
+ * Everything else is the system stack.
  */
 
+@font-face {
+    font-family: "Big Shoulders Display";
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url("../fonts/big-shoulders-display-latin.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 :root {
-    /* Warm paper, so the page does not read as a clinical white sheet. */
-    --surface: #f7f4ee;
-    --surface-raised: #fffdfa;
-    --surface-sunken: #efeae1;
-    --ink: #16202b;
-    --ink-muted: #4c5563;
-    --ink-faint: #646d7a;
-    --rule: #ded6c9;
-    --rule-strong: #b9ae9c;
+    /* The surround: light, where people sit, read and fill in forms. */
+    --surface: #eef2f7;
+    --surface-raised: #fff;
+    --surface-sunken: #e0e7f0;
+    --ink: #0f1621;
+    --ink-muted: #3d4858;
+    --ink-faint: #566273;
+    --rule: #c8d3e1;
+    --rule-strong: #8b9db5;
 
-    /* Deep sea: the colour of every action you can take. */
-    --accent: #0f5570;
-    --accent-hover: #0b4156;
-    --accent-contrast: #fffdfa;
-    --accent-tint: #e4eef3;
+    /* The court: the blue floor and the white lines painted on it. */
+    --court: #1b56a3;
+    --court-deep: #13427f;
+    --court-line: rgb(255 255 255 / 88%);
+    --on-court: #fff;
+    --on-court-muted: #d7e4f6;
 
-    /* Brass, for the step you are standing on. */
-    --marker: #8a5f1a;
-    --marker-tint: #f6ecd9;
+    /* Actions off the court take the court's blue. */
+    --accent: #1b56a3;
+    --accent-hover: #13427f;
+    --accent-contrast: #fff;
+    --accent-tint: #e2ebf8;
 
-    /* Semantic colours, tinted from the page hue rather than pure red/green. */
-    --danger: #9c1f1f;
-    --danger-tint: #fbe9e7;
-    --success: #1a5c31;
-    --success-tint: #e6f1e8;
-    --focus: #0f5570;
-    --radius: 6px;
-    --radius-lg: 10px;
+    /* Marking tapes. Yellow: the one thing to press, and the step you stand on. */
+    --tape: #f5c22e;
+    --tape-hover: #ffd75a;
+    --tape-ink: #0f1621;
 
-    /* A 4px base scale — every gap below is a step on it. */
+    /* Green: valued hours, done. */
+    --marker: #1c7547;
+    --marker-tint: #e0f1e7;
+    --success: #1c7547;
+    --success-tint: #e0f1e7;
+
+    /* Red: what just changed on the scoreboard, and what must be corrected. */
+    --signal: #e2462b;
+    --danger: #b42318;
+    --danger-tint: #fde8e4;
+    --focus: #1b56a3;
+
+    /* The scoreboard: a dark panel with lit digits. */
+    --scoreboard: #0c121b;
+    --digit: #ffc83a;
+    --digit-hot: #ff5b3d;
+    --digit-label: #a9b6c8;
+
+    /* Painted shapes and enamel plates: corners are cut, not rounded. */
+    --radius: 2px;
+    --radius-lg: 3px;
+
+    /* A 4px base scale: every gap below is a step on it. */
     --space-1: 0.25rem;
     --space-2: 0.5rem;
     --space-3: 0.75rem;
@@ -52,37 +81,41 @@
     --space-6: 2rem;
     --space-7: 3rem;
     --space-8: 4rem;
-    --shadow-raised: 0 1px 2px rgb(22 32 43 / 4%), 0 4px 12px -4px rgb(22 32 43 / 8%);
+
+    /* Depth is a hard painted shape, not a glow: one short contact shadow at most. */
+    --shadow-raised: none;
     --font-sans:
         system-ui, -apple-system, "Segoe UI", roboto, "Helvetica Neue", arial,
         "Noto Sans", sans-serif;
+    --font-display: "Big Shoulders Display", "Arial Narrow", "Roboto Condensed", var(--font-sans);
 
     /*
-     * The dark palette, declared once and switched in by the two blocks below,
-     * which hold only the mapping — so tuning a colour stays a one-line change in
-     * one place. Custom properties are inert until referenced, so naming these
-     * here costs the light page nothing.
+     * The dark palette, declared once and switched in by the two blocks below, which hold
+     * only the mapping, so tuning a colour stays a one-line change in one place. At night
+     * the hall is lit low: the floor goes navy, the tapes and digits stay lit.
      */
-    --dark-surface: #14191f;
-    --dark-surface-raised: #1c2329;
-    --dark-surface-sunken: #0f1418;
-    --dark-ink: #e9e4da;
-    --dark-ink-muted: #aab2bb;
-    --dark-ink-faint: #929aa4;
-    --dark-rule: #2e363e;
-    --dark-rule-strong: #4c565f;
-    --dark-accent: #7cbedb;
-    --dark-accent-hover: #9ad0e8;
-    --dark-accent-contrast: #0e1418;
-    --dark-accent-tint: #1b2a33;
-    --dark-marker: #d9ac5e;
-    --dark-marker-tint: #2a2417;
-    --dark-danger: #f2a49b;
-    --dark-danger-tint: #2c1a1a;
-    --dark-success: #93cfa6;
-    --dark-success-tint: #17251b;
-    --dark-focus: #9ad0e8;
-    --dark-shadow-raised: 0 1px 2px rgb(0 0 0 / 30%), 0 4px 12px -4px rgb(0 0 0 / 40%);
+    --dark-surface: #0a111c;
+    --dark-surface-raised: #111b2b;
+    --dark-surface-sunken: #070c15;
+    --dark-ink: #e8eef6;
+    --dark-ink-muted: #b3bfcf;
+    --dark-ink-faint: #94a1b4;
+    --dark-rule: #22324b;
+    --dark-rule-strong: #3c5272;
+    --dark-court: #163f78;
+    --dark-court-deep: #10305e;
+    --dark-accent: #8db7ff;
+    --dark-accent-hover: #b1ceff;
+    --dark-accent-contrast: #0a111c;
+    --dark-accent-tint: #15233d;
+    --dark-marker: #77d19e;
+    --dark-marker-tint: #10291b;
+    --dark-danger: #ff9c8c;
+    --dark-danger-tint: #331611;
+    --dark-success: #77d19e;
+    --dark-success-tint: #10291b;
+    --dark-focus: #b1ceff;
+    --dark-shadow-raised: none;
 
     color-scheme: light;
 }
@@ -90,9 +123,9 @@
 /*
  * Dark because the operating system says so, and the visitor has not overridden it.
  *
- * The :not() is what makes an explicit *light* choice work on a dark OS — without
- * it this block would keep winning and the switcher would only appear to work in
- * one direction. color-scheme comes along so native widgets and scrollbars follow.
+ * The :not() is what makes an explicit *light* choice work on a dark OS: without it this
+ * block would keep winning and the switcher would only appear to work in one direction.
+ * color-scheme comes along so native widgets and scrollbars follow.
  */
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -106,6 +139,8 @@
         --ink-faint: var(--dark-ink-faint);
         --rule: var(--dark-rule);
         --rule-strong: var(--dark-rule-strong);
+        --court: var(--dark-court);
+        --court-deep: var(--dark-court-deep);
         --accent: var(--dark-accent);
         --accent-hover: var(--dark-accent-hover);
         --accent-contrast: var(--dark-accent-contrast);
@@ -125,26 +160,28 @@
 :root[data-theme="dark"] {
     color-scheme: dark;
 
-        --surface: var(--dark-surface);
-        --surface-raised: var(--dark-surface-raised);
-        --surface-sunken: var(--dark-surface-sunken);
-        --ink: var(--dark-ink);
-        --ink-muted: var(--dark-ink-muted);
-        --ink-faint: var(--dark-ink-faint);
-        --rule: var(--dark-rule);
-        --rule-strong: var(--dark-rule-strong);
-        --accent: var(--dark-accent);
-        --accent-hover: var(--dark-accent-hover);
-        --accent-contrast: var(--dark-accent-contrast);
-        --accent-tint: var(--dark-accent-tint);
-        --marker: var(--dark-marker);
-        --marker-tint: var(--dark-marker-tint);
-        --danger: var(--dark-danger);
-        --danger-tint: var(--dark-danger-tint);
-        --success: var(--dark-success);
-        --success-tint: var(--dark-success-tint);
-        --focus: var(--dark-focus);
-        --shadow-raised: var(--dark-shadow-raised);
+    --surface: var(--dark-surface);
+    --surface-raised: var(--dark-surface-raised);
+    --surface-sunken: var(--dark-surface-sunken);
+    --ink: var(--dark-ink);
+    --ink-muted: var(--dark-ink-muted);
+    --ink-faint: var(--dark-ink-faint);
+    --rule: var(--dark-rule);
+    --rule-strong: var(--dark-rule-strong);
+    --court: var(--dark-court);
+    --court-deep: var(--dark-court-deep);
+    --accent: var(--dark-accent);
+    --accent-hover: var(--dark-accent-hover);
+    --accent-contrast: var(--dark-accent-contrast);
+    --accent-tint: var(--dark-accent-tint);
+    --marker: var(--dark-marker);
+    --marker-tint: var(--dark-marker-tint);
+    --danger: var(--dark-danger);
+    --danger-tint: var(--dark-danger-tint);
+    --success: var(--dark-success);
+    --success-tint: var(--dark-success-tint);
+    --focus: var(--dark-focus);
+    --shadow-raised: var(--dark-shadow-raised);
 }
 
 /* And light on demand, which is the case the media query above cannot cover. */
@@ -180,6 +217,11 @@ body {
     outline-offset: 2px;
 }
 
+::selection {
+    background-color: var(--tape);
+    color: var(--tape-ink);
+}
+
 /* --------------------------------------------------------------- utility -- */
 
 /* Read by a screen reader, not shown: « (étape terminée) », « (à corriger) »… */
@@ -195,6 +237,306 @@ body {
     white-space: nowrap;
 }
 
+/* ----------------------------------------------------------------- court -- */
+
+/*
+ * A field of the court: blue floor, white text, and painted lines drawn as shapes behind the
+ * content (a halfway line, the centre circle, the three-point arc). The lines are decoration
+ * and never carry text; the field clips them at its edges like a floor clips at the wall.
+ */
+.court {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    background-color: var(--court);
+    color: var(--on-court);
+}
+
+:where(.court) a:not([class]) {
+    color: var(--on-court);
+}
+
+/* The halfway line and the centre circle, on the right of the first screen. */
+.court--hero {
+    padding-block: var(--space-5) var(--space-7);
+    background-image: linear-gradient(to right, transparent calc(72% - 1.5px), var(--court-line) calc(72% - 1.5px) calc(72% + 1.5px), transparent calc(72% + 1.5px));
+}
+
+.court--hero::before,
+.court--hero::after {
+    position: absolute;
+    z-index: -1;
+    border: 3px solid var(--court-line);
+    border-radius: 50%;
+    content: "";
+    pointer-events: none;
+}
+
+.court--hero::before {
+    top: 50%;
+    left: 72%;
+    width: 22rem;
+    aspect-ratio: 1;
+    transform: translate(-50%, -50%);
+}
+
+/* The three-point arc, sweeping up from the bottom right corner, clear of the copy. */
+.court--hero::after {
+    right: -34rem;
+    bottom: -40rem;
+    width: 58rem;
+    aspect-ratio: 1;
+}
+
+@media (width < 48rem) {
+    /* On a phone the markings move off the copy: a sideline down the right gutter, the
+       halfway line across the foot of the field and the centre circle on it. */
+    .court--hero {
+        padding-bottom: 10rem;
+        background-image:
+            linear-gradient(to top, transparent calc(2.5rem - 1.5px), var(--court-line) calc(2.5rem - 1.5px) calc(2.5rem + 1.5px), transparent calc(2.5rem + 1.5px)),
+            linear-gradient(to right, transparent calc(100% - 0.5rem - 1.5px), var(--court-line) calc(100% - 0.5rem - 1.5px) calc(100% - 0.5rem + 1.5px), transparent calc(100% - 0.5rem + 1.5px));
+    }
+
+    .court--hero::before {
+        top: auto;
+        bottom: -4.5rem;
+        left: 50%;
+        width: 14rem;
+        transform: translateX(-50%);
+    }
+
+    .court--hero::after {
+        right: -38rem;
+        bottom: -40rem;
+        width: 44rem;
+    }
+
+    .court__lede {
+        margin-bottom: var(--space-5);
+        font-size: 1.0625rem;
+    }
+
+    .scoreboard__caption {
+        font-size: 0.75rem;
+        line-height: 1.45;
+    }
+
+    .home__bar {
+        padding: var(--space-2) var(--space-4);
+    }
+
+    .home__nav {
+        gap: var(--space-1) var(--space-4);
+    }
+
+    .home__nav a {
+        font-size: 1rem;
+    }
+}
+
+/* A centred page: the two three-point arcs at either end of the court, nothing behind the
+   text in the middle. */
+.court--ends::before,
+.court--ends::after {
+    position: absolute;
+    z-index: -1;
+    top: 50%;
+    width: 46rem;
+    aspect-ratio: 1;
+    border: 3px solid var(--court-line);
+    border-radius: 50%;
+    content: "";
+    pointer-events: none;
+}
+
+.court--ends::before {
+    left: -36rem;
+    transform: translateY(-50%);
+}
+
+.court--ends::after {
+    right: -36rem;
+    transform: translateY(-50%);
+}
+
+@media (width < 64rem) {
+    .court--ends::before,
+    .court--ends::after {
+        display: none;
+    }
+}
+
+.court__grid {
+    display: grid;
+    gap: var(--space-6);
+}
+
+.court__title {
+    max-width: 15ch;
+    margin: var(--space-2) 0 var(--space-4);
+    font-family: var(--font-display);
+    font-size: clamp(2.75rem, 1.6rem + 4.2vw, 5rem);
+    font-weight: 850;
+    letter-spacing: -0.005em;
+    line-height: 0.92;
+    text-transform: uppercase;
+    text-wrap: balance;
+}
+
+.court__lede {
+    max-width: 46ch;
+    margin: 0 0 var(--space-6);
+    color: var(--on-court-muted);
+    font-size: 1.1875rem;
+}
+
+.court__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+}
+
+/* A field of court under a whole section: the sidelines painted along its top and bottom. */
+.court--field {
+    padding-block: var(--space-8);
+    background-image:
+        linear-gradient(to bottom, transparent var(--space-5), var(--court-line) var(--space-5) calc(var(--space-5) + 3px), transparent calc(var(--space-5) + 3px)),
+        linear-gradient(to top, transparent var(--space-5), var(--court-line) var(--space-5) calc(var(--space-5) + 3px), transparent calc(var(--space-5) + 3px));
+}
+
+/* A strip of court under a page's title: guides, the forms' header. */
+.court--strip {
+    padding-block: var(--space-6);
+    background-image: linear-gradient(to top, transparent var(--space-3), var(--court-line) var(--space-3) calc(var(--space-3) + 3px), transparent calc(var(--space-3) + 3px));
+}
+
+.court--strip::after {
+    position: absolute;
+    z-index: -1;
+    top: 50%;
+    right: -7rem;
+    width: 18rem;
+    aspect-ratio: 1;
+    border: 3px solid var(--court-line);
+    border-radius: 50%;
+    content: "";
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
+@media (width < 48rem) {
+    .court--strip::after {
+        display: none;
+    }
+}
+
+/* ------------------------------------------------------------ scoreboard -- */
+
+/*
+ * The one scoreboard: a dark panel, three lit counters, labels above them. The counter that
+ * changed last lights red, the rest stay amber. Digits are real text; scoreboard_controller.js
+ * only counts up to them once, and not at all for anyone who prefers less motion.
+ */
+.scoreboard {
+    margin: 0;
+    padding: var(--space-2);
+    border: 3px solid #26344a;
+    border-radius: var(--radius-lg);
+    background-color: var(--scoreboard);
+}
+
+.scoreboard__counters {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin: 0;
+}
+
+.scoreboard__cell {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: var(--space-1);
+    padding: var(--space-3) var(--space-4);
+}
+
+.scoreboard__cell + .scoreboard__cell {
+    border-inline-start: 1px solid #222d3d;
+}
+
+.scoreboard__label {
+    margin: 0;
+    color: var(--digit-label);
+    font-family: var(--font-display);
+    font-size: 0.9375rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.scoreboard__value {
+    margin: 0;
+    color: var(--digit);
+    font-family: var(--font-display);
+    font-size: clamp(2.25rem, 1.4rem + 3vw, 3.75rem);
+    font-variant-numeric: tabular-nums;
+    font-weight: 900;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.scoreboard__value--hot {
+    color: var(--digit-hot);
+}
+
+.scoreboard__unit {
+    margin-inline-start: 0.12em;
+    font-size: 0.55em;
+    font-weight: 800;
+}
+
+.scoreboard__caption {
+    margin: 0;
+    padding: var(--space-1) var(--space-4) var(--space-2);
+    color: var(--digit-label);
+    font-size: 0.8125rem;
+}
+
+@media (width < 30rem) {
+    .scoreboard__cell {
+        padding-inline: var(--space-2);
+    }
+
+    .scoreboard__label {
+        font-size: 0.75rem;
+        letter-spacing: 0.04em;
+    }
+}
+
+/* ---------------------------------------------------------------- tapes -- */
+
+/* The yellow tape: the one thing to press on a field of the court. */
+.button.button--tape,
+.button-link.button--tape {
+    background-color: var(--tape);
+    color: var(--tape-ink);
+}
+
+.button.button--tape:hover,
+.button-link.button--tape:hover {
+    background-color: var(--tape-hover);
+}
+
+/* A white painted line around a secondary action on the court. */
+.button-link.button--line {
+    border: 2px solid var(--court-line);
+    background-color: transparent;
+    color: var(--on-court);
+}
+
+.button-link.button--line:hover {
+    background-color: rgb(255 255 255 / 12%);
+}
+
 /* ----------------------------------------------------------------- shell -- */
 
 .public {
@@ -204,8 +546,10 @@ body {
 }
 
 .public__header {
-    border-bottom: 1px solid var(--rule);
-    background-color: var(--surface-raised);
+    /* The forms' header is a strip of court: the association's name on the floor. */
+    border-bottom: 4px solid var(--court-deep);
+    background-color: var(--court);
+    color: var(--on-court);
 }
 
 .public__bar {
@@ -219,9 +563,10 @@ body {
 
 .public__org {
     margin: 0;
-    font-size: 1.0625rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
+    font-family: var(--font-display);
+    font-size: 1.375rem;
+    font-weight: 800;
+    letter-spacing: 0.01em;
 }
 
 /* « Se connecter », or the volunteer's name and « Se déconnecter ». */
@@ -237,7 +582,7 @@ body {
 }
 
 .public__who {
-    color: var(--ink-muted);
+    color: var(--on-court-muted);
 }
 
 /* The volunteer space's pages. On a narrow screen they scroll sideways rather than
@@ -247,28 +592,30 @@ body {
     gap: var(--space-1);
     padding-inline: var(--space-3);
     overflow-x: auto;
-    border-top: 1px solid var(--rule);
+    border-top: 1px solid rgb(255 255 255 / 25%);
     scrollbar-width: none;
 }
 
 .public__tab {
     flex-shrink: 0;
-    padding: var(--space-3) var(--space-3) calc(var(--space-3) - 2px);
-    border-bottom: 2px solid transparent;
-    color: var(--ink-muted);
-    font-size: 0.9375rem;
-    font-weight: 550;
+    padding: var(--space-3) var(--space-3) calc(var(--space-3) - 3px);
+    border-bottom: 3px solid transparent;
+    color: var(--on-court-muted);
+    font-family: var(--font-display);
+    font-size: 1.125rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
     text-decoration: none;
     white-space: nowrap;
 }
 
 .public__tab:hover {
-    color: var(--ink);
+    color: var(--on-court);
 }
 
 .public__tab[aria-current="page"] {
-    border-bottom-color: var(--accent);
-    color: var(--ink);
+    border-bottom-color: var(--tape);
+    color: var(--on-court);
 }
 
 .public__tab:focus-visible {
@@ -299,10 +646,11 @@ body {
 
 .public__main h1 {
     margin-block: 0 var(--space-6);
-    font-size: clamp(1.75rem, 1.35rem + 1.6vw, 2.5rem);
-    font-weight: 650;
-    letter-spacing: -0.025em;
-    line-height: 1.15;
+    font-family: var(--font-display);
+    font-size: clamp(2.25rem, 1.6rem + 2.4vw, 3.5rem);
+    font-weight: 850;
+    letter-spacing: 0;
+    line-height: 1;
     text-wrap: balance;
 }
 
@@ -364,16 +712,16 @@ body {
 }
 
 .steps__item--current .steps__position {
-    border-color: var(--marker);
-    background-color: var(--marker-tint);
-    color: var(--marker);
+    border-color: var(--tape);
+    background-color: var(--tape);
+    color: var(--tape-ink);
 }
 
 /* ------------------------------------------------------------------ form -- */
 
 .form__section {
     margin: 0 0 var(--space-6);
-    padding: var(--space-6);
+    padding: 0 var(--space-6) var(--space-6);
     min-width: 0;
     border: 1px solid var(--rule);
     border-radius: var(--radius-lg);
@@ -382,10 +730,16 @@ body {
 }
 
 .form__legend {
-    margin-block: 0 var(--space-5);
-    font-size: 1.25rem;
-    font-weight: 650;
-    letter-spacing: -0.015em;
+    /* The step's name, painted on a court-blue band across the top of the plate. */
+    margin: 0 calc(-1 * var(--space-6)) var(--space-5);
+    padding: var(--space-3) var(--space-6);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    background-color: var(--court);
+    color: var(--on-court);
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: 0.01em;
 }
 
 .form__grid {
@@ -591,9 +945,9 @@ body {
 
 .action__panel {
     padding: var(--space-5);
-    border: 1px solid var(--rule);
+    border: 1px solid var(--rule-strong);
     border-radius: var(--radius);
-    background-color: var(--surface);
+    background-color: var(--surface-raised);
 }
 
 /* Numbered rather than a repeated uppercase label: with several actions on the
@@ -920,9 +1274,11 @@ body {
     border-radius: var(--radius);
     background-color: var(--accent);
     color: var(--accent-contrast);
-    font: inherit;
-    font-size: 0.9375rem;
-    font-weight: 600;
+    font-family: var(--font-display);
+    font-size: 1.125rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
     text-decoration: none;
     cursor: pointer;
     transition: background-color 120ms ease-out, border-color 120ms ease-out;
@@ -954,6 +1310,15 @@ body {
     min-height: 2rem;
     padding-inline: var(--space-3);
     font-size: 0.875rem;
+}
+
+.public__header .button--quiet {
+    border-color: var(--court-line);
+    color: var(--on-court);
+}
+
+.public__header .button--quiet:hover {
+    background-color: rgb(255 255 255 / 12%);
 }
 
 .button--danger {
@@ -1259,18 +1624,19 @@ body {
     align-items: center;
     justify-content: space-between;
     padding: var(--space-3) var(--space-5);
-    border-bottom: 1px solid var(--rule);
-    background-color: var(--surface-raised);
+    background-color: var(--scoreboard);
+    color: #fff;
 }
 
 .home__brand {
     display: inline-flex;
     gap: var(--space-2);
     align-items: center;
-    color: var(--ink);
-    font-size: 1.125rem;
-    font-weight: 650;
-    letter-spacing: -0.01em;
+    color: #fff;
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: 0.01em;
     text-decoration: none;
 }
 
@@ -1283,19 +1649,29 @@ body {
 }
 
 .home__nav a {
-    color: var(--ink-muted);
+    color: #c9d4e4;
+    font-family: var(--font-display);
+    font-size: 1.125rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
     text-decoration: none;
 }
 
 .home__nav a:hover {
-    color: var(--ink);
+    color: #fff;
 }
 
 .home__nav .home__nav-cta {
+    /* Outlined, not taped: on the first screen the hero's button is the one yellow target. */
     padding: var(--space-1) var(--space-3);
-    border: 1px solid var(--rule-strong);
+    border: 2px solid rgb(255 255 255 / 85%);
     border-radius: var(--radius);
-    color: var(--ink);
+    color: #fff;
+}
+
+.home__nav .home__nav-cta:hover {
+    background-color: rgb(255 255 255 / 12%);
+    color: #fff;
 }
 
 .eyebrow {
@@ -1384,16 +1760,18 @@ body {
 }
 
 .home__section--tinted {
-    border-block: 1px solid var(--rule);
-    background-color: var(--surface-sunken);
+    /* Not a grey band: a painted baseline across the floor marks where the zone starts. */
+    border-top: 4px solid var(--court);
 }
 
 .home__heading {
     margin: 0 0 var(--space-3);
-    font-size: clamp(1.5rem, 1.2rem + 1.2vw, 2.125rem);
-    font-weight: 650;
-    letter-spacing: -0.02em;
-    line-height: 1.2;
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 1.4rem + 2.2vw, 3.25rem);
+    font-weight: 850;
+    letter-spacing: 0;
+    line-height: 1;
+    text-transform: uppercase;
 }
 
 .home__lede {
@@ -1401,6 +1779,10 @@ body {
     margin: 0 0 var(--space-6);
     color: var(--ink-muted);
     font-size: 1.0625rem;
+}
+
+:where(.court--field) .home__lede {
+    color: var(--on-court-muted);
 }
 
 .flow {
@@ -1412,21 +1794,57 @@ body {
     list-style: none;
 }
 
+.flow__step {
+    padding-top: var(--space-3);
+    border-top: 6px solid var(--court);
+}
+
+.flow__step:nth-child(1) {
+    border-top-color: var(--tape);
+}
+
+.flow__step:nth-child(2) {
+    border-top-color: var(--marker);
+}
+
 .flow__step p {
     margin: 0;
     color: var(--ink-muted);
 }
 
 .flow__number {
-    display: inline-grid;
-    place-items: center;
-    width: 2.25rem;
-    height: 2.25rem;
-    margin-bottom: var(--space-3);
-    border-radius: 50%;
-    background-color: var(--accent-tint);
-    color: var(--accent);
-    font-weight: 700;
+    display: block;
+    margin-bottom: var(--space-2);
+    color: var(--court);
+    font-family: var(--font-display);
+    font-size: 5rem;
+    font-weight: 900;
+    line-height: 0.85;
+}
+
+.flow__title,
+.feature__title,
+.split__title,
+.faq__question,
+.guide-list__link,
+.support h2,
+.support__option h3,
+.guide__cta h2,
+.guide__body h2,
+.guide__sources h2,
+.guide__more h2 {
+    font-family: var(--font-display);
+    letter-spacing: 0.005em;
+}
+
+/* The condensed face sets small: titles in it take a step up from the body. */
+.flow__title,
+.feature__title,
+.split__title,
+.guide-list__link {
+    font-size: 1.5rem;
+    font-weight: 800;
+    line-height: 1.1;
 }
 
 .flow__title,
@@ -1437,55 +1855,98 @@ body {
     font-weight: 650;
 }
 
+/* The features as register rows: a printed label in the left column, its line beside it. */
 .features {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
-    gap: var(--space-4);
     margin: 0;
     padding: 0;
+    border-bottom: 2px solid var(--court);
     list-style: none;
 }
 
 .feature {
-    padding: var(--space-5);
-    border: 1px solid var(--rule);
-    border-top: 3px solid var(--accent);
-    border-radius: var(--radius-lg);
-    background-color: var(--surface-raised);
+    display: grid;
+    gap: var(--space-1) var(--space-6);
+    padding-block: var(--space-4);
+    border-top: 2px solid var(--court);
+}
+
+@media (width >= 48rem) {
+    .feature {
+        grid-template-columns: 17rem minmax(0, 1fr);
+        align-items: baseline;
+    }
 }
 
 .feature p {
+    max-width: 62ch;
     margin: 0;
     color: var(--ink-muted);
-    font-size: 0.9375rem;
+}
+
+:where(.court--field) .features {
+    border-bottom-color: var(--court-line);
+}
+
+:where(.court--field) .feature {
+    border-top-color: var(--court-line);
+}
+
+:where(.court--field) .feature p {
+    color: var(--on-court-muted);
+}
+
+:where(.court--field) .feature__title,
+:where(.court--field) .home__heading {
+    color: var(--on-court);
 }
 
 /* Two columns that must never read as one sum: the whole point of the section. */
+
+/* Two columns that must never read as one sum, the whole point of the section: one sheet,
+   two ledger columns, the double rule an accountant draws where columns must not be added. */
 .split {
+    /* Two halves of one court, the halfway line between them: never one sum. */
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
-    gap: var(--space-4);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+    padding: var(--space-6);
+    border-radius: var(--radius-lg);
+    background-color: var(--court);
+    color: var(--on-court);
 }
 
 .split__side {
-    padding: var(--space-5) var(--space-6);
-    border: 1px solid var(--rule);
-    border-radius: var(--radius-lg);
-    background-color: var(--surface-raised);
+    padding: var(--space-2) var(--space-6) var(--space-2) 0;
+}
+
+.split__side + .split__side {
+    padding-inline-start: var(--space-6);
+    border-inline-start: 3px solid var(--court-line);
+}
+
+@media (width < 40rem) {
+    .split__side + .split__side {
+        padding-inline-start: 0;
+        padding-block-start: var(--space-4);
+        border-inline-start: 0;
+        border-block-start: 3px solid var(--court-line);
+    }
 }
 
 .split__side p {
     margin: 0 0 var(--space-4);
-    color: var(--ink-muted);
+    color: var(--on-court-muted);
 }
 
 .split__side .split__tag {
     display: inline-block;
     margin: 0;
     padding: var(--space-1) var(--space-3);
-    border-radius: 999px;
-    font-size: 0.8125rem;
-    font-weight: 600;
+    border-radius: var(--radius);
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
 }
 
 .split__side--time .split__tag {
@@ -1494,8 +1955,8 @@ body {
 }
 
 .split__side--expenses .split__tag {
-    background-color: var(--success-tint);
-    color: var(--success);
+    background-color: var(--tape);
+    color: var(--tape-ink);
 }
 
 .gallery {
@@ -1559,22 +2020,42 @@ body {
 /* --------------------------------------------------------------- contact -- */
 
 .contact {
-    max-width: 40rem;
-    margin-inline: auto;
-    padding: var(--space-7) var(--space-6);
-    border-radius: var(--radius-lg);
-    background-color: var(--accent-tint);
+    /* The key under the basket: a painted rectangle, the free-throw circle on its top line. */
+    position: relative;
+    max-width: 44rem;
+    margin: 6rem auto 0;
+    padding: var(--space-7) var(--space-6) var(--space-6);
+    border: 3px solid var(--court-line);
+    color: var(--on-court);
     text-align: center;
+}
+
+.contact::before {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    width: 12rem;
+    height: 6rem;
+    border: 3px solid var(--court-line);
+    border-bottom: 0;
+    border-radius: 6rem 6rem 0 0;
+    content: "";
+    transform: translateX(-50%);
+}
+
+.contact .home__heading {
+    color: var(--on-court);
 }
 
 .contact p {
     margin: 0 0 var(--space-5);
-    color: var(--ink-muted);
+    color: var(--on-court-muted);
 }
 
 .contact .contact__address {
     margin: var(--space-3) 0 0;
     font-size: 0.875rem;
+    color: var(--on-court-muted);
 }
 
 /* --------------------------------------------------------- site & guides -- */
@@ -1617,7 +2098,7 @@ body {
 
 .guide-list__item {
     padding-block-start: var(--space-4);
-    border-top: 1px solid var(--rule-strong);
+    border-top: 4px solid var(--court);
 }
 
 .guide-list__link {
@@ -1642,7 +2123,7 @@ body {
 /* Questions as disclosures: readable without JavaScript, and short enough to scan. */
 .faq {
     max-width: 48rem;
-    border-top: 1px solid var(--rule-strong);
+    border-top: 2px solid var(--court);
 }
 
 .faq__item {
@@ -1655,8 +2136,8 @@ body {
     align-items: baseline;
     justify-content: space-between;
     padding-block: var(--space-4);
-    font-size: 1.0625rem;
-    font-weight: 600;
+    font-size: 1.375rem;
+    font-weight: 750;
     list-style: none;
     cursor: pointer;
 }
@@ -1731,10 +2212,11 @@ body {
 
 .guide__title {
     margin: 0 0 var(--space-3);
-    font-size: clamp(1.875rem, 1.4rem + 2vw, 2.75rem);
-    font-weight: 700;
-    letter-spacing: -0.025em;
-    line-height: 1.12;
+    font-family: var(--font-display);
+    font-size: clamp(2.25rem, 1.6rem + 2.6vw, 3.75rem);
+    font-weight: 850;
+    letter-spacing: 0;
+    line-height: 1;
     text-wrap: balance;
 }
 
@@ -1744,13 +2226,30 @@ body {
     font-size: 0.9375rem;
 }
 
+.court--strip .guide__title {
+    max-width: 24ch;
+}
+
+.court--strip .guide__date,
+.court--strip .guide__crumbs ol {
+    color: var(--on-court-muted);
+}
+
+.court--strip .guide__crumbs a {
+    color: var(--on-court);
+}
+
+.court--strip .court__lede {
+    margin: 0;
+}
+
 /* The short answer, first: what a skimming reader — or an answer engine — takes away. */
 .guide__answer {
     margin-block-end: var(--space-6);
-    padding: var(--space-5) var(--space-5);
-    border: 1px solid color-mix(in oklab, var(--accent) 25%, transparent);
+    padding: var(--space-5) var(--space-6);
     border-radius: var(--radius-lg);
-    background-color: var(--accent-tint);
+    background-color: var(--court);
+    color: var(--on-court);
     font-size: 1.0625rem;
 }
 
@@ -1801,8 +2300,8 @@ body {
     text-align: start;
 }
 
-.guide__table th,
-.guide__table td {
+table.guide__table th,
+table.guide__table td {
     padding: var(--space-2) var(--space-3);
     border-bottom: 1px solid var(--rule);
     text-align: start;
@@ -1841,7 +2340,8 @@ body {
     margin-top: var(--space-7);
     padding: var(--space-6);
     border-radius: var(--radius-lg);
-    background-color: var(--surface-sunken);
+    background-color: var(--scoreboard);
+    color: #fff;
 }
 
 .guide__cta h2 {
@@ -1861,54 +2361,81 @@ body {
  * deep-sea accent with the euro sign in brass, and nothing competing with it.
  */
 .price-hero {
-    padding-block: var(--space-8) var(--space-7);
-    border-bottom: 1px solid var(--rule);
-    background-color: var(--surface-raised);
+    padding-block: var(--space-7) var(--space-8);
     text-align: center;
 }
 
+.price-hero__board {
+    width: min(100%, 34rem);
+    margin: 0 auto var(--space-6);
+    padding: var(--space-5) var(--space-5) var(--space-4);
+}
+
 .price-hero__figure {
-    display: flex;
-    gap: 0.04em;
-    align-items: flex-start;
-    justify-content: center;
-    margin: 0;
-    color: var(--accent);
-    font-size: clamp(7rem, 3.5rem + 15vw, 13rem);
-    font-variant-numeric: lining-nums;
-    font-weight: 750;
-    letter-spacing: -0.04em;
+    font-size: clamp(7rem, 4rem + 12vw, 12rem);
     line-height: 0.9;
 }
 
-.price-hero__currency {
-    margin-top: 0.12em;
-    color: var(--marker);
-    font-size: 0.42em;
-    font-weight: 650;
-    letter-spacing: 0;
+.price-hero__fees {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-5);
+    justify-content: center;
+    margin: var(--space-3) 0 0;
+    padding-top: var(--space-3);
+    border-top: 1px solid #222d3d;
+    color: var(--digit-label);
+    font-size: 0.9375rem;
+}
+
+.price-hero__fees div {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.price-hero__fees dd {
+    margin: 0;
+    color: var(--digit);
+    font-family: var(--font-display);
+    font-weight: 800;
 }
 
 .price-hero__title {
-    margin: var(--space-5) 0 var(--space-4);
-    font-size: clamp(2rem, 1.4rem + 2.4vw, 3.25rem);
-    font-weight: 700;
-    letter-spacing: -0.03em;
-    line-height: 1.1;
+    margin: 0 0 var(--space-4);
+    font-family: var(--font-display);
+    font-size: clamp(2.5rem, 1.6rem + 3.6vw, 4.5rem);
+    font-weight: 850;
+    line-height: 1;
+    text-transform: uppercase;
     text-wrap: balance;
 }
 
 .price-hero__lede {
     max-width: 46ch;
     margin: 0 auto var(--space-6);
-    color: var(--ink-muted);
+    color: var(--on-court-muted);
     font-size: 1.125rem;
     text-wrap: balance;
 }
 
-/* The page under the hero starts with its first section, not with another hero's padding. */
 .price-hero + .guide {
     padding-top: var(--space-4);
+}
+
+.guide__cta p,
+.guide__answer a:any-link {
+    color: #d7e4f6;
+}
+
+.guide__cta .button-link,
+.contact .button-link {
+    background-color: var(--tape);
+    color: var(--tape-ink);
+}
+
+.guide__cta .button-link:hover,
+.contact .button-link:hover {
+    background-color: var(--tape-hover);
 }
 
 /* « C'est gratuit »: the two ways to support Benevolio, side by side, neither first. */
@@ -1940,7 +2467,7 @@ body {
     flex-direction: column;
     align-items: flex-start;
     padding: var(--space-5);
-    border: 1px solid var(--rule);
+    border: 2px solid var(--court);
     border-radius: var(--radius-lg);
     background-color: var(--surface-raised);
 }
@@ -2072,7 +2599,7 @@ body {
 .state-badge {
     display: inline-block;
     padding: 0.125rem var(--space-2);
-    border-radius: 999px;
+    border-radius: var(--radius);
     font-size: 0.8125rem;
     font-weight: 600;
     white-space: nowrap;

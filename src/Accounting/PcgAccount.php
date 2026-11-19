@@ -69,6 +69,6 @@ enum PcgAccount: string
     /** `864 — Personnel bénévole`, for a ledger column. */
     public function display(): string
     {
-        return $this->value.' — '.$this->label();
+        return $this->value.' · '.$this->label();
     }
 }

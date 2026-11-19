@@ -14,7 +14,7 @@
 {% set indexable = true %}
 {% set og_type = 'article' %}
 
-{% block title %}{{ guide.title }} — {{ 'app.name'|trans }}{% endblock %}
+{% block title %}{{ guide.title }} · {{ 'app.name'|trans }}{% endblock %}
 
 {% block description %}{{ guide.description }}{% endblock %}
 
@@ -55,21 +55,25 @@
 {% endblock %}
 
 {% block content %}
-    <article class="guide home__wrap">
-        <nav class="guide__crumbs" aria-label="Fil d'Ariane">
-            <ol>
-                <li><a href="{{ path('home') }}">{{ 'app.name'|trans }}</a></li>
-                <li><a href="{{ path('guides') }}">Guides</a></li>
-                <li aria-current="page">{{ guide.title }}</li>
-            </ol>
-        </nav>
-
-        <header class="guide__header">
-            <h1 class="guide__title">{{ guide.title }}</h1>
-            <p class="guide__date">
-                Mis à jour le <time datetime="{{ guide.updatedOn|date('Y-m-d') }}">{{ guide.updatedOn|format_date('long', locale: 'fr') }}</time>
-            </p>
+    <article>
+        {# The guide's name on a strip of court, its breadcrumb and date with it. #}
+        <header class="court court--strip">
+            <div class="home__wrap">
+                <nav class="guide__crumbs" aria-label="Fil d'Ariane">
+                    <ol>
+                        <li><a href="{{ path('home') }}">{{ 'app.name'|trans }}</a></li>
+                        <li><a href="{{ path('guides') }}">Guides</a></li>
+                        <li aria-current="page">{{ guide.title }}</li>
+                    </ol>
+                </nav>
+                <h1 class="guide__title">{{ guide.title }}</h1>
+                <p class="guide__date">
+                    Mis à jour le <time datetime="{{ guide.updatedOn|date('Y-m-d') }}">{{ guide.updatedOn|format_date('long', locale: 'fr') }}</time>
+                </p>
+            </div>
         </header>
+
+        <div class="guide home__wrap">
 
         <div class="guide__answer">
             {% block answer %}{% endblock %}
@@ -99,5 +103,6 @@
             <h2 id="autres-guides">Les autres guides</h2>
             {{ include('guides/_list.html.twig', {guides: guides|filter(other => other.slug != guide.slug)}) }}
         </nav>
+        </div>
     </article>
 {% endblock %}

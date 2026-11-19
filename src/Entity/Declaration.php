@@ -164,7 +164,7 @@ class Declaration implements TenantAware
 
     public function __toString(): string
     {
-        return sprintf('%s — %s', $this->person->getFullName(), $this->submittedAt->format('d/m/Y'));
+        return sprintf('%s · %s', $this->person->getFullName(), $this->submittedAt->format('d/m/Y'));
     }
 
     /**
