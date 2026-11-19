@@ -112,6 +112,10 @@ security:
         - { path: ^/health$, roles: PUBLIC_ACCESS }
         # The public home page. Must stay anonymous: see App\Controller\HomeController.
         - { path: ^/$, roles: PUBLIC_ACCESS }
+        # The guides and the files crawlers ask for: anonymous and cached, like the home page.
+        - { path: ^/guides(/|$), roles: PUBLIC_ACCESS }
+        - { path: ^/gratuit$, roles: PUBLIC_ACCESS }
+        - { path: ^/(robots\.txt|sitemap\.xml|llms\.txt)$, roles: PUBLIC_ACCESS }
         # Sends a logged-in account to its back office: App\Controller\BackofficeController.
         - { path: ^/espace$, roles: ROLE_ADMIN }
         - { path: ^/login$, roles: PUBLIC_ACCESS }

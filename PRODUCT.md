@@ -57,11 +57,21 @@ refuses to blur what the law keeps apart — a valued hour never reaches a recei
 
 - Name: **benevolio**. Tone: plain, respectful French, like an official document that does not
   talk down to the volunteer.
+- **Free** for associations and volunteers: no subscription, no fee, at all. Made by an
+  association for associations, which know that renting software is neither easy nor wanted.
+  **Published by the CVVFCM** (Club de Voile des Vieilles-Forges de Charleville-Mézières,
+  https://www.cvvfcm.fr/), **developed by Yohan Giarelli** (`yohang` on GitHub).
+- Support is optional: GitHub Sponsors for the developer (https://github.com/sponsors/yohang),
+  HelloAsso for the CVVFCM (https://www.helloasso.com/associations/cvvfcm/formulaires/4).
+- Mark: `assets/images/brand/mark.svg` — a « b » and a brass dot on a deep-sea tile.
+- Served on `benevolat.cvvfcm.fr` for now; a dedicated domain is an open decision.
 
 ## Evidence on Hand
 
 - Landing screenshots in `assets/images/landing/` (taken from development fixtures, fake names).
 - The official CERFA form in `resources/cerfa/`.
+- Four guides under `/guides` (reçu fiscal pour abandon de frais, valorisation du bénévolat,
+  barème kilométrique, CERFA 11580), each citing official sources, and a FAQ on the home page.
 - No testimonials, customer quotes, figures or press exist; do not invent them.
 
 ## Product Principles

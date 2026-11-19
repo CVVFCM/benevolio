@@ -1,0 +1,22 @@
+# Benevolio
+
+> Benevolio est un service en ligne gratuit pour les associations loi 1901 françaises. Les bénévoles y déclarent leurs heures et leurs frais ; l'association valide les déclarations, valorise le bénévolat dans ses comptes (comptes 864 Personnel bénévole et 875 Bénévolat, règlement ANC 2018-06) et émet les reçus fiscaux CERFA n° 11580*05 des frais auxquels les bénévoles renoncent (abandon de frais, article 200 du CGI). Sans abonnement ni frais. Développé par Yohan Giarelli, édité par le Club de Voile des Vieilles-Forges de Charleville-Mézières (CVVFCM).
+
+Points essentiels :
+
+- Les heures de bénévolat sont valorisées dans les comptes mais n'ouvrent jamais droit à une réduction d'impôt ni à un reçu fiscal.
+- Seuls les frais engagés par un bénévole et dont il abandonne expressément le remboursement sont un don : réduction d'impôt de 66 %, dans la limite de 20 % du revenu imposable.
+- Les frais kilométriques suivent le barème kilométrique général (pas de barème propre aux bénévoles depuis 2022), majoré de 20 % pour un véhicule électrique.
+- Un reçu fiscal par bénévole et par année civile ; les écritures comptables suivent l'exercice de l'association.
+- Les bénévoles déclarent sans compte, avec confirmation par courriel ; l'espace bénévole se connecte par un lien, sans mot de passe.
+
+## Présentation
+
+- [Benevolio](<{{ url('home') }}>): ce que fait le service, pour qui, et les questions fréquentes
+- [C'est gratuit](<{{ url('pricing') }}>): aucun abonnement ni frais ; comment soutenir le projet (GitHub Sponsors pour le développeur, HelloAsso pour le CVVFCM)
+
+## Guides
+
+{% for guide in guides %}
+- [{{ guide.title }}](<{{ url('guide', {slug: guide.slug}) }}>): {{ guide.description }}
+{% endfor %}

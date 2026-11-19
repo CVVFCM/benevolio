@@ -1,0 +1,11 @@
+{#
+    Structured data for search and answer engines: `data` is a schema.org graph, built as a
+    Twig hash by the page and printed as JSON.
+
+    The nonce is required: the public pages run under a script policy, and
+    ContentSecurityPolicyTest refuses a <script> without it, data blocks included. HEX_TAG
+    turns every < and > into < / >, so no string in the data can close the element.
+#}
+<script type="application/ld+json" nonce="{{ csp_nonce() }}">
+    {{- data|json_encode(constant('JSON_UNESCAPED_SLASHES') b-or constant('JSON_UNESCAPED_UNICODE') b-or constant('JSON_HEX_TAG'))|raw -}}
+</script>

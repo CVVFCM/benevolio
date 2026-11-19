@@ -60,6 +60,10 @@ final class ContentSecurityPolicyTest extends WebTestCase
     public static function publicPages(): iterable
     {
         yield 'home' => ['/'];
+        // Both carry JSON-LD, a <script> like any other for the policy.
+        yield 'guides' => ['/guides'];
+        yield 'a guide' => ['/guides/cerfa-11580'];
+        yield 'pricing' => ['/gratuit'];
         yield 'login' => ['/login'];
         yield 'forgotten password' => ['/mot-de-passe-oublie'];
         yield 'declaration form' => ['/a/les-jardins/declaration'];

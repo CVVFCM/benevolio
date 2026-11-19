@@ -1,4 +1,4 @@
-{% extends 'base.html.twig' %}
+{% extends 'site/layout.html.twig' %}
 
 {#
     The public home page — see App\Controller\HomeController.
@@ -8,150 +8,252 @@
     private for every visitor.
 #}
 
+{# Found by search engines: see base.html.twig. #}
+{% set indexable = true %}
+
+{#
+    The questions an association asks before trusting its paperwork to Benevolio — and the
+    ones answer engines are asked. Written once here: the section prints them, the
+    FAQPage structured data repeats them without their markup. Facts only, each one true of
+    the application as it is; the tax and accounting ones send to the guide that sources them.
+#}
+{% set faq = [
+    {
+        question: 'Qu\'est-ce que Benevolio ?',
+        answer: 'Un service en ligne pour les associations loi 1901. Les bénévoles y déclarent leurs heures et leurs frais ; l\'association valide chaque déclaration, valorise le bénévolat dans ses comptes et émet les reçus fiscaux (CERFA n° 11580*05) des frais auxquels les bénévoles renoncent.',
+    },
+    {
+        question: 'Benevolio est-il gratuit ?',
+        answer: 'Oui, sans abonnement ni frais, pour l\'association comme pour ses bénévoles : Benevolio est fait par une association, pour les associations. Ceux qui le souhaitent peuvent soutenir le développeur ou le CVVFCM par un don.',
+        page: 'pricing',
+    },
+    {
+        question: 'Les bénévoles doivent-ils créer un compte ?',
+        answer: 'Non. Un bénévole déclare depuis le formulaire de son association, sans compte : un lien envoyé par courriel lui fait confirmer sa déclaration. S\'il le souhaite, il se connecte à son espace bénévole par un lien, sans mot de passe, pour retrouver ses déclarations et ses reçus fiscaux.',
+    },
+    {
+        question: 'Les heures de bénévolat donnent-elles droit à une réduction d\'impôt ?',
+        answer: 'Non. Le temps donné est valorisé dans les comptes de l\'association (comptes 864 et 875), mais il n\'ouvre droit à aucune réduction d\'impôt et ne figure jamais sur un reçu fiscal. Seuls les frais engagés par le bénévole et dont il abandonne le remboursement sont un don : ils ouvrent droit à une réduction d\'impôt de 66 %, dans la limite de 20 % du revenu imposable.',
+        guide: 'recu-fiscal-abandon-de-frais',
+    },
+    {
+        question: 'Comment les frais kilométriques d\'un bénévole sont-ils calculés ?',
+        answer: 'Avec le barème kilométrique général, le même que pour les salariés : un bénévole n\'a plus de barème propre depuis 2022. Le taux dépend de la puissance fiscale du véhicule et il est majoré de 20 % pour un véhicule électrique.',
+        guide: 'bareme-kilometrique-benevole',
+    },
+    {
+        question: 'Quand l\'association émet-elle les reçus fiscaux ?',
+        answer: 'Une fois par an, pour une année civile : un reçu par bénévole, qui réunit les frais abandonnés de toutes ses déclarations validées. Les reçus sont numérotés à la suite et envoyés aux bénévoles par courriel.',
+        guide: 'cerfa-11580',
+    },
+    {
+        question: 'Et si l\'exercice de l\'association ne suit pas l\'année civile ?',
+        answer: 'C\'est prévu. Les écritures comptables suivent l\'exercice de l\'association — de septembre à août par exemple — et les reçus fiscaux suivent l\'année civile, celle de la déclaration de revenus du bénévole.',
+        guide: 'valoriser-le-benevolat',
+    },
+    {
+        question: 'Comment démarrer avec Benevolio ?',
+        answer: 'Écrivez-nous : nous créons l\'espace de votre association. Votre formulaire de déclaration a sa propre adresse, à transmettre à vos bénévoles, et vous invitez les autres administrateurs par courriel.',
+    },
+] %}
+
 {% block title %}{{ 'home.title'|trans }}{% endblock %}
 
-{% block meta %}
-    <meta name="description" content="{{ 'home.meta_description'|trans }}">
+{% block description %}{{ 'home.meta_description'|trans }}{% endblock %}
+
+{% block structured_data %}
+    {% set publisher = {
+        '@type': 'Organization',
+        '@id': 'https://www.cvvfcm.fr/#organization',
+        name: 'Club de Voile des Vieilles-Forges de Charleville-Mézières',
+        alternateName: 'CVVFCM',
+        url: 'https://www.cvvfcm.fr/',
+    } %}
+    {{ include('site/_json_ld.html.twig', {data: {
+        '@context': 'https://schema.org',
+        '@graph': [
+            publisher,
+            {
+                '@type': 'WebSite',
+                '@id': url('home') ~ '#website',
+                url: url('home'),
+                name: 'app.name'|trans,
+                inLanguage: 'fr',
+                publisher: {'@id': publisher['@id']},
+            },
+            {
+                '@type': 'SoftwareApplication',
+                name: 'app.name'|trans,
+                url: url('home'),
+                description: 'home.meta_description'|trans,
+                applicationCategory: 'BusinessApplication',
+                operatingSystem: 'Web',
+                inLanguage: 'fr',
+                image: absolute_url(asset('images/brand/social-card.png')),
+                offers: {'@type': 'Offer', price: '0', priceCurrency: 'EUR'},
+                author: {'@type': 'Person', '@id': 'https://github.com/yohang#person', name: 'Yohan Giarelli', sameAs: ['https://github.com/yohang']},
+                publisher: {'@id': publisher['@id']},
+            },
+            {
+                '@type': 'FAQPage',
+                mainEntity: faq|map(item => {
+                    '@type': 'Question',
+                    name: item.question,
+                    acceptedAnswer: {'@type': 'Answer', text: item.answer},
+                }),
+            },
+        ],
+    }}) }}
 {% endblock %}
 
-{% block body %}
+{% block content %}
     {% set mailto = 'mailto:' ~ contact_email ~ '?subject=' ~ ('home.contact.subject'|trans|url_encode) %}
 
-    <div class="home">
-        <header class="home__bar">
-            <a class="home__brand" href="{{ path('home') }}">
-                <span aria-hidden="true">🤝</span> {{ 'app.name'|trans }}
-            </a>
+    <section class="hero home__wrap">
+        <div class="hero__text">
+            <p class="eyebrow">{{ 'home.hero.eyebrow'|trans }}</p>
+            <h1 class="hero__title">{{ 'home.hero.title'|trans }}</h1>
+            <p class="hero__lede">{{ 'home.hero.lede'|trans }}</p>
 
-            <nav class="home__nav" aria-label="{{ 'app.name'|trans }}">
-                <a href="#fonctionnalites">{{ 'home.nav.features'|trans }}</a>
-                {% if organizations is not empty %}
-                    <a href="#associations">{{ 'home.nav.organizations'|trans }}</a>
-                {% endif %}
-                <a class="home__nav-cta" href="{{ path('backoffice') }}">{{ 'home.nav.backoffice'|trans }}</a>
-            </nav>
-        </header>
+            <div class="hero__actions">
+                <a class="button-link" href="{{ mailto }}">{{ 'home.hero.contact'|trans }}</a>
+                <a class="button-link button--quiet" href="#fonctionnalites">{{ 'home.hero.discover'|trans }}</a>
+            </div>
+        </div>
 
-        <main>
-            <section class="hero home__wrap">
-                <div class="hero__text">
-                    <p class="eyebrow">{{ 'home.hero.eyebrow'|trans }}</p>
-                    <h1 class="hero__title">{{ 'home.hero.title'|trans }}</h1>
-                    <p class="hero__lede">{{ 'home.hero.lede'|trans }}</p>
+        <figure class="shot hero__shot">
+            <img
+                src="{{ asset('images/landing/declaration-form.webp') }}"
+                alt="{{ 'home.hero.screenshot_alt'|trans }}"
+                width="1280" height="800"
+                fetchpriority="high"
+            >
+        </figure>
+    </section>
 
-                    <div class="hero__actions">
-                        <a class="button-link" href="{{ mailto }}">{{ 'home.hero.contact'|trans }}</a>
-                        <a class="button-link button--quiet" href="#fonctionnalites">{{ 'home.hero.discover'|trans }}</a>
-                    </div>
+    <section class="home__section home__wrap" aria-labelledby="principe">
+        <h2 id="principe" class="home__heading">{{ 'home.steps.title'|trans }}</h2>
+
+        <ol class="flow">
+            {% for step in ['declare', 'review', 'books'] %}
+                <li class="flow__step">
+                    <span class="flow__number" aria-hidden="true">{{ loop.index }}</span>
+                    <h3 class="flow__title">{{ ('home.steps.' ~ step ~ '.title')|trans }}</h3>
+                    <p>{{ ('home.steps.' ~ step ~ '.text')|trans }}</p>
+                </li>
+            {% endfor %}
+        </ol>
+    </section>
+
+    <section id="fonctionnalites" class="home__section home__section--tinted" aria-labelledby="fonctionnalites-titre">
+        <div class="home__wrap">
+            <h2 id="fonctionnalites-titre" class="home__heading">{{ 'home.features.title'|trans }}</h2>
+            <p class="home__lede">{{ 'home.features.lede'|trans }}</p>
+
+            <ul class="features">
+                {% for feature in ['form', 'valuation', 'expenses', 'receipts', 'fiscal_years', 'admins'] %}
+                    <li class="feature">
+                        <h3 class="feature__title">{{ ('home.features.' ~ feature ~ '.title')|trans }}</h3>
+                        <p>{{ ('home.features.' ~ feature ~ '.text')|trans }}</p>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </section>
+
+    <section class="home__section home__wrap" aria-labelledby="deux-contributions">
+        <h2 id="deux-contributions" class="home__heading">{{ 'home.split.title'|trans }}</h2>
+        <p class="home__lede">{{ 'home.split.lede'|trans }}</p>
+
+        <div class="split">
+            {% for side in ['time', 'expenses'] %}
+                <div class="split__side split__side--{{ side }}">
+                    <h3 class="split__title">{{ ('home.split.' ~ side ~ '.title')|trans }}</h3>
+                    <p>{{ ('home.split.' ~ side ~ '.text')|trans }}</p>
+                    <p class="split__tag">{{ ('home.split.' ~ side ~ '.tag')|trans }}</p>
                 </div>
+            {% endfor %}
+        </div>
+    </section>
 
-                <figure class="shot hero__shot">
+    <section class="home__section home__wrap" aria-labelledby="en-images">
+        <h2 id="en-images" class="home__heading">{{ 'home.gallery.title'|trans }}</h2>
+
+        <div class="gallery">
+            {% for shot in ['declarations', 'ledger'] %}
+                <figure class="shot">
                     <img
-                        src="{{ asset('images/landing/declaration-form.webp') }}"
-                        alt="{{ 'home.hero.screenshot_alt'|trans }}"
+                        src="{{ asset('images/landing/' ~ shot ~ '.webp') }}"
+                        alt="{{ ('home.gallery.' ~ shot ~ '.alt')|trans }}"
                         width="1280" height="800"
-                        fetchpriority="high"
+                        loading="lazy"
                     >
+                    <figcaption>{{ ('home.gallery.' ~ shot ~ '.caption')|trans }}</figcaption>
                 </figure>
-            </section>
+            {% endfor %}
+        </div>
+    </section>
 
-            <section class="home__section home__wrap" aria-labelledby="principe">
-                <h2 id="principe" class="home__heading">{{ 'home.steps.title'|trans }}</h2>
+    {% if organizations is not empty %}
+        <section id="associations" class="home__section home__section--tinted" aria-labelledby="associations-titre">
+            <div class="home__wrap">
+                <h2 id="associations-titre" class="home__heading">{{ 'home.organizations.title'|trans }}</h2>
+                <p class="home__lede">{{ 'home.organizations.lede'|trans }}</p>
 
-                <ol class="flow">
-                    {% for step in ['declare', 'review', 'books'] %}
-                        <li class="flow__step">
-                            <span class="flow__number" aria-hidden="true">{{ loop.index }}</span>
-                            <h3 class="flow__title">{{ ('home.steps.' ~ step ~ '.title')|trans }}</h3>
-                            <p>{{ ('home.steps.' ~ step ~ '.text')|trans }}</p>
+                <ul class="tenants">
+                    {% for organization in organizations %}
+                        <li class="tenant">
+                            <span class="tenant__name">{{ organization.name }}</span>
+                            <a class="tenant__link" href="{{ path('declaration', {organizationSlug: organization.slug}) }}">
+                                {{ 'home.organizations.declare'|trans }} <span aria-hidden="true">→</span>
+                            </a>
                         </li>
                     {% endfor %}
-                </ol>
-            </section>
+                </ul>
+            </div>
+        </section>
+    {% endif %}
 
-            <section id="fonctionnalites" class="home__section home__section--tinted" aria-labelledby="fonctionnalites-titre">
-                <div class="home__wrap">
-                    <h2 id="fonctionnalites-titre" class="home__heading">{{ 'home.features.title'|trans }}</h2>
-                    <p class="home__lede">{{ 'home.features.lede'|trans }}</p>
+    <section id="guides" class="home__section home__wrap" aria-labelledby="guides-titre">
+        <h2 id="guides-titre" class="home__heading">Comprendre les règles</h2>
+        <p class="home__lede">
+            Reçu fiscal, valorisation, barème kilométrique : ce que disent les textes, expliqué
+            pour les trésoriers et les bénévoles, sources à l'appui.
+        </p>
 
-                    <ul class="features">
-                        {% for feature in ['form', 'valuation', 'expenses', 'receipts', 'fiscal_years', 'admins'] %}
-                            <li class="feature">
-                                <h3 class="feature__title">{{ ('home.features.' ~ feature ~ '.title')|trans }}</h3>
-                                <p>{{ ('home.features.' ~ feature ~ '.text')|trans }}</p>
-                            </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </section>
+        {{ include('guides/_list.html.twig') }}
+    </section>
 
-            <section class="home__section home__wrap" aria-labelledby="deux-contributions">
-                <h2 id="deux-contributions" class="home__heading">{{ 'home.split.title'|trans }}</h2>
-                <p class="home__lede">{{ 'home.split.lede'|trans }}</p>
+    <section id="faq" class="home__section home__section--tinted" aria-labelledby="faq-titre">
+        <div class="home__wrap">
+            <h2 id="faq-titre" class="home__heading">Questions fréquentes</h2>
 
-                <div class="split">
-                    {% for side in ['time', 'expenses'] %}
-                        <div class="split__side split__side--{{ side }}">
-                            <h3 class="split__title">{{ ('home.split.' ~ side ~ '.title')|trans }}</h3>
-                            <p>{{ ('home.split.' ~ side ~ '.text')|trans }}</p>
-                            <p class="split__tag">{{ ('home.split.' ~ side ~ '.tag')|trans }}</p>
+            <div class="faq">
+                {% for item in faq %}
+                    <details class="faq__item">
+                        <summary class="faq__question">{{ item.question }}</summary>
+                        <div class="faq__answer">
+                            <p>{{ item.answer }}</p>
+                            {% if item.page is defined %}
+                                <p><a href="{{ path(item.page) }}">Pourquoi Benevolio est gratuit, et comment le soutenir</a></p>
+                            {% endif %}
+                            {% if item.guide is defined %}
+                                {% set guide = guides|filter(guide => guide.slug == item.guide)|first %}
+                                <p><a href="{{ path('guide', {slug: guide.slug}) }}">{{ guide.title }}</a></p>
+                            {% endif %}
                         </div>
-                    {% endfor %}
-                </div>
-            </section>
+                    </details>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
 
-            <section class="home__section home__wrap" aria-labelledby="en-images">
-                <h2 id="en-images" class="home__heading">{{ 'home.gallery.title'|trans }}</h2>
-
-                <div class="gallery">
-                    {% for shot in ['declarations', 'ledger'] %}
-                        <figure class="shot">
-                            <img
-                                src="{{ asset('images/landing/' ~ shot ~ '.webp') }}"
-                                alt="{{ ('home.gallery.' ~ shot ~ '.alt')|trans }}"
-                                width="1280" height="800"
-                                loading="lazy"
-                            >
-                            <figcaption>{{ ('home.gallery.' ~ shot ~ '.caption')|trans }}</figcaption>
-                        </figure>
-                    {% endfor %}
-                </div>
-            </section>
-
-            {% if organizations is not empty %}
-                <section id="associations" class="home__section home__section--tinted" aria-labelledby="associations-titre">
-                    <div class="home__wrap">
-                        <h2 id="associations-titre" class="home__heading">{{ 'home.organizations.title'|trans }}</h2>
-                        <p class="home__lede">{{ 'home.organizations.lede'|trans }}</p>
-
-                        <ul class="tenants">
-                            {% for organization in organizations %}
-                                <li class="tenant">
-                                    <span class="tenant__name">{{ organization.name }}</span>
-                                    <a class="tenant__link" href="{{ path('declaration', {organizationSlug: organization.slug}) }}">
-                                        {{ 'home.organizations.declare'|trans }} <span aria-hidden="true">→</span>
-                                    </a>
-                                </li>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                </section>
-            {% endif %}
-
-            <section class="home__section home__wrap" aria-labelledby="contact">
-                <div class="contact">
-                    <h2 id="contact" class="home__heading">{{ 'home.contact.title'|trans }}</h2>
-                    <p>{{ 'home.contact.text'|trans }}</p>
-                    <a class="button-link" href="{{ mailto }}">{{ 'home.contact.button'|trans }}</a>
-                    <p class="contact__address">{{ contact_email }}</p>
-                </div>
-            </section>
-        </main>
-
-        <footer class="public__footer">
-            <p>{{ 'app.name'|trans }} — {{ 'app.tagline'|trans }}</p>
-
-            {{ include('_theme_switcher.html.twig') }}
-        </footer>
-    </div>
+    <section class="home__section home__wrap" aria-labelledby="contact">
+        <div class="contact">
+            <h2 id="contact" class="home__heading">{{ 'home.contact.title'|trans }}</h2>
+            <p>{{ 'home.contact.text'|trans }}</p>
+            <a class="button-link" href="{{ mailto }}">{{ 'home.contact.button'|trans }}</a>
+            <p class="contact__address">{{ contact_email }}</p>
+        </div>
+    </section>
 {% endblock %}

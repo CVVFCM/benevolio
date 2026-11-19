@@ -1,0 +1,75 @@
+{% extends 'base.html.twig' %}
+
+{#
+    Layout of the pages that present Benevolio — the home page and the guides — and the
+    only pages meant to be found by search engines and AI answer engines (they set
+    `indexable`). See AGENTS.md, *SEO & GEO*.
+
+    A page fills:
+    - `title` and `description`: the search result, and the link preview;
+    - `og_type`: `article` for a guide, `website` otherwise;
+    - `structured_data`: its JSON-LD, through site/_json_ld.html.twig;
+    - `content`.
+
+    MUST NOT read app.user, is_granted() or anything that wakes the security token: these
+    pages are cached publicly, and a lazy firewall woken here would make them private.
+
+    Every URL in the head is absolute and built from the request, so the pages follow the
+    domain they are served on.
+#}
+
+{% block meta %}
+    {% set canonical = url(app.request.attributes.get('_route'), app.request.attributes.get('_route_params')) %}
+    {# Both blocks print escaped text already: printing them again escapes it twice. #}
+    {% set description = block('description') %}
+    <meta name="description" content="{{ description|raw }}">
+    <link rel="canonical" href="{{ canonical }}">
+    <meta property="og:type" content="{{ og_type ?? 'website' }}">
+    <meta property="og:site_name" content="{{ 'app.name'|trans }}">
+    <meta property="og:locale" content="fr_FR">
+    <meta property="og:title" content="{{ block('title')|raw }}">
+    <meta property="og:description" content="{{ description|raw }}">
+    <meta property="og:url" content="{{ canonical }}">
+    <meta property="og:image" content="{{ absolute_url(asset('images/brand/social-card.png')) }}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Benevolio : le bénévolat de votre association, compté et reconnu">
+    <meta name="twitter:card" content="summary_large_image">
+    {% block structured_data %}{% endblock %}
+{% endblock %}
+
+{% block body %}
+    <div class="home">
+        <header class="home__bar">
+            <a class="home__brand" href="{{ path('home') }}">
+                <img src="{{ asset('images/brand/mark.svg') }}" alt="" width="28" height="28">
+                {{ 'app.name'|trans }}
+            </a>
+
+            <nav class="home__nav" aria-label="{{ 'app.name'|trans }}">
+                <a href="{{ path('home') }}#fonctionnalites">{{ 'home.nav.features'|trans }}</a>
+                <a href="{{ path('guides') }}">Guides</a>
+                <a href="{{ path('pricing') }}">C'est gratuit</a>
+                {% if organizations is defined and organizations is not empty %}
+                    <a href="#associations">{{ 'home.nav.organizations'|trans }}</a>
+                {% endif %}
+                <a class="home__nav-cta" href="{{ path('backoffice') }}">{{ 'home.nav.backoffice'|trans }}</a>
+            </nav>
+        </header>
+
+        <main>
+            {% block content %}{% endblock %}
+        </main>
+
+        <footer class="public__footer site__footer">
+            <nav class="site__footer-nav" aria-label="Pied de page">
+                <a href="{{ path('guides') }}">Guides</a>
+                <a href="{{ path('pricing') }}">C'est gratuit</a>
+                <a href="{{ path('home') }}#faq">Questions fréquentes</a>
+            </nav>
+            <p>{{ 'app.name'|trans }} — {{ 'app.tagline'|trans }} — édité par le <a href="https://www.cvvfcm.fr/">Club de Voile des Vieilles-Forges</a></p>
+
+            {{ include('_theme_switcher.html.twig') }}
+        </footer>
+    </div>
+{% endblock %}

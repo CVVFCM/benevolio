@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+{# The indexable pages — see App\Controller\Seo\SitemapController. The home page and the
+   index carry no lastmod: they change with the associations listed, not with a date. #}
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+        <loc>{{ url('home') }}</loc>
+    </url>
+    <url>
+        <loc>{{ url('guides') }}</loc>
+    </url>
+    <url>
+        <loc>{{ url('pricing') }}</loc>
+    </url>
+    {%- for guide in guides %}
+        <url>
+            <loc>{{ url('guide', {slug: guide.slug}) }}</loc>
+            <lastmod>{{ guide.updatedOn|date('Y-m-d') }}</lastmod>
+        </url>
+    {%- endfor %}
+</urlset>
