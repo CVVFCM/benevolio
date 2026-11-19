@@ -967,10 +967,22 @@ running September to August cannot number a January-to-December document. A coun
 the row commit in one transaction, and there is **one transaction per volunteer** — a
 failure on the twelfth must not undo the first eleven.
 
-The object key is `receipts/<year>/cerfa-firstname-lastname-<number>.pdf` — `receipts/` from
-the flysystem prefix, in the bucket `benevolio`. The number in the key is what makes it safe:
-a reissue does not overwrite the earlier PDF, and two volunteers sharing a name do not
-collide.
+The object key is `receipts/<association id>/<year>/cerfa-firstname-lastname-<number>.pdf` —
+`receipts/` from the flysystem prefix, in the bucket `benevolio`.
+
+- **The association's id is in the key, and must stay there.** Every association shares the
+  bucket and numbers from `0001`, so a key without it collided as soon as two associations had
+  a volunteer of the same name: the later PDF replaced the earlier one, whose row then served —
+  and re-mailed — another association's receipt. The row was tenant-scoped all along; the bytes
+  it points to were not. The id, not the slug, which can be edited.
+- **The number** is what keeps a reissue from overwriting the earlier PDF, and separates two
+  volunteers sharing a name inside one association.
+- **`ReceiptStorage::store()` refuses a key that already holds an object**
+  (`ReceiptAlreadyStoredException`). Unreachable by construction, and refused for that reason.
+- **The slugged name is cut** (`MAX_NAME_LENGTH`): transliteration lengthens some letters, and
+  a name slugging past the 255-character column failed its receipt and stopped the run.
+- Receipts issued before the id joined the key keep the path on their row
+  (`<year>/cerfa-…`) and are read from there. Nothing was moved.
 
 **The mail goes out inside the run**, one per volunteer, in series. That is an accepted cost:
 fifty volunteers means fifty PDFs and fifty mails in one request, which is why
