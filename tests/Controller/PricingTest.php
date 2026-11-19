@@ -49,6 +49,12 @@ final class PricingTest extends WebTestCase
         self::assertCount(1, $crawler->filter('.support a[href="https://github.com/sponsors/yohang"]'));
         self::assertCount(1, $crawler->filter('.support a[href="https://www.helloasso.com/associations/cvvfcm/formulaires/4"]'));
         self::assertSelectorTextContains('.support', 'Yohan Giarelli');
+
+        // Why support helps: what the free service still costs.
+        self::assertSame(
+            ['Les serveurs', 'Un agent IA pour le développement', 'Des licences logicielles'],
+            $crawler->filter('.costs .feature__title')->each(static fn ($node): string => $node->text()),
+        );
     }
 
     #[Test]
