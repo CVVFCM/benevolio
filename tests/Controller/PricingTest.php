@@ -35,7 +35,8 @@ final class PricingTest extends WebTestCase
         self::assertResponseIsSuccessful();
         self::assertResponseHeaderSame('Cache-Control', 'max-age=3600, public');
         self::assertResponseNotHasCookie('MOCKSESSID');
-        self::assertSelectorTextSame('h1', 'Benevolio est gratuit');
+        self::assertSelectorTextSame('h1', 'Oui, c\'est gratuit.');
+        self::assertSelectorTextSame('.price-hero__figure', '0€');
         self::assertCount(0, $crawler->filter('meta[name="robots"]'));
         self::assertSame('http://localhost/gratuit', $crawler->filter('link[rel="canonical"]')->attr('href'));
     }

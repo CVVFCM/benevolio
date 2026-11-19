@@ -54,19 +54,20 @@
 {% endblock %}
 
 {% block content %}
-    <article class="guide home__wrap">
-        <header class="guide__header">
-            <h1 class="guide__title">Benevolio est gratuit</h1>
-        </header>
-
-        <div class="guide__answer">
-            <p>
-                <strong>Aucun abonnement, aucun frais, ni aujourd'hui ni plus tard.</strong> Une
-                association utilise Benevolio sans payer, quel que soit le nombre de ses bénévoles,
-                de ses déclarations ou de ses reçus fiscaux.
+    {# The answer, at the size of the question an association actually asks. #}
+    <section class="price-hero" aria-labelledby="price-title">
+        <div class="home__wrap">
+            <p class="price-hero__figure"><span class="price-hero__zero">0</span><span class="price-hero__currency">€</span></p>
+            <h1 id="price-title" class="price-hero__title">Oui, c'est gratuit.</h1>
+            <p class="price-hero__lede">
+                Sans abonnement ni frais, ni aujourd'hui ni plus tard — quel que soit le nombre de
+                vos bénévoles, de vos déclarations ou de vos reçus fiscaux.
             </p>
+            <a class="button-link" href="{{ path('home') }}#contact">Nous contacter</a>
         </div>
+    </section>
 
+    <article class="guide home__wrap">
         <div class="guide__body">
             <h2>Pourquoi c'est gratuit</h2>
             <p>
@@ -118,11 +119,5 @@
                 </div>
             </div>
         </section>
-
-        <aside class="guide__cta">
-            <h2>Utiliser Benevolio dans votre association</h2>
-            <p>Écrivez-nous : nous créons l'espace de votre association.</p>
-            <a class="button-link button--quiet" href="{{ path('home') }}#contact">Nous contacter</a>
-        </aside>
     </article>
 {% endblock %}

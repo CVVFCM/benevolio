@@ -1856,6 +1856,61 @@ body {
     color: var(--ink-muted);
 }
 
+/*
+ * « C'est gratuit »: the price, answered at the size of the question. One figure, set in the
+ * deep-sea accent with the euro sign in brass, and nothing competing with it.
+ */
+.price-hero {
+    padding-block: var(--space-8) var(--space-7);
+    border-bottom: 1px solid var(--rule);
+    background-color: var(--surface-raised);
+    text-align: center;
+}
+
+.price-hero__figure {
+    display: flex;
+    gap: 0.04em;
+    align-items: flex-start;
+    justify-content: center;
+    margin: 0;
+    color: var(--accent);
+    font-size: clamp(7rem, 3.5rem + 15vw, 13rem);
+    font-variant-numeric: lining-nums;
+    font-weight: 750;
+    letter-spacing: -0.04em;
+    line-height: 0.9;
+}
+
+.price-hero__currency {
+    margin-top: 0.12em;
+    color: var(--marker);
+    font-size: 0.42em;
+    font-weight: 650;
+    letter-spacing: 0;
+}
+
+.price-hero__title {
+    margin: var(--space-5) 0 var(--space-4);
+    font-size: clamp(2rem, 1.4rem + 2.4vw, 3.25rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    text-wrap: balance;
+}
+
+.price-hero__lede {
+    max-width: 46ch;
+    margin: 0 auto var(--space-6);
+    color: var(--ink-muted);
+    font-size: 1.125rem;
+    text-wrap: balance;
+}
+
+/* The page under the hero starts with its first section, not with another hero's padding. */
+.price-hero + .guide {
+    padding-top: var(--space-4);
+}
+
 /* « C'est gratuit »: the two ways to support Benevolio, side by side, neither first. */
 .support {
     margin-top: var(--space-7);
