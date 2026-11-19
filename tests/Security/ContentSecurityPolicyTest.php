@@ -16,6 +16,15 @@ use Symfony\Component\HttpFoundation\Request;
 use Zenstruck\Foundry\Test\Factories;
 use Zenstruck\Foundry\Test\ResetDatabase;
 
+use function array_filter;
+use function array_keys;
+use function is_string;
+use function json_decode;
+use function str_replace;
+use function str_starts_with;
+
+use const JSON_THROW_ON_ERROR;
+
 /**
  * The public pages and the login are served with a script policy, and every script
  * they print carries its nonce. A script without one does not run — and nothing but
@@ -30,6 +39,12 @@ final class ContentSecurityPolicyTest extends WebTestCase
     use Factories;
     use LogsInAdmins;
     use ResetDatabase;
+
+    /**
+     * Stylesheets listed in importmap.php only to be downloaded, then linked by a template.
+     * See AGENTS.md, *Guided tours*.
+     */
+    private const array LINKED_NOT_IMPORTED = ['driver.js/dist/driver.css'];
 
     private KernelBrowser $client;
 
@@ -75,7 +90,21 @@ final class ContentSecurityPolicyTest extends WebTestCase
         // AssetMapper maps a stylesheet imported from JavaScript to a `data:` module,
         // which the policy refuses: the module graph would fail to load. app.css is
         // linked from the template instead.
-        self::assertStringNotContainsString('data:application/javascript', (string) $this->client->getResponse()->getContent());
+        //
+        // One exception, and only in the import map: every CSS entry of importmap.php is
+        // written there as a `data:` URL, whether anything imports it or not. driver.css
+        // is listed so that AssetMapper downloads it, and is linked, never imported — the
+        // entry is inert. Any other `data:` module, or that one anywhere else, fails here.
+        $content = (string) $this->client->getResponse()->getContent();
+        $importMap = $crawler->filter('script[type="importmap"]');
+        self::assertCount(1, $importMap);
+        $map = json_decode($importMap->text(), true, flags: JSON_THROW_ON_ERROR);
+        self::assertIsArray($map);
+        $imports = $map['imports'] ?? null;
+        self::assertIsArray($imports);
+        $dataModules = array_keys(array_filter($imports, static fn (mixed $url): bool => is_string($url) && str_starts_with($url, 'data:')));
+        self::assertSame(self::LINKED_NOT_IMPORTED, $dataModules);
+        self::assertStringNotContainsString('data:application/javascript', str_replace($importMap->html(), '', $content));
         self::assertSelectorExists('link[rel="stylesheet"][href*="app"]');
     }
 

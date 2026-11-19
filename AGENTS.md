@@ -419,10 +419,12 @@ mechanics; **the steps and their French texts are in Twig**, one partial per tou
   summary comes first), the form for a logged-in volunteer (« Mes déclarations » still opens:
   only logged-in volunteers see it), any screen under 40rem, and the admin dashboard for a
   super-admin impersonating. The admin tour opens on the dashboard only, never on a CRUD page.
-- **Its stylesheet is a copy in `assets/styles/vendor/driver.css`, linked**, never imported
-  from JavaScript and **not listed in `importmap.php`**: every CSS entry of the import map is
-  written into it as a `data:application/javascript` URL, which `ContentSecurityPolicyTest`
-  refuses. Upgrading driver.js means re-copying it. It is linked in the public layout before
+- **Its stylesheet is listed in `importmap.php` and linked, never imported** from JavaScript
+  (see *Security headers*). Listed so that AssetMapper downloads it into `assets/vendor/`
+  with the script — and so every page's import map carries an **inert** entry for it, a
+  `data:application/javascript` URL nothing imports. `ContentSecurityPolicyTest` allows
+  exactly that entry (`LINKED_NOT_IMPORTED`) and still refuses any other `data:` module; a
+  new linked-only stylesheet goes in that list. It is linked in the public layout before
   `app.css`, and in `/admin` through `configureAssets()` before `admin.css`. Both files restyle `.tour` (the `popoverClass`) with their own colours, so the
   popover follows each theme.
 - **`/admin` has its own entrypoint, `admin`** (`assets/admin.js`), registering the tour

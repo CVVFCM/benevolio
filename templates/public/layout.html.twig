@@ -15,7 +15,7 @@
    A <link>, never an import from JavaScript — see base.html.twig. #}
 {% block stylesheets %}
     {% if tour is defined %}
-        <link rel="stylesheet" href="{{ asset('styles/vendor/driver.css') }}">
+        <link rel="stylesheet" href="{{ asset('vendor/driver.js/dist/driver.css') }}">
     {% endif %}
     {{ parent() }}
 {% endblock %}

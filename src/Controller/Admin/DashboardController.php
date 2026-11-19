@@ -114,7 +114,7 @@ final class DashboardController extends AbstractDashboardController
         // driver.js's stylesheet before admin.css, which restyles the tour; the `admin`
         // entrypoint runs the tour controller (templates/admin/dashboard.html.twig).
         return Assets::new()
-            ->addCssFile('styles/vendor/driver.css')
+            ->addCssFile('vendor/driver.js/dist/driver.css')
             ->addCssFile('styles/admin.css')
             ->addAssetMapperEntry('admin');
     }
