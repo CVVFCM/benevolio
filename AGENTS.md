@@ -434,6 +434,28 @@ mechanics; **the steps and their French texts are in Twig**, one partial per tou
   the theme switcher does. **`.button[hidden]`** is restated in `app.css`: `.button`'s
   `display` would otherwise outrank the browser's own `[hidden]` rule.
 
+## The action navigator (#54)
+
+The actions step lists every line by number and name, each a link to its panel
+(`templates/public/declaration/_action_nav.html.twig`, `assets/controllers/action_nav_controller.js`):
+a column beside the form from 72rem, where the step's `<main>` widens (`main_class` in
+`public/layout.html.twig`), and a bar stuck to the top of the form below that, « Action 3 sur 12 »,
+opening the list. One `<details>`, kept open on a wide screen by the controller.
+
+- **Rendered by the server, kept live by the browser.** Without JavaScript the links work and the
+  bar reads « 12 actions »; with it the list follows lines added, removed and renamed, and marks
+  the one in view (`aria-current="location"`). The entry markup is a `<template>` rendered from the
+  same macro as the list, so the two cannot drift.
+- **A line's name**: the chosen event or action, else its title, else its task, else « Sans titre »
+  — the same order in Twig and in the controller.
+- **A refused line is the server's verdict**, marked until the next submit: `data-invalid` on its
+  fieldset, from `_action_errors.html.twig`. **Not `vars.valid`**: a line removed in the browser
+  leaves a gap in the indexes, the collection renumbers the rest, and their errors land on forms it
+  never submitted — which read as valid. `DeclarationActionNavTest` posts such a gap.
+- Each panel's `id` is its form id; the prototype's carries `__name__`, replaced on clone.
+- The design was shaped with Impeccable; `PRODUCT.md` is its record of the product, and the
+  public look is the incumbent one in `app.css`.
+
 ## Security headers, and the script policy
 
 Two layers, because two things can answer a request:

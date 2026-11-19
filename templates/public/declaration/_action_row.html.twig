@@ -4,8 +4,21 @@
    The fieldsets carry no border or padding of their own — the visible panel is an
    inner element. A <legend> is rendered in the fieldset's border slot whatever CSS
    says, so keeping the border off the fieldset is what lets the title sit in
-   normal flow. #}
-<fieldset class="action" data-form-collection-row data-controller="activity-title activity-defaults">
+   normal flow.
+
+   The id is the row's own form id, so the action navigator (#54) can link to it: the
+   prototype's carries the `__name__` placeholder and is renumbered on clone like every
+   field. `data-invalid` says the server refused something inside the row — the navigator
+   marks it until the next submit. #}
+{% import 'public/declaration/_action_errors.html.twig' as errors %}
+<fieldset
+    class="action"
+    id="{{ action.vars.id }}"
+    data-form-collection-row
+    data-controller="activity-title activity-defaults"
+    data-action-nav-target="row"
+    {%- if errors.refused(action)|trim is not empty %} data-invalid{% endif %}
+>
     {# The visible number comes from a CSS counter, so a cloned row is numbered
        correctly without JavaScript renaming anything. #}
     <legend class="action__legend" data-tour-step="action"><span class="action__legend-text">Action bénévole</span></legend>

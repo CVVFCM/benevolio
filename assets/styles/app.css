@@ -180,6 +180,21 @@ body {
     outline-offset: 2px;
 }
 
+/* --------------------------------------------------------------- utility -- */
+
+/* Read by a screen reader, not shown: « (étape terminée) », « (à corriger) »… */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
 /* ----------------------------------------------------------------- shell -- */
 
 .public {
@@ -660,6 +675,235 @@ body {
 
 .actions-list__add {
     margin-top: var(--space-5);
+}
+
+/* -------------------------------------------------------- action navigator -- */
+
+/*
+ * Every line of the declaration, by number and name (#54). A list of ten or twenty tall
+ * panels loses the volunteer; this says where they are and which line the server refused.
+ *
+ * Narrow: a bar stuck to the top of the form, « Action 3 sur 12 », opening the list over
+ * the page. Wide: a column beside the form, always open. The brass marker is the line in
+ * view, as it is the step you stand on; the danger colour, with a dot, a line to correct.
+ */
+.action-nav {
+    position: sticky;
+    z-index: 10;
+    top: var(--space-2);
+    margin-block: 0 var(--space-5);
+}
+
+.action-nav__summary {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+    min-height: 2.75rem;
+    padding: var(--space-2) var(--space-4);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-lg);
+    background-color: var(--surface-raised);
+    box-shadow: var(--shadow-raised);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    list-style: none;
+    cursor: pointer;
+}
+
+.action-nav__summary::-webkit-details-marker {
+    display: none;
+}
+
+.action-nav__summary:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+}
+
+.action-nav__errors {
+    color: var(--danger);
+}
+
+.action-nav__errors::before {
+    content: "· ";
+    color: var(--ink-faint);
+}
+
+.action-nav__chevron {
+    flex: none;
+    margin-inline-start: auto;
+    color: var(--ink-muted);
+    transition: transform 160ms ease-out;
+}
+
+.action-nav__details[open] .action-nav__chevron {
+    transform: rotate(180deg);
+}
+
+/* Opens over the page rather than pushing it down: the bar is stuck mid-scroll, and a
+   list growing in place would shove the panel being read out from under the reader. */
+.action-nav__panel {
+    position: absolute;
+    inset-inline: 0;
+    top: calc(100% + var(--space-1));
+    max-height: min(60vh, 28rem);
+    padding: var(--space-3);
+    overflow-y: auto;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-lg);
+    background-color: var(--surface-raised);
+    box-shadow: var(--shadow-raised);
+    overscroll-behavior: contain;
+}
+
+.action-nav__title {
+    margin: 0 0 var(--space-2);
+    padding-inline: var(--space-2);
+    font-size: 0.9375rem;
+    font-weight: 650;
+}
+
+.action-nav__list {
+    display: grid;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.action-nav__link {
+    display: grid;
+    grid-template-columns: 1.5rem minmax(0, 1fr) auto;
+    gap: var(--space-2);
+    align-items: center;
+    min-height: 2.25rem;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius);
+    color: var(--ink-muted);
+    font-size: 0.9375rem;
+    text-decoration: none;
+    transition: background-color 120ms ease-out, color 120ms ease-out;
+}
+
+.action-nav__link:hover {
+    background-color: var(--surface-sunken);
+    color: var(--ink);
+}
+
+.action-nav__link:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: -2px;
+}
+
+.action-nav__number {
+    display: grid;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 1px solid var(--rule-strong);
+    border-radius: 50%;
+    background-color: var(--surface-raised);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+.action-nav__name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Not colour alone: the dot is the mark a reader who cannot tell red apart still sees,
+   and the link says « (à corriger) » to a screen reader. */
+.action-nav__link--invalid,
+.action-nav__link--invalid:hover {
+    color: var(--danger);
+}
+
+.action-nav__link--invalid .action-nav__number {
+    border-color: var(--danger);
+    background-color: var(--danger-tint);
+    color: var(--danger);
+}
+
+.action-nav__link--invalid::after {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background-color: var(--danger);
+    content: "";
+}
+
+/* The line in view keeps its danger colours when it is also a line to correct. */
+.action-nav__link[aria-current] {
+    background-color: var(--marker-tint);
+    font-weight: 600;
+}
+
+.action-nav__link[aria-current]:not(.action-nav__link--invalid) {
+    color: var(--ink);
+}
+
+.action-nav__link[aria-current]:not(.action-nav__link--invalid) .action-nav__number {
+    border-color: var(--marker);
+    color: var(--marker);
+}
+
+.action-nav__add {
+    width: 100%;
+    margin-top: var(--space-3);
+}
+
+/* Clear of the bar stuck above, when a link scrolls a panel to the top. */
+.form--with-nav .action {
+    scroll-margin-top: 4.5rem;
+}
+
+@media (width >= 72rem) {
+    .public__main--wide {
+        width: min(100% - 2 * var(--space-4), 70rem);
+    }
+
+    .form--with-nav {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 14rem;
+        column-gap: var(--space-6);
+        align-items: start;
+    }
+
+    .form--with-nav > * {
+        grid-column: 1;
+    }
+
+    /* Beside everything the form holds: the error summary, the step, the buttons. */
+    .form--with-nav > .action-nav {
+        grid-row: 1 / span 3;
+        grid-column: 2;
+        top: var(--space-4);
+        margin: 0;
+    }
+
+    .form--with-nav .action {
+        scroll-margin-top: var(--space-4);
+    }
+
+    /* The controller keeps it open here; the bar would only repeat the column. Without
+       JavaScript it stays closed, and the bar is how to open it. */
+    .action-nav__details[open] > .action-nav__summary {
+        display: none;
+    }
+
+    .action-nav__panel {
+        position: static;
+        max-height: calc(100dvh - 2 * var(--space-4));
+
+        /* Room for the focus rings and the button's border, which the scroll box clips. */
+        padding: 2px;
+        border: 0;
+        background: none;
+        box-shadow: none;
+    }
 }
 
 /* --------------------------------------------------------------- buttons -- */
