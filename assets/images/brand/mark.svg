@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Benevolio">
+    <rect width="64" height="64" rx="14" fill="#0f5570"/>
+    <g fill="none" stroke="#fffdfa" stroke-width="7" stroke-linecap="round">
+        <path d="M22 15v32"/>
+        <circle cx="32.5" cy="37" r="10.5"/>
+    </g>
+    <circle cx="46.5" cy="17.5" r="5" fill="#d9ac5e"/>
+</svg>

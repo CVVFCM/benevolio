@@ -1,0 +1,9 @@
+{# The guides, as links with their summary: on the home page and on /guides. #}
+<ul class="guide-list">
+    {% for guide in guides %}
+        <li class="guide-list__item">
+            <a class="guide-list__link" href="{{ path('guide', {slug: guide.slug}) }}">{{ guide.title }}</a>
+            <p>{{ guide.description }}</p>
+        </li>
+    {% endfor %}
+</ul>

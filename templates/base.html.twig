@@ -4,8 +4,24 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{% block title %}Benevolio{% endblock %}</title>
+        {#
+            No page is indexed unless it says so: a page that should be found sets
+            `indexable` to true at its top (the home page, the guides). Forms, logins and
+            links that are credentials stay out of search results without anyone having to
+            remember them. See AGENTS.md, *SEO & GEO*.
+        #}
+        {% if not (indexable ?? false) %}
+            <meta name="robots" content="noindex">
+        {% endif %}
         {% block meta %}{% endblock %}
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>🤝</text></svg>">
+        {# The icons crawlers and browsers ask for at the root are files in public/; the
+           vector one comes from AssetMapper. #}
+        <link rel="icon" href="/favicon.ico" sizes="32x32">
+        <link rel="icon" href="{{ asset('images/brand/mark.svg') }}" type="image/svg+xml">
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+        <link rel="manifest" href="/site.webmanifest">
+        <meta name="theme-color" content="#f7f4ee" media="(prefers-color-scheme: light)">
+        <meta name="theme-color" content="#14191f" media="(prefers-color-scheme: dark)">
         {#
             Linked here, not imported from app.js. An `import './styles/app.css'` in
             JavaScript makes AssetMapper map the file to a `data:` module in the import

@@ -1,0 +1,39 @@
+{% extends 'site/layout.html.twig' %}
+
+{# The list of guides — App\Controller\GuideIndexController. #}
+
+{% set indexable = true %}
+
+{% block title %}Guides du bénévolat associatif — {{ 'app.name'|trans }}{% endblock %}
+
+{% block description %}Reçu fiscal pour abandon de frais, valorisation du bénévolat, barème kilométrique, CERFA 11580 : les règles expliquées aux associations, sources à l'appui.{% endblock %}
+
+{% block structured_data %}
+    {{ include('site/_json_ld.html.twig', {data: {
+        '@context': 'https://schema.org',
+        '@type': 'CollectionPage',
+        name: 'Guides du bénévolat associatif',
+        url: url('guides'),
+        inLanguage: 'fr',
+        hasPart: guides|map(guide => {
+            '@type': 'Article',
+            headline: guide.title,
+            url: url('guide', {slug: guide.slug}),
+        }),
+    }}) }}
+{% endblock %}
+
+{% block content %}
+    <section class="guide home__wrap">
+        <header class="guide__header">
+            <h1 class="guide__title">Guides du bénévolat associatif</h1>
+            <p class="home__lede">
+                Ce que disent les textes sur le reçu fiscal des bénévoles, la valorisation du
+                bénévolat et les frais kilométriques — expliqué pour les trésoriers et les
+                bénévoles, chaque règle avec sa source officielle.
+            </p>
+        </header>
+
+        {{ include('guides/_list.html.twig') }}
+    </section>
+{% endblock %}

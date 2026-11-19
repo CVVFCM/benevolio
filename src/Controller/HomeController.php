@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Guide\GuideCatalog;
 use App\Repository\OrganizationRepository;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
@@ -31,6 +32,7 @@ final readonly class HomeController
     public function __construct(
         private Environment $twig,
         private OrganizationRepository $organizations,
+        private GuideCatalog $guides,
         #[Autowire('%app.mail_from%')]
         private string $contactEmail,
     ) {
@@ -41,6 +43,7 @@ final readonly class HomeController
         return new Response($this->twig->render('home.html.twig', [
             'organizations' => $this->organizations->findListedOnHomepage(),
             'contact_email' => $this->contactEmail,
+            'guides' => $this->guides->all(),
         ]))
             ->setPublic()
             ->setMaxAge(self::MAX_AGE);

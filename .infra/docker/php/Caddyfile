@@ -47,6 +47,12 @@
 		?Content-Security-Policy "frame-ancestors 'none'"
 	}
 
+	# The back offices are behind a login and must never be indexed. EasyAdmin renders
+	# their pages, so the noindex the public templates carry (base.html.twig) is not there;
+	# the header says it for every response under them, redirects to the login included.
+	@backoffice path /admin /admin/* /platform /platform/*
+	header @backoffice X-Robots-Tag "noindex, nofollow"
+
 	@phpRoute {
 		not path /.well-known/mercure*
 		not file {path}

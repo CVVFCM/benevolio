@@ -1,0 +1,104 @@
+{% extends 'guides/_guide.html.twig' %}
+
+{% block answer %}
+    <p>
+        Un bénévole qui engage des frais pour son association et renonce expressément à leur
+        remboursement fait un don. L'association lui remet un reçu fiscal (CERFA n° 11580*05) et
+        il bénéficie d'une <strong>réduction d'impôt de 66 % du montant</strong>, dans la limite
+        de 20 % de son revenu imposable. Le temps donné, lui, n'ouvre droit à aucune réduction.
+    </p>
+{% endblock %}
+
+{% block article %}
+    <h2>Ce que dit la loi</h2>
+    <p>
+        L'article 200 du code général des impôts ouvre la réduction d'impôt des dons aux
+        « frais engagés dans le cadre d'une activité bénévole », à deux conditions : qu'ils
+        soient constatés dans les comptes de l'association et que le bénévole ait renoncé
+        expressément à leur remboursement. Le bulletin officiel des impôts (BOI-IR-RICI-250-20)
+        précise les conditions : un bénévole qui avance des frais peut soit se les faire
+        rembourser, soit les abandonner et bénéficier de la réduction d'impôt — pas les deux.
+    </p>
+
+    <h2>Les conditions à réunir</h2>
+    <ul>
+        <li>
+            <strong>Une activité bénévole</strong> : participer à l'animation ou au fonctionnement
+            de l'association sans rémunération ni contrepartie.
+        </li>
+        <li>
+            <strong>Dans le cadre de l'objet de l'association</strong> : seuls les frais engagés
+            pour des activités entrant strictement dans son objet sont concernés.
+        </li>
+        <li>
+            <strong>Des dépenses réelles et justifiées</strong> : billets, factures, tickets de
+            péage ; pour un trajet, la date, le parcours, la distance et l'objet du déplacement.
+        </li>
+        <li>
+            <strong>Une renonciation expresse</strong>, écrite, que l'association conserve.
+        </li>
+        <li>
+            <strong>Une association qui peut recevoir des dons ouvrant droit à réduction</strong> :
+            d'intérêt général au sens de l'article 200 du CGI.
+        </li>
+    </ul>
+
+    <h2>La renonciation au remboursement</h2>
+    <p>
+        Le bénévole déclare par écrit qu'il renonce au remboursement des frais qu'il détaille,
+        et qu'il les laisse à l'association à titre de don. Par exemple : « Je soussigné(e)
+        [nom et prénom] certifie renoncer au remboursement des frais ci-dessus et les laisser à
+        l'association en tant que don. » L'association garde cette déclaration avec les
+        justificatifs.
+    </p>
+
+    <h2>Dans les comptes de l'association</h2>
+    <p>
+        L'abandon de frais est un flux réel : l'association enregistre la dépense en charge,
+        selon sa nature (par exemple 6251 <em>Voyages et déplacements</em>), puis l'abandon du
+        remboursement en produit (75412 <em>Abandons de frais par les bénévoles</em>). C'est ce
+        qui le distingue du bénévolat valorisé, qui reste hors bilan.
+    </p>
+
+    <h2>Le calcul, avec un exemple</h2>
+    <p>
+        Un bénévole parcourt 300 km avec sa voiture de 5 CV pour l'association et renonce à
+        leur remboursement. Au
+        <a href="{{ path('guide', {slug: 'bareme-kilometrique-benevole'}) }}">barème kilométrique</a>
+        (0,636 € par km), ses frais valent
+        <strong>190,80 €</strong>. Sa réduction d'impôt est de 66 % de cette somme, soit
+        <strong>125,93 €</strong>. Si ses dons de l'année dépassent 20 % de son revenu
+        imposable, l'excédent est reporté sur les cinq années suivantes.
+    </p>
+    <p>
+        Certains organismes — ceux qui fournissent gratuitement des repas, des soins ou un
+        logement aux personnes en difficulté — ouvrent un taux de 75 %, dans une limite fixée
+        chaque année (2 000 € pour 2026).
+    </p>
+
+    <h2>Ce qui n'est pas un don</h2>
+    <ul>
+        <li>Le temps donné : il est valorisé dans les comptes, jamais déduit des impôts.</li>
+        <li>Les frais que l'association rembourse, même en partie.</li>
+        <li>Les frais sans justificatif, ou étrangers à l'objet de l'association.</li>
+        <li>Un trajet comme passager : il n'engage pas de frais de véhicule.</li>
+    </ul>
+
+    <h2>Le reçu fiscal</h2>
+    <p>
+        L'association remet au bénévole le reçu CERFA n° 11580*05, en cochant la nature
+        « Frais engagés par les bénévoles, dont ils renoncent expressément au remboursement ».
+        Le bénévole le conserve pour justifier sa réduction d'impôt. Depuis les dons reçus en
+        2021, l'association déclare aussi chaque année aux impôts le montant total des dons et
+        le nombre de reçus émis (article 222 bis du CGI). Voir
+        <a href="{{ path('guide', {slug: 'cerfa-11580'}) }}">le CERFA 11580 pas à pas</a>.
+    </p>
+{% endblock %}
+
+{% block sources %}
+    <li><a href="https://www.legifrance.gouv.fr/codes/section_lc/LEGITEXT000006069577/LEGISCTA000006191957/">Code général des impôts, article 200</a> — Légifrance</li>
+    <li><a href="https://bofip.impots.gouv.fr/bofip/5868-PGP.html/identifiant=BOI-IR-RICI-250-20-20120912">BOI-IR-RICI-250-20, frais des bénévoles (§ 170 à 240)</a> — BOFiP. Ses montants sont anciens ; seules ses conditions valent encore.</li>
+    <li><a href="https://www.service-public.gouv.fr/particuliers/vosdroits/F426">Réduction d'impôt pour un don à une association</a> — Service-public.fr</li>
+    <li><a href="https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000043971857">Code général des impôts, article 222 bis</a> — Légifrance</li>
+    <li><a href="https://www.associations.gouv.fr/declaration-des-dons-et-des-recus-fiscaux.html/">Déclaration des dons et des reçus fiscaux</a> — associations.gouv.fr</li>
+{% endblock %}

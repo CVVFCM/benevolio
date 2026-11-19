@@ -1,0 +1,77 @@
+{% extends 'guides/_guide.html.twig' %}
+
+{% block answer %}
+    <p>
+        Le CERFA n° 11580*05 (formulaire 2041-RD) est le reçu que remet une association pour un
+        don ouvrant droit à réduction d'impôt — dont les frais qu'un bénévole abandonne. Il tient
+        en deux pages : l'association et son numéro d'ordre, puis le donateur, le montant en
+        chiffres et en lettres, la date, l'article du CGI et la nature du don. Pour un bénévole,
+        la case décisive est « Frais engagés par les bénévoles, dont ils renoncent expressément
+        au remboursement ».
+    </p>
+{% endblock %}
+
+{% block article %}
+    <h2>Page 1 : l'association</h2>
+    <ul>
+        <li><strong>Numéro d'ordre du reçu</strong> : une numérotation continue, sans trou ni doublon.</li>
+        <li><strong>Nom, numéro SIREN ou RNA, adresse et objet</strong> de l'association.</li>
+        <li>
+            <strong>Sa catégorie</strong> : par exemple « Association loi 1901 », dans le cadre des
+            œuvres ou organismes d'intérêt général.
+        </li>
+    </ul>
+
+    <h2>Page 2 : le donateur et le don</h2>
+    <ul>
+        <li><strong>Nom, prénoms et adresse</strong> du bénévole.</li>
+        <li><strong>Montant</strong>, en euros et en toutes lettres.</li>
+        <li><strong>Date du versement ou du don</strong>.</li>
+        <li><strong>L'article du CGI</strong> : 200 pour un don d'un particulier à une association.</li>
+        <li><strong>La forme du don</strong> : acte authentique, acte sous seing privé, déclaration de don manuel ou autres.</li>
+        <li>
+            <strong>La nature du don</strong> : numéraire, titres, abandon de revenus ou de
+            produits, <strong>frais engagés par les bénévoles, dont ils renoncent expressément au
+            remboursement</strong>, ou autres. L'abandon de frais a sa propre case : ce n'est pas
+            « autres ».
+        </li>
+        <li><strong>Le mode de versement</strong>, seulement pour un don en numéraire.</li>
+        <li><strong>La date et la signature</strong> du responsable de l'association.</li>
+    </ul>
+
+    <h2>Un reçu par don, ou un reçu par an</h2>
+    <p>
+        Un bénévole reporte sur sa déclaration de revenus le total de ses dons de l'année
+        civile. Un reçu peut donc réunir les frais abandonnés de toute l'année. C'est ce que fait
+        Benevolio : un reçu par bénévole et par année civile, même quand l'exercice de
+        l'association va, par exemple, de septembre à août.
+    </p>
+
+    <h2>Le montant</h2>
+    <p>
+        Seuls les frais abandonnés figurent sur le reçu : jamais les heures de bénévolat, qui
+        n'ouvrent droit à aucune réduction d'impôt. Les frais kilométriques se calculent avec le
+        <a href="{{ path('guide', {slug: 'bareme-kilometrique-benevole'}) }}">barème kilométrique</a>.
+    </p>
+
+    <h2>Après l'émission</h2>
+    <ul>
+        <li>Le bénévole garde le reçu : il le présente si l'administration le lui demande.</li>
+        <li>
+            L'association garde un double, les justificatifs et la renonciation au remboursement,
+            et déclare chaque année le montant total des dons reçus et le nombre de reçus émis
+            (article 222 bis du CGI).
+        </li>
+        <li>
+            Avec Benevolio, un reçu erroné n'est pas réécrit : l'association en émet un nouveau,
+            sous un nouveau numéro, et l'ancien reste archivé.
+        </li>
+    </ul>
+{% endblock %}
+
+{% block sources %}
+    <li><a href="https://www.impots.gouv.fr/sites/default/files/formulaires/2041-rd/2023/2041-rd_4298.pdf">Formulaire 2041-RD, CERFA n° 11580*05</a> — impots.gouv.fr</li>
+    <li><a href="https://www.legifrance.gouv.fr/codes/section_lc/LEGITEXT000006069577/LEGISCTA000006191957/">Code général des impôts, article 200</a> — Légifrance</li>
+    <li><a href="https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000043971857">Code général des impôts, article 222 bis</a> — Légifrance</li>
+    <li><a href="https://www.associations.gouv.fr/declaration-des-dons-et-des-recus-fiscaux.html/">Déclaration des dons et des reçus fiscaux</a> — associations.gouv.fr</li>
+{% endblock %}

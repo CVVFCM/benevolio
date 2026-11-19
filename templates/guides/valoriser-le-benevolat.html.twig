@@ -1,0 +1,81 @@
+{% extends 'guides/_guide.html.twig' %}
+
+{% block answer %}
+    <p>
+        Valoriser le bénévolat, c'est inscrire dans les comptes la valeur du temps donné à
+        l'association. Le règlement ANC n° 2018-06 le place au pied du compte de résultat, en
+        contributions volontaires en nature : <strong>débit 864 <em>Personnel bénévole</em>,
+        crédit 875 <em>Bénévolat</em></strong>. Ce n'est pas une obligation générale, mais c'est
+        attendu quand le bénévolat est essentiel à l'activité. Il n'ouvre droit à aucune
+        réduction d'impôt.
+    </p>
+{% endblock %}
+
+{% block article %}
+    <h2>Pourquoi valoriser le bénévolat</h2>
+    <p>
+        Dans beaucoup d'associations, le travail des bénévoles pèse plus que le budget en euros.
+        Le valoriser montre la réalité de l'activité aux membres, aux financeurs et aux
+        partenaires : sans lui, les comptes décrivent une association bien plus petite qu'elle
+        n'est.
+    </p>
+
+    <h2>Les comptes à utiliser</h2>
+    <p>Les contributions volontaires en nature s'inscrivent en classe 8, en deux colonnes de totaux égaux :</p>
+    <ul>
+        <li><strong>86 Emplois</strong> : 860 Secours en nature, 861 Mises à disposition gratuite de biens, 862 Prestations, <strong>864 Personnel bénévole</strong>.</li>
+        <li><strong>87 Contributions</strong> : 870 Dons en nature, 871 Prestations en nature, <strong>875 Bénévolat</strong>.</li>
+    </ul>
+    <p>
+        <strong>Attention aux anciens numéros.</strong> Le règlement 2018-06 a remplacé le
+        règlement 99-01, où le bénévolat était au compte 870. Un document qui inscrit le
+        bénévolat en 870 cite l'ancien plan.
+    </p>
+
+    <h2>Quand faut-il le faire ?</h2>
+    <p>
+        Le règlement demande d'inscrire les contributions volontaires en nature quand deux
+        conditions sont réunies : leur nature et leur importance sont essentielles pour
+        comprendre l'activité, et l'association est en mesure de les recenser et de les valoriser
+        (article 211-2). Si elle ne les présente pas, elle en donne les raisons et décrit leur
+        nature et leur importance dans l'annexe (article 211-4).
+    </p>
+
+    <h2>Quelle valeur donner à une heure ?</h2>
+    <p>
+        L'Autorité des normes comptables n'impose pas de méthode unique. Le Haut Conseil à la vie
+        associative en décrit plusieurs :
+    </p>
+    <ul>
+        <li><strong>le coût de remplacement</strong> : ce qu'aurait coûté le même travail rémunéré ;</li>
+        <li><strong>le coût d'opportunité</strong> : le salaire moyen du poste ou du secteur ;</li>
+        <li><strong>un forfait horaire</strong>, souvent fondé sur le SMIC.</li>
+    </ul>
+    <p>
+        La méthode retenue est justifiée, appliquée d'une année sur l'autre et indiquée dans
+        l'annexe. Une association peut aussi fixer un taux par type de tâche : une heure
+        d'encadrement ne vaut pas forcément une heure de travaux.
+    </p>
+
+    <h2>Un exemple</h2>
+    <p>
+        Sur l'exercice, les bénévoles ont donné 1 200 heures, valorisées à 15 € de l'heure par
+        décision de l'association. Au pied du compte de résultat : <strong>18 000 €</strong> au
+        débit du 864 et au crédit du 875. Le résultat de l'association n'en est pas modifié.
+    </p>
+
+    <h2>Valorisation et reçu fiscal ne se mélangent pas</h2>
+    <p>
+        Les heures valorisées ne sont pas des dons au sens fiscal : elles ne figurent jamais sur
+        un reçu. Seuls les frais qu'un bénévole engage et dont il abandonne le remboursement
+        ouvrent droit à une réduction d'impôt — voir
+        <a href="{{ path('guide', {slug: 'recu-fiscal-abandon-de-frais'}) }}">le reçu fiscal pour abandon de frais</a>.
+        De même, la valorisation suit l'exercice de l'association, tandis que le reçu fiscal suit
+        l'année civile.
+    </p>
+{% endblock %}
+
+{% block sources %}
+    <li><a href="https://www.anc.gouv.fr/files/anc/files/1_Normes_fran%C3%A7aises/Reglements/2018/Reglt_2018_06/Reglt_2018-06_Association.pdf">Règlement ANC n° 2018-06 relatif aux comptes annuels des personnes morales de droit privé à but non lucratif</a> — Autorité des normes comptables</li>
+    <li><a href="https://associations.gouv.fr/sites/default/files/2026-04/HCVA%20-%20Valorisation%20comptable%20du%20b%C3%A9n%C3%A9volat%20-%2020%20avril%202026.pdf">Valorisation comptable du bénévolat (avril 2026)</a> — Haut Conseil à la vie associative</li>
+{% endblock %}

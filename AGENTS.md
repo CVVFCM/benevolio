@@ -917,6 +917,50 @@ each linking to its declaration form.
   super-admin to `/platform` and anyone else to `/admin`. Saving a chosen password and
   the home page's « Espace administrateur » link go through the same route.
 
+## SEO & GEO — what is found, and how it is described
+
+The home page and the guides are the only pages meant to be found, by search engines and by AI
+answer engines (ChatGPT search, Perplexity, Google AI Overviews, Bing Copilot).
+
+- **Noindex by default.** `base.html.twig` prints `<meta name="robots" content="noindex">`
+  unless the page sets `indexable` to true at its top — the home page, `/guides`, each guide.
+  A new page stays out of search results until someone decides otherwise. The back offices
+  (EasyAdmin, which does not use `base.html.twig`) get `X-Robots-Tag: noindex, nofollow` from
+  the Caddyfile on `/admin*` and `/platform*`.
+- **robots.txt does not disallow `/a/`, on purpose**: a crawler has to fetch a page to read its
+  noindex, and a disallowed URL linked from the home page can still be indexed bare. Every
+  crawler is allowed, AI crawlers included, by decision.
+- `robots.txt`, `sitemap.xml` and `llms.txt` are **routes** (`src/Controller/Seo/`), so every URL
+  in them is absolute and built from the request: they follow the domain the application is
+  served on, and moving domains is DNS, the chart and redirects — no code.
+- **`templates/site/layout.html.twig`** is the layout of the indexable pages: canonical, Open
+  Graph and Twitter tags, the header and footer. A page fills `title`, `description`
+  (≤ 60 and ≤ 155 characters), `structured_data` and `content`. **`block('title')` and
+  `block('description')` are printed `|raw` in the head**: a block's output is already escaped,
+  and escaping it again printed « d&amp;#039;une ».
+- **Structured data** goes through `site/_json_ld.html.twig`: JSON-LD with the CSP nonce (it is
+  a `<script>`, and `ContentSecurityPolicyTest` refuses one without it) and `JSON_HEX_TAG`, so no
+  string can close the element. The home page declares `Organization` (the publisher, CVVFCM),
+  `WebSite`, `SoftwareApplication` (free) and `FAQPage`; a guide `Article` and `BreadcrumbList`.
+  Google shows FAQ rich results only for government and health sites; the markup is for Bing and
+  the answer engines.
+- **The FAQ is one Twig list** at the top of `home.html.twig`, printed as `<details>` and as
+  `FAQPage`. `HomeTest` checks that the two say the same thing.
+- **Guides**: `App\Guide\GuideCatalog` lists them (slug, title, description, date checked); the
+  pages, the sitemap and `llms.txt` all read it. One template per guide in `templates/guides/`,
+  extending `_guide.html.twig`: the short answer first — what a skimming reader, or an answer
+  engine quoting the page, takes away — then sections, then **Sources**, official texts only.
+  **Every figure is a legal fact with a date**: re-check them against the sources (Légifrance,
+  BOFiP, ANC, service-public.fr) when the barème or the CGI changes, and move the catalog's
+  date. Never cite BOFiP BOI-IR-RICI-250-20 for an amount (see *Domain*).
+- **Icons** are files at the root of `public/` (`favicon.ico`, `apple-touch-icon.png`,
+  `icon-192.png`, `icon-512.png`, `site.webmanifest`) because browsers and crawlers ask for them
+  there; the vector mark is `assets/images/brand/mark.svg`. The PNGs are drawn from the same
+  geometry; redraw them if the mark changes. The link preview is
+  `assets/images/brand/social-card.png`, 1200 × 630, captured from an HTML composition.
+- **Measurement is outside the code**: the domain is verified in Google Search Console and Bing
+  Webmaster Tools by DNS TXT record, and `/sitemap.xml` submitted there. No analytics on the site.
+
 ## The public declaration form
 
 `/a/{organizationSlug}/declaration`, anonymous, built on Symfony 8.1's native

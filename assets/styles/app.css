@@ -1264,6 +1264,9 @@ body {
 }
 
 .home__brand {
+    display: inline-flex;
+    gap: var(--space-2);
+    align-items: center;
     color: var(--ink);
     font-size: 1.125rem;
     font-weight: 650;
@@ -1572,6 +1575,292 @@ body {
 .contact .contact__address {
     margin: var(--space-3) 0 0;
     font-size: 0.875rem;
+}
+
+/* --------------------------------------------------------- site & guides -- */
+
+/*
+ * The pages that present Benevolio and explain the rules (templates/site/, guides/). The
+ * guides are read, not operated: one column at a reading measure, headings with room above
+ * them, links in the accent, and the sources set apart at the end like a document's notes.
+ */
+.home__brand img {
+    border-radius: 7px;
+}
+
+.site__footer {
+    display: grid;
+    gap: var(--space-3);
+}
+
+.site__footer-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-5);
+    justify-content: center;
+}
+
+.site__footer a:any-link {
+    color: var(--ink-muted);
+    text-underline-offset: 2px;
+}
+
+/* The guides, as a list of titled summaries — home page, /guides, foot of each guide. */
+.guide-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+    gap: var(--space-5) var(--space-6);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.guide-list__item {
+    padding-block-start: var(--space-4);
+    border-top: 1px solid var(--rule-strong);
+}
+
+.guide-list__link {
+    color: var(--accent);
+    font-size: 1.125rem;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    text-decoration: none;
+}
+
+.guide-list__link:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.guide-list__item p {
+    margin: var(--space-2) 0 0;
+    color: var(--ink-muted);
+    font-size: 0.9375rem;
+}
+
+/* Questions as disclosures: readable without JavaScript, and short enough to scan. */
+.faq {
+    max-width: 48rem;
+    border-top: 1px solid var(--rule-strong);
+}
+
+.faq__item {
+    border-bottom: 1px solid var(--rule-strong);
+}
+
+.faq__question {
+    display: flex;
+    gap: var(--space-4);
+    align-items: baseline;
+    justify-content: space-between;
+    padding-block: var(--space-4);
+    font-size: 1.0625rem;
+    font-weight: 600;
+    list-style: none;
+    cursor: pointer;
+}
+
+.faq__question::-webkit-details-marker {
+    display: none;
+}
+
+/* A plus that turns into a minus: drawn, not a glyph. */
+.faq__question::after {
+    flex: none;
+    width: 0.75rem;
+    height: 0.75rem;
+    background:
+        linear-gradient(currentcolor, currentcolor) center / 100% 2px no-repeat,
+        linear-gradient(currentcolor, currentcolor) center / 2px 100% no-repeat;
+    color: var(--accent);
+    content: "";
+    transition: transform 160ms ease-out;
+}
+
+.faq__item[open] > .faq__question::after {
+    background: linear-gradient(currentcolor, currentcolor) center / 100% 2px no-repeat;
+}
+
+.faq__question:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+}
+
+.faq__answer {
+    max-width: 68ch;
+    padding-block-end: var(--space-4);
+    color: var(--ink-muted);
+}
+
+.faq__answer p {
+    margin: 0 0 var(--space-3);
+}
+
+.faq__answer a:any-link,
+.guide a:not([class]) {
+    color: var(--accent);
+    text-underline-offset: 2px;
+}
+
+/* One guide. */
+.guide {
+    max-width: 46rem;
+    padding-block: var(--space-7) var(--space-8);
+}
+
+.guide__crumbs ol {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-2);
+    margin: 0 0 var(--space-5);
+    padding: 0;
+    color: var(--ink-faint);
+    font-size: 0.875rem;
+    list-style: none;
+}
+
+.guide__crumbs li + li::before {
+    margin-inline-end: var(--space-2);
+    content: "/";
+}
+
+.guide__crumbs a:any-link {
+    color: var(--ink-muted);
+}
+
+.guide__title {
+    margin: 0 0 var(--space-3);
+    font-size: clamp(1.875rem, 1.4rem + 2vw, 2.75rem);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1.12;
+    text-wrap: balance;
+}
+
+.guide__date {
+    margin: 0 0 var(--space-6);
+    color: var(--ink-faint);
+    font-size: 0.9375rem;
+}
+
+/* The short answer, first: what a skimming reader — or an answer engine — takes away. */
+.guide__answer {
+    margin-block-end: var(--space-6);
+    padding: var(--space-5) var(--space-5);
+    border: 1px solid color-mix(in oklab, var(--accent) 25%, transparent);
+    border-radius: var(--radius-lg);
+    background-color: var(--accent-tint);
+    font-size: 1.0625rem;
+}
+
+.guide__answer p {
+    margin: 0;
+}
+
+.guide__body {
+    max-width: 68ch;
+    line-height: 1.65;
+}
+
+.guide__body h2,
+.guide__sources h2,
+.guide__more h2 {
+    margin: var(--space-7) 0 var(--space-3);
+    font-size: 1.375rem;
+    font-weight: 650;
+    letter-spacing: -0.015em;
+    line-height: 1.25;
+}
+
+.guide__body p,
+.guide__body ul {
+    margin: 0 0 var(--space-4);
+}
+
+.guide__body li + li {
+    margin-top: var(--space-2);
+}
+
+.guide__body var {
+    font-style: italic;
+}
+
+.guide__table {
+    width: 100%;
+    margin-block: var(--space-4) var(--space-5);
+    border-collapse: collapse;
+    font-size: 0.9375rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.guide__table caption {
+    margin-bottom: var(--space-2);
+    color: var(--ink-muted);
+    font-size: 0.875rem;
+    text-align: start;
+}
+
+.guide__table th,
+.guide__table td {
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--rule);
+    text-align: start;
+}
+
+.guide__table thead th {
+    border-bottom-color: var(--rule-strong);
+    color: var(--ink-faint);
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
+.guide__table tbody th {
+    font-weight: 600;
+}
+
+.guide__sources {
+    max-width: 68ch;
+    margin-top: var(--space-7);
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--rule-strong);
+    color: var(--ink-muted);
+    font-size: 0.9375rem;
+}
+
+.guide__sources ul {
+    margin: 0;
+    padding-inline-start: var(--space-5);
+}
+
+.guide__sources li + li {
+    margin-top: var(--space-2);
+}
+
+.guide__cta {
+    margin-top: var(--space-7);
+    padding: var(--space-6);
+    border-radius: var(--radius-lg);
+    background-color: var(--surface-sunken);
+}
+
+.guide__cta h2 {
+    margin: 0 0 var(--space-3);
+    font-size: 1.25rem;
+    font-weight: 650;
+}
+
+.guide__cta p {
+    max-width: 56ch;
+    margin: 0 0 var(--space-5);
+    color: var(--ink-muted);
+}
+
+@media (width < 40rem) {
+    .guide__table {
+        display: block;
+        overflow-x: auto;
+    }
 }
 
 /* -------------------------------------------------------- volunteer space -- */

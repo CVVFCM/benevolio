@@ -1,0 +1,103 @@
+{% extends 'site/layout.html.twig' %}
+
+{#
+    Layout of one guide (App\Guide\GuideCatalog). A guide fills:
+    - `answer`: the short answer, two or three sentences, first on the page — what a reader
+      skimming, and an answer engine quoting, should take away;
+    - `article`: the sections, each an <h2>;
+    - `sources`: <li> items, one per official text, with its link.
+
+    Title, description and date come from the catalog. The date is when the facts were last
+    checked against the sources: change it in the catalog whenever the text changes.
+#}
+
+{% set indexable = true %}
+{% set og_type = 'article' %}
+
+{% block title %}{{ guide.title }} — {{ 'app.name'|trans }}{% endblock %}
+
+{% block description %}{{ guide.description }}{% endblock %}
+
+{% block structured_data %}
+    {% set publisher = {
+        '@type': 'Organization',
+        '@id': 'https://www.cvvfcm.fr/#organization',
+        name: 'Club de Voile des Vieilles-Forges de Charleville-Mézières',
+        alternateName: 'CVVFCM',
+        url: 'https://www.cvvfcm.fr/',
+    } %}
+    {{ include('site/_json_ld.html.twig', {data: {
+        '@context': 'https://schema.org',
+        '@graph': [
+            publisher,
+            {
+                '@type': 'Article',
+                headline: guide.title,
+                description: guide.description,
+                inLanguage: 'fr',
+                url: url('guide', {slug: guide.slug}),
+                mainEntityOfPage: url('guide', {slug: guide.slug}),
+                dateModified: guide.updatedOn|date('Y-m-d'),
+                image: absolute_url(asset('images/brand/social-card.png')),
+                author: {'@id': publisher['@id']},
+                publisher: {'@id': publisher['@id']},
+            },
+            {
+                '@type': 'BreadcrumbList',
+                itemListElement: [
+                    {'@type': 'ListItem', position: 1, name: 'app.name'|trans, item: url('home')},
+                    {'@type': 'ListItem', position: 2, name: 'Guides', item: url('guides')},
+                    {'@type': 'ListItem', position: 3, name: guide.title, item: url('guide', {slug: guide.slug})},
+                ],
+            },
+        ],
+    }}) }}
+{% endblock %}
+
+{% block content %}
+    <article class="guide home__wrap">
+        <nav class="guide__crumbs" aria-label="Fil d'Ariane">
+            <ol>
+                <li><a href="{{ path('home') }}">{{ 'app.name'|trans }}</a></li>
+                <li><a href="{{ path('guides') }}">Guides</a></li>
+                <li aria-current="page">{{ guide.title }}</li>
+            </ol>
+        </nav>
+
+        <header class="guide__header">
+            <h1 class="guide__title">{{ guide.title }}</h1>
+            <p class="guide__date">
+                Mis à jour le <time datetime="{{ guide.updatedOn|date('Y-m-d') }}">{{ guide.updatedOn|format_date('long', locale: 'fr') }}</time>
+            </p>
+        </header>
+
+        <div class="guide__answer">
+            {% block answer %}{% endblock %}
+        </div>
+
+        <div class="guide__body">
+            {% block article %}{% endblock %}
+        </div>
+
+        <section class="guide__sources" aria-labelledby="sources">
+            <h2 id="sources">Sources</h2>
+            <ul>
+                {% block sources %}{% endblock %}
+            </ul>
+        </section>
+
+        <aside class="guide__cta">
+            <h2>Benevolio fait ce travail pour votre association</h2>
+            <p>
+                Les bénévoles déclarent leurs heures et leurs frais en ligne ; l'association
+                valide, valorise le bénévolat dans ses comptes et émet les reçus fiscaux. Gratuit.
+            </p>
+            <a class="button-link" href="{{ path('home') }}">Découvrir Benevolio</a>
+        </aside>
+
+        <nav class="guide__more" aria-labelledby="autres-guides">
+            <h2 id="autres-guides">Les autres guides</h2>
+            {{ include('guides/_list.html.twig', {guides: guides|filter(other => other.slug != guide.slug)}) }}
+        </nav>
+    </article>
+{% endblock %}
