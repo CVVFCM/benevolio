@@ -306,8 +306,16 @@ final class DeclarationFlowTest extends WebTestCase
 
         $token = $second->getConfirmationToken();
         self::assertNotNull($token);
+        // Opening the link applies nothing; the button does.
         $this->client->request('GET', '/a/les-jardins/declaration/confirmer/'.$token->value);
         self::assertResponseIsSuccessful();
+        $entityManager->clear();
+        $untouched = $entityManager->getRepository(Person::class)->findAll();
+        self::assertCount(1, $untouched);
+        self::assertSame('Jean Dupont', $untouched[0]->getFullName());
+
+        $this->client->submitForm('Confirmer ma déclaration');
+        self::assertResponseRedirects();
 
         $entityManager->clear();
         $people = $entityManager->getRepository(Person::class)->findAll();

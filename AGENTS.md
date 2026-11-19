@@ -266,6 +266,12 @@ So a `Declaration` carries the name and address **as typed**
 `Person` on the `confirm` transition — so the volunteer's click and the manual
 confirmation both apply it, and nothing else does.
 
+**The click is a button, not the link.** Opening the emailed address shows the name and
+address the declaration states — with a warning when they differ from the record — and one
+button; see *Double opt-in*. A link that confirmed on a GET let a mail scanner apply an
+identity typed by anyone who knew the volunteer's email. The mail greets nobody by name for
+the same reason: it would vouch for a declaration its reader may not have made.
+
 - The columns are **never null**: the constructor starts them from the `Person`, and
   `declareIdentity()` overrides them. Nullable "pending" columns cannot work — Doctrine
   hydrates an embeddable without its constructor, and `Address` has no nullable property.
@@ -287,14 +293,22 @@ to.
 it at once through `DeclarationConfirmer::confirmBySubmission()` — same `confirm`
 transition, so the lines cascade and the typed identity is applied — and sends no mail.
 
+- **The emailed URL confirms nothing; a button does** — as for both login links, and for
+  the same reason: mail scanners fetch every URL in a message before its reader does.
+  `DeclarationConfirmController` answers the GET with `DeclarationConfirmer::look()`, which
+  changes nothing, and a page carrying one button, « Confirmer ma déclaration », posting to
+  the same address. The POST calls `confirm()` and redirects back to the GET, which then
+  reads « confirmée ». No CSRF token: the address is the credential. Both answers send
+  `Referrer-Policy: no-referrer` and `Cache-Control: no-store`.
 - The token lives on `Declaration` (`confirmationToken`, its expiry, `confirmedAt`),
   is valid **7 days**, and is **kept after use** rather than cleared — it can only
-  ever cause one confirmation, and keeping it is what lets a second click, or a
-  mail client prefetching the link, land on a success page instead of a 404.
+  ever cause one confirmation, and keeping it is what lets a second visit land on a
+  success page instead of a 404.
 - Stored unhashed, deliberately: hashing needs a separate plaintext selector to
   stay findable, and the threat it defends against already has the declarations.
 - `DeclarationConfirmer` returns one of three outcomes plus "unknown", each with
-  its own page. **A repeat click is a success, not an error.**
+  its own page — and `look()` a fourth answer, « still to confirm », which is the
+  button page. **A repeat click is a success, not an error.**
 - `Declaration` is `TenantAware`, so a token cannot be redeemed through another
   association's URL — the filter refuses to find it. Tested.
 - There is **no resend** yet. A mistyped address means refilling the form.
