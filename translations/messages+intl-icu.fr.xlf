@@ -197,7 +197,7 @@
         <unit id="home.title">
             <segment>
                 <source>home.title</source>
-                <target>Benevolio — le bénévolat de votre association, compté et reconnu</target>
+                <target>Benevolio · le bénévolat de votre association, compté et reconnu</target>
             </segment>
         </unit>
         <unit id="home.meta_description">
@@ -224,16 +224,10 @@
                 <target>Espace administrateur</target>
             </segment>
         </unit>
-        <unit id="home.hero.eyebrow">
-            <segment>
-                <source>home.hero.eyebrow</source>
-                <target>Pour les associations loi 1901</target>
-            </segment>
-        </unit>
         <unit id="home.hero.title">
             <segment>
                 <source>home.hero.title</source>
-                <target>Le bénévolat de votre association, enfin compté — et reconnu.</target>
+                <target>Le bénévolat de votre association, enfin compté et reconnu.</target>
             </segment>
         </unit>
         <unit id="home.hero.lede">
@@ -245,19 +239,13 @@
         <unit id="home.hero.contact">
             <segment>
                 <source>home.hero.contact</source>
-                <target>Votre association est intéressée ?</target>
+                <target>Nous contacter</target>
             </segment>
         </unit>
         <unit id="home.hero.discover">
             <segment>
                 <source>home.hero.discover</source>
-                <target>En savoir plus</target>
-            </segment>
-        </unit>
-        <unit id="home.hero.screenshot_alt">
-            <segment>
-                <source>home.hero.screenshot_alt</source>
-                <target>Le formulaire de déclaration, à l'étape où le bénévole décrit son action : tâche, date, heures et trajet.</target>
+                <target>Voir les fonctionnalités</target>
             </segment>
         </unit>
         <unit id="home.steps.title">
@@ -413,7 +401,7 @@
         <unit id="home.split.time.tag">
             <segment>
                 <source>home.split.time.tag</source>
-                <target>Comptes 864 / 875 — jamais de reçu</target>
+                <target>Comptes 864 / 875, jamais de reçu</target>
             </segment>
         </unit>
         <unit id="home.split.expenses.title">
@@ -431,7 +419,7 @@
         <unit id="home.split.expenses.tag">
             <segment>
                 <source>home.split.expenses.tag</source>
-                <target>Comptes 4681 / 75412 — reçu fiscal</target>
+                <target>Comptes 4681 / 75412, reçu fiscal</target>
             </segment>
         </unit>
         <unit id="home.gallery.title">

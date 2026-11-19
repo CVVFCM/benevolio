@@ -370,6 +370,31 @@ declaration quietly undecidable. Production cannot hit this — `DeclarationSubm
 writes every line first — but the convenient test order does. Either create the lines
 before confirming, or use `DeclarationActionFactory::confirmed()`.
 
+## The public look: the sports hall
+
+The public pages are dressed as the municipal sports hall every club shares (chosen in an
+Impeccable direction round; the contract is in `.impeccable/surfaces/templates-home-html-twig.md`).
+A court-blue floor with painted white lines (`.court`, `--court`, `--court-line`), a light
+surround for reading and forms, one scoreboard (`.scoreboard`), and marking tapes with jobs:
+**yellow** (`--tape`) for the one thing to press and the current step, **green** (`--marker`) for
+valued hours and done, **red** (`--signal`, `--digit-hot`) only for the counter that just
+changed and for errors.
+
+- **Headings in Big Shoulders Display**, a condensed signage grotesk, self-hosted
+  (`assets/fonts/`, OFL, Latin subset only); body text in the system stack. The face sets
+  small, so titles in it are a step larger than the body.
+- **Painted lines never carry text.** `.court--hero` draws the halfway line, the centre circle
+  and the three-point arc on the right of the first screen; `.court--ends` (centred pages) puts
+  the two arcs at the edges. Check any new content against them at 390 px and 1440 px.
+- **The scoreboard's figures are an example** and say so in its caption; the receipt figure
+  follows the real barème. `scoreboard_controller.js` counts them up once on load, and not at
+  all under `prefers-reduced-motion` or without JavaScript (the figures are real text).
+- **Square, hard shapes**: plates and fields have cut corners (`--radius` 2px) and depth comes
+  from painted shapes, not soft shadows. The form steps sit on white plates whose title is a
+  court-blue band.
+- **No em-dashes in anything a person reads**: pages, titles (separator « · »), mails,
+  translations, flash messages. Comments may keep them.
+
 ## Theme, and the one inline script
 
 `app.css` themes through `data-theme` on `<html>`, with `@media

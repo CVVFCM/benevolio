@@ -184,7 +184,7 @@ final class FiscalYearCrudController extends AbstractCrudController
                     $parts[] = (string) $rate;
                 }
 
-                return [] === $parts ? 'Aucun — le barème par défaut s\'applique' : implode(' · ', $parts);
+                return [] === $parts ? 'Aucun : le barème par défaut s\'applique' : implode(' · ', $parts);
             });
 
         yield CollectionField::new('taskRates', 'Taux horaires par tâche')
@@ -197,7 +197,7 @@ final class FiscalYearCrudController extends AbstractCrudController
                     $parts[] = htmlspecialchars((string) $rate);
                 }
 
-                return [] === $parts ? 'Aucun — le taux par défaut s\'applique' : implode(' · ', $parts);
+                return [] === $parts ? 'Aucun : le taux par défaut s\'applique' : implode(' · ', $parts);
             });
     }
 

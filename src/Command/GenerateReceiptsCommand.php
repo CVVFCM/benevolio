@@ -59,7 +59,7 @@ final class GenerateReceiptsCommand extends Command
                 'organization',
                 null,
                 InputOption::VALUE_REQUIRED,
-                'Raccourci de l\'association — obligatoire, le filtre multi-tenant est inactif en CLI',
+                'Raccourci de l\'association, obligatoire, le filtre multi-tenant est inactif en CLI',
             )
             ->addOption(
                 'force',
@@ -101,7 +101,7 @@ final class GenerateReceiptsCommand extends Command
 
         $year = (int) $yearArgument;
 
-        $io->title(sprintf('Reçus fiscaux %d — %s', $year, $organization->getName()));
+        $io->title(sprintf('Reçus fiscaux %d · %s', $year, $organization->getName()));
         $io->text([
             'Un reçu par bénévole, sur l\'année civile, envoyé par courriel avec le PDF joint.',
             'Une année déjà traitée reçoit de nouveaux reçus, avec de nouveaux numéros.',

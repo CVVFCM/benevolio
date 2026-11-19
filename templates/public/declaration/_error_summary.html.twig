@@ -13,7 +13,7 @@
 
 {% macro items(form, prefix = '') %}
     {%- set prefix = 'action_draft' in form.vars.block_prefixes
-        ? 'Action ' ~ (form.vars.name + 1) ~ ' — '
+        ? 'Action ' ~ (form.vars.name + 1) ~ ' : '
         : prefix -%}
     {%- set label = form.vars.label is not empty ? form.vars.label|trans : null -%}
     {%- for error in form.vars.errors ?? [] -%}

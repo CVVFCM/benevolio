@@ -14,7 +14,7 @@
 #}
 
 {% block content_title %}
-    Détail par bénévole — {{ fiscal_year.name }}
+    Détail par bénévole · {{ fiscal_year.name }}
 {% endblock %}
 
 {% block main %}
@@ -64,7 +64,7 @@
                                     <td>{{ entry.action.date|format_date('short') }}</td>
                                     <td class="ledger__account">{{ pcg_account('864').display }}</td>
                                     <td>
-                                        {{ entry.action.task.name }} — {{ entry.action.hours|hours }}
+                                        {{ entry.action.task.name }} · {{ entry.action.hours|hours }}
                                         <br><small class="ledger__note">{{ entry.action.label }}</small>
                                     </td>
                                     <td class="is-numeric">{{ entry.valuation.hours|euros }}</td>

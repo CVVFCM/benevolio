@@ -57,7 +57,7 @@ final readonly class LoginLinkMailer
         $this->send(
             $user,
             self::INVITATION_LIFETIME,
-            sprintf('Votre accès à l\'administration — %s', $this->senderName($user)),
+            sprintf('Votre accès à l\'administration · %s', $this->senderName($user)),
             'emails/invitation',
         );
     }
@@ -67,7 +67,7 @@ final readonly class LoginLinkMailer
         $this->send(
             $user,
             self::PASSWORD_RESET_LIFETIME,
-            sprintf('Choisissez un nouveau mot de passe — %s', $this->senderName($user)),
+            sprintf('Choisissez un nouveau mot de passe · %s', $this->senderName($user)),
             'emails/password_reset',
         );
     }

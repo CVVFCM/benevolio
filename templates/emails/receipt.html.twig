@@ -12,7 +12,7 @@
             <tr>
                 <td style="padding:24px 24px 8px;">
                     <p style="margin:0 0 16px;font-size:20px;font-weight:600;">
-                        Votre reçu fiscal {{ receipt.year }} — n° {{ receipt.number }}
+                        Votre reçu fiscal {{ receipt.year }}, n° {{ receipt.number }}
                     </p>
 
                     <p style="margin:0 0 16px;">Bonjour {{ person.firstName }},</p>
@@ -32,7 +32,7 @@
                         <tr>
                             <td style="padding:12px 16px;font-size:15px;">
                                 Ce reçu porte uniquement sur les <strong>frais que vous avez
-                                engagés et dont vous avez renoncé au remboursement</strong> —
+                                engagés et dont vous avez renoncé au remboursement</strong>, c'est-à-dire
                                 vos déplacements. Les heures de bénévolat que vous avez
                                 déclarées n'y figurent pas : le temps donné n'ouvre pas droit
                                 à une réduction d'impôt.
@@ -52,7 +52,7 @@
                 <td style="padding:0 24px 24px;border-top:1px solid #ded6c9;">
                     <p style="margin:16px 0 0;color:#646d7a;font-size:13px;">
                         {{ organization.name }}
-                        {%- if organization.sirenOrRna %} — {{ organization.sirenOrRna }}{% endif %}
+                        {%- if organization.sirenOrRna %} · {{ organization.sirenOrRna }}{% endif %}
                     </p>
                 </td>
             </tr>

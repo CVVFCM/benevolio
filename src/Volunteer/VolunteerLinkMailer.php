@@ -37,7 +37,7 @@ final readonly class VolunteerLinkMailer
         $message = new TemplatedEmail()
             ->from(new Address($this->from, $organization->getName()))
             ->to(null === $person ? new Address($email->value) : new Address($email->value, $person->getFullName()))
-            ->subject(sprintf('Votre lien de connexion — %s', $organization->getName()))
+            ->subject(sprintf('Votre lien de connexion · %s', $organization->getName()))
             ->htmlTemplate('emails/volunteer_link.html.twig')
             ->textTemplate('emails/volunteer_link.txt.twig')
             ->context([

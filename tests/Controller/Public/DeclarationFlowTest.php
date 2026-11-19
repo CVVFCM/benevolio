@@ -511,7 +511,7 @@ final class DeclarationFlowTest extends WebTestCase
 
         $link = $crawler->filter('.error-summary a');
         self::assertCount(1, $link);
-        self::assertStringStartsWith('Action 1 — ', $link->text());
+        self::assertStringStartsWith('Action 1 : ', $link->text());
         self::assertSame('#'.$crawler->filter('[name="'.self::FORM.'[actions][actions][0][title]"]')->attr('id'), $link->attr('href'));
     }
 

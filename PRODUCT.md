@@ -47,8 +47,9 @@ refuses to blur what the law keeps apart — a valued hour never reaches a recei
 - **French only.** UI written in French; code identifiers in English.
 - **Works without JavaScript.** Every public page is server-rendered and usable without
   scripts; JavaScript only enhances (progressive enhancement).
-- **No third-party fonts or CDNs** (CNIL ruling): system font stack, assets served from the
-  application itself.
+- **No third-party fonts or CDNs** (CNIL ruling): the system font stack for printed matter,
+  and one self-hosted display face for headings (Big Shoulders Display, OFL), all served from
+  the application itself.
 - **Strict Content-Security-Policy** on public pages: scripts from `'self'` with a nonce, no
   inline scripts without it, no `data:` modules.
 - **Light and dark themes**, following the system preference or the visitor's choice.

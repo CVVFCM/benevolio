@@ -1,14 +1,14 @@
 Bonjour,
 
 Vous avez déclaré du bénévolat auprès de {{ organization.name }}.
-Ouvrez cette adresse, puis confirmez sur la page qui s'affiche — sans cela,
+Ouvrez cette adresse, puis confirmez sur la page qui s'affiche. Sans cela,
 votre déclaration ne sera pas transmise :
 
 {{ confirmationUrl }}
 
 Ce que vous avez déclaré
 {% for action in declaration.actions %}
-- {{ action.date|format_date('short') }} — {{ action.task.name }} : {{ action.label }}
+- {{ action.date|format_date('short') }} · {{ action.task.name }} : {{ action.label }}
   {{ action.hours|hours }}{% if action.totalDistanceKm > 0 %}, {{ action.totalDistanceKm }} km{% endif %}
 {% endfor %}
 Total : {{ declaration.totalHours|hours }}{% if declaration.totalDistanceKm > 0 %} et {{ declaration.totalDistanceKm }} km{% endif %}

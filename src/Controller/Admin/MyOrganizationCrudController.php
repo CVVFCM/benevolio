@@ -146,7 +146,7 @@ final class MyOrganizationCrudController extends AbstractCrudController
         yield Field::new(self::FIELD_SIGNATURE_UPLOAD, 'Déposer une signature')
             ->setFormType(FileType::class)
             ->setFormTypeOptions(['required' => false, 'mapped' => false])
-            ->setHelp('Image PNG ou JPEG, 16 Mo maximum — déposez votre scan tel quel, il sera '
+            ->setHelp('Image PNG ou JPEG, 16 Mo maximum. Déposez votre scan tel quel, il sera '
                 .'réduit automatiquement à la taille utile sur le reçu. Laissez vide pour '
                 .'conserver la signature actuelle.')
             ->onlyOnForms();

@@ -45,6 +45,9 @@ final class HomeTest extends WebTestCase
 
         self::assertResponseIsSuccessful();
         self::assertSelectorTextContains('h1', 'Le bénévolat de votre association');
+        // The first screen is the season on the scoreboard, labelled as an example.
+        self::assertSelectorTextContains('.court--hero .scoreboard figcaption', 'fictive');
+        self::assertSelectorTextContains('.court--hero .scoreboard', '95,98');
         // Nothing woke the lazy firewall: no session, and a response a CDN may keep.
         self::assertResponseHeaderSame('Cache-Control', 'max-age=300, public');
         self::assertResponseNotHasCookie('MOCKSESSID');
@@ -144,7 +147,7 @@ final class HomeTest extends WebTestCase
         $crawler = $this->client->request(Request::METHOD_GET, '/');
         $sources = $crawler->filter('main img')->each(static fn ($node): string => (string) $node->attr('src'));
 
-        self::assertCount(3, $sources);
+        self::assertCount(2, $sources);
         // And the logo in the header.
         $sources[] = (string) $crawler->filter('.home__brand img')->attr('src');
 

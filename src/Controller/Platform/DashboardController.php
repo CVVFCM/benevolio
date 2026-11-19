@@ -42,7 +42,7 @@ final class DashboardController extends AbstractDashboardController
     public function configureDashboard(): Dashboard
     {
         return Dashboard::new()
-            ->setTitle('Benevolio — plateforme')
+            ->setTitle('Benevolio · plateforme')
             ->setTranslationDomain('admin')
             ->setLocales(['fr'])
             // Same reason as the tenant dashboard: behind a TLS-terminating Gateway,

@@ -10,7 +10,7 @@
 {% set sponsors_url = 'https://github.com/sponsors/yohang' %}
 {% set helloasso_url = 'https://www.helloasso.com/associations/cvvfcm/formulaires/4' %}
 
-{% block title %}Benevolio est gratuit — sans abonnement ni frais{% endblock %}
+{% block title %}Benevolio est gratuit, sans abonnement ni frais{% endblock %}
 
 {% block description %}Benevolio est gratuit pour les associations et leurs bénévoles : aucun abonnement, aucun frais. Fait par une association, pour les associations.{% endblock %}
 
@@ -55,15 +55,25 @@
 
 {% block content %}
     {# The answer, at the size of the question an association actually asks. #}
-    <section class="price-hero" aria-labelledby="price-title">
+    <section class="price-hero court court--ends" aria-labelledby="price-title">
         <div class="home__wrap">
-            <p class="price-hero__figure"><span class="price-hero__zero">0</span><span class="price-hero__currency">€</span></p>
+            {# The scoreboard, with the price as its one lit figure and the fees an association
+               expects to pay, each at nothing, on the line under it. #}
+            <figure class="scoreboard price-hero__board">
+                <p class="price-hero__figure scoreboard__value">0<span class="scoreboard__unit">€</span></p>
+                <p class="scoreboard__label">Ce que coûte Benevolio</p>
+                <dl class="price-hero__fees">
+                    <div><dt>Abonnement</dt><dd>0 €</dd></div>
+                    <div><dt>Installation</dt><dd>0 €</dd></div>
+                    <div><dt>Par bénévole ou par reçu</dt><dd>0 €</dd></div>
+                </dl>
+            </figure>
             <h1 id="price-title" class="price-hero__title">Oui, c'est gratuit.</h1>
             <p class="price-hero__lede">
-                Sans abonnement ni frais, ni aujourd'hui ni plus tard — quel que soit le nombre de
+                Sans abonnement ni frais, ni aujourd'hui ni plus tard, quel que soit le nombre de
                 vos bénévoles, de vos déclarations ou de vos reçus fiscaux.
             </p>
-            <a class="button-link" href="{{ path('home') }}#contact">Nous contacter</a>
+            <a class="button-link button--tape" href="{{ path('home') }}#contact">Nous contacter</a>
         </div>
     </section>
 
@@ -91,6 +101,27 @@
             </ul>
             <p><a href="{{ path('home') }}#fonctionnalites">Voir toutes les fonctionnalités</a></p>
         </div>
+
+        {# What the free service still costs the people who run it: the reason support helps.
+           No amounts: they are not published. #}
+        <section class="costs" aria-labelledby="couts">
+            <h2 id="couts">Ce qui coûte de l'argent pour faire vivre Benevolio</h2>
+            <p class="costs__lede">Gratuit pour vous ne veut pas dire sans frais pour nous :</p>
+            <ul class="features">
+                <li class="feature">
+                    <h3 class="feature__title">Les serveurs</h3>
+                    <p>L'hébergement de l'application, de sa base de données et des reçus fiscaux, avec leurs sauvegardes.</p>
+                </li>
+                <li class="feature">
+                    <h3 class="feature__title">Un agent IA pour le développement</h3>
+                    <p>Un abonnement à un assistant de programmation par intelligence artificielle, qui aide à écrire, tester et vérifier le code.</p>
+                </li>
+                <li class="feature">
+                    <h3 class="feature__title">Des licences logicielles</h3>
+                    <p>Les outils de développement payants avec lesquels Benevolio est construit et entretenu.</p>
+                </li>
+            </ul>
+        </section>
 
         <section class="support" aria-labelledby="soutenir">
             <h2 id="soutenir">Soutenir Benevolio, si vous le souhaitez</h2>
