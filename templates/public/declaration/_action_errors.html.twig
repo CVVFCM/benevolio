@@ -1,0 +1,14 @@
+{#
+    Prints « 1 » when the server refused anything in a line of the actions step, nothing
+    otherwise. Walks the line's form view, as _error_summary.html.twig does.
+
+    Not `vars.valid`: a line the collection renumbered after a removal gets its errors on a
+    form that was never submitted, and reads as valid while its fields carry errors.
+#}
+{% macro refused(form) -%}
+    {%- if form.vars.errors|length > 0 -%}
+        1
+    {%- else -%}
+        {%- for child in form.children -%}{{ _self.refused(child) }}{%- endfor -%}
+    {%- endif -%}
+{%- endmacro %}

@@ -1,0 +1,82 @@
+{#
+    The action navigator (#54): every line of the declaration, by number and name, each a link
+    to its panel. A column beside the form on a wide screen, a bar stuck to the top of it on a
+    narrow one — one <details>, which the controller keeps open on a wide screen.
+
+    Rendered by the server so its links work without JavaScript; action_nav_controller.js then
+    rebuilds it as lines are added, removed or renamed, marks the line in view and fills the
+    bar with « Action N sur M ». A line the server refused stays marked until the next submit:
+    the mark comes from the row (`data-invalid`), never from checking fields in the browser.
+
+    Names: the chosen event or action, else the typed title, else the task, else « Sans titre ».
+    The browser reads the same fields in the same order.
+#}
+{% macro entry(id, number, name, invalid) %}
+    <li class="action-nav__item">
+        <a
+            class="action-nav__link{% if invalid %} action-nav__link--invalid{% endif %}"
+            href="#{{ id }}"
+            title="{{ name }}"
+            data-action="action-nav#go"
+        >
+            <span class="action-nav__number" aria-hidden="true">{{ number }}</span>
+            <span class="action-nav__name"><span class="visually-hidden">Action {{ number }} : </span>{{ name }}</span>
+            {%- if invalid %}<span class="visually-hidden"> (à corriger)</span>{% endif -%}
+        </a>
+    </li>
+{% endmacro %}
+
+{% import 'public/declaration/_action_errors.html.twig' as errors %}
+{% set invalid_count = actions|filter(action => errors.refused(action)|trim is not empty)|length %}
+
+<nav class="action-nav" aria-labelledby="action-nav-title" data-tour-step="nav">
+    <details class="action-nav__details" data-action-nav-target="details">
+        <summary class="action-nav__summary">
+            <span class="action-nav__count" data-action-nav-target="count">
+                {{- actions|length > 1 ? actions|length ~ ' actions' : '1 action' -}}
+            </span>
+            <span class="action-nav__errors" data-action-nav-target="errors"{% if invalid_count == 0 %} hidden{% endif %}>
+                {{- invalid_count > 1 ? invalid_count ~ ' à corriger' : '1 à corriger' -}}
+            </span>
+            <svg class="action-nav__chevron" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
+                <path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </summary>
+
+        <div class="action-nav__panel">
+            <p class="action-nav__title" id="action-nav-title">Vos actions</p>
+
+            <ol class="action-nav__list" data-action-nav-target="list">
+                {% for action in actions %}
+                    {% set name = '' %}
+                    {% set activity = action.children.activity ?? null %}
+                    {% if activity is not null and activity.vars.value is not same as('') %}
+                        {% for group in activity.vars.choices %}
+                            {% for choice in group.choices ?? [group] %}
+                                {% if choice.value == activity.vars.value %}{% set name = choice.label %}{% endif %}
+                            {% endfor %}
+                        {% endfor %}
+                    {% endif %}
+                    {% if name is empty %}{% set name = action.title.vars.value|trim %}{% endif %}
+                    {% if name is empty and action.task.vars.value is not same as('') %}
+                        {% for choice in action.task.vars.choices %}
+                            {% if choice.value == action.task.vars.value %}{% set name = choice.label %}{% endif %}
+                        {% endfor %}
+                    {% endif %}
+                    {{ _self.entry(action.vars.id, loop.index, name ?: 'Sans titre', errors.refused(action)|trim is not empty) }}
+                {% endfor %}
+            </ol>
+
+            {# The controller copies this for each line it lists, so the markup stays here. #}
+            <template data-action-nav-target="template">
+                {{- _self.entry('', '', '', false) -}}
+            </template>
+
+            {# Adding a line needs JavaScript, so the button ships hidden and the controller
+               reveals it, as « Aide » does. #}
+            <button type="button" class="button button--quiet button--small action-nav__add" data-action-nav-target="add" data-action="action-nav#add" hidden>
+                Ajouter une action
+            </button>
+        </div>
+    </details>
+</nav>

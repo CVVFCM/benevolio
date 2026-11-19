@@ -11,6 +11,11 @@
 {% set tour = 'public/tour/_declaration_' ~ current_step ~ '.html.twig' %}
 {% set tour_autostart = flow.vars.valid and volunteer is null %}
 
+{# The actions step carries the action navigator (#54) in a column beside the form, so its
+   page is wider on a wide screen. #}
+{% set with_nav = current_step == 'actions' %}
+{% set main_class = with_nav ? 'public__main--wide' : null %}
+
 {% block title %}Déclarer mon bénévolat — {{ organization.name }}{% endblock %}
 
 {% block main %}
@@ -48,9 +53,21 @@
        to express the real rules (a French postcode is five digits, fiscal power is
        required only with a personal vehicle, a declaration needs one action). One
        error system, in French, is worth the round trip. #}
-    {{ form_start(flow, {attr: {novalidate: 'novalidate'}}) }}
+    {{ form_start(flow, {attr: with_nav ? {
+        novalidate: 'novalidate',
+        class: 'form--with-nav',
+        'data-controller': 'action-nav',
+        'data-action': 'input->action-nav#refresh change->action-nav#refresh',
+        'data-action-nav-form-collection-outlet': '[data-controller~="form-collection"]',
+    } : {novalidate: 'novalidate'}}) }}
         {% if not flow.vars.valid %}
             {{ include('public/declaration/_error_summary.html.twig', {form: flow}) }}
+        {% endif %}
+
+        {# Before the section, so the bar it becomes on a narrow screen sticks over the whole
+           list; a wide screen moves it into the column beside. #}
+        {% if with_nav %}
+            {{ include('public/declaration/_action_nav.html.twig', {actions: flow.actions.actions}) }}
         {% endif %}
 
         {# A section with a heading rather than fieldset/legend: a flow step is a

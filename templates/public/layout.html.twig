@@ -9,6 +9,8 @@
     and `tour_autostart` to false when it must not open by itself. The tour controller then
     sits on the whole page, so the « Aide » button in the header can replay it. See
     assets/controllers/tour_controller.js.
+
+    `main_class` adds a modifier to <main> — the actions step widens it for its navigator.
 #}
 
 {# driver.js's stylesheet first, so app.css can restyle the tour with the site's tokens.
@@ -60,7 +62,7 @@
             {% endif %}
         </header>
 
-        <main class="public__main">
+        <main class="public__main{% if main_class ?? false %} {{ main_class }}{% endif %}">
             {% for message in app.flashes('success') %}
                 <p class="alert alert--success" role="status">{{ message }}</p>
             {% endfor %}
