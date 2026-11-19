@@ -1,0 +1,45 @@
+{#
+    The association admin's guided tour: four menu entries, picked by the tour-* classes set
+    in Admin\DashboardController::configureMenuItems(). Renders the tour controller's
+    attributes, see assets/controllers/tour_controller.js. Texts are HTML to driver.js:
+    authored strings only, nothing a person typed.
+#}
+{{ stimulus_controller('tour', {
+    id: 'admin',
+    autostart: autostart,
+    steps: [
+        {
+            title: 'Bienvenue',
+            description: 'Une visite rapide des quatre menus essentiels. Vous pourrez la revoir depuis le tableau de bord.',
+        },
+        {
+            element: '.tour-declarations',
+            side: 'right',
+            title: 'Déclarations reçues',
+            description: 'Chaque déclaration d\'un bénévole arrive ici. Une fois qu\'il l\'a confirmée, validez ou refusez ses actions : seules les actions validées comptent dans les comptes et sur les reçus.',
+        },
+        {
+            element: '.tour-receipts',
+            side: 'right',
+            title: 'Reçus fiscaux',
+            description: 'Une fois l\'année civile terminée, générez en une fois les reçus de tous les bénévoles. Chacun reçoit le sien par courriel.',
+        },
+        {
+            element: '.tour-fiscal-years',
+            side: 'right',
+            title: 'Exercices comptables',
+            description: 'Un exercice porte les taux de sa période : la valeur d\'une heure, par tâche, et le barème kilométrique. Une action qu\'aucun exercice ne couvre n\'est pas valorisée.',
+        },
+        {
+            element: '.tour-my-organization',
+            side: 'right',
+            title: 'Mon association',
+            description: 'Le SIREN ou RNA, l\'adresse et la signature imprimés sur les reçus fiscaux. Sans eux, aucun reçu ne peut être émis.',
+        },
+        {
+            element: '[data-tour-step="replay"]',
+            title: 'Revoir la visite',
+            description: 'Ce bouton la relance à tout moment.',
+        },
+    ],
+}) }}

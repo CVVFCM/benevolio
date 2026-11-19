@@ -383,7 +383,9 @@ final class VolunteerAccountTest extends WebTestCase
         $crawler = $this->client->request(Request::METHOD_GET, '/a/les-jardins/declaration');
 
         self::assertCount(0, $crawler->filter('.public__tabs'));
-        self::assertSame('Se connecter', trim($crawler->filter('.public__account')->text()));
+        // « Aide » sits beside it; it replays the page's tour (TourTest).
+        self::assertSame(['Se connecter'], $crawler->filter('.public__account a')->each(static fn (Crawler $link): string => $link->text()));
+        self::assertCount(0, $crawler->filter('.public__account form'));
     }
 
     private function association(string $slug): Organization

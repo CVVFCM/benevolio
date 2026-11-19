@@ -111,7 +111,12 @@ final class DashboardController extends AbstractDashboardController
      */
     public function configureAssets(): Assets
     {
-        return Assets::new()->addCssFile('styles/admin.css');
+        // driver.js's stylesheet before admin.css, which restyles the tour; the `admin`
+        // entrypoint runs the tour controller (templates/admin/dashboard.html.twig).
+        return Assets::new()
+            ->addCssFile('styles/vendor/driver.css')
+            ->addCssFile('styles/admin.css')
+            ->addAssetMapperEntry('admin');
     }
 
     /**
@@ -133,16 +138,22 @@ final class DashboardController extends AbstractDashboardController
         yield MenuItem::linkToDashboard('menu.dashboard', 'fa fa-home');
 
         yield MenuItem::section('menu.declarations');
-        yield MenuItem::linkTo(DeclarationCrudController::class, 'menu.declaration_list', 'fa fa-file-lines');
+        // The tour-* classes are what the dashboard's guided tour points at
+        // (templates/admin/tour/_dashboard.html.twig). UrlMenuItem has no
+        // setHtmlAttribute(), so a class it is, on all four alike.
+        yield MenuItem::linkTo(DeclarationCrudController::class, 'menu.declaration_list', 'fa fa-file-lines')
+            ->setCssClass('tour-declarations');
         yield MenuItem::linkTo(DeclarationActionCrudController::class, 'menu.declaration_actions', 'fa fa-list-check');
         yield MenuItem::linkTo(PersonCrudController::class, 'menu.people', 'fa fa-users');
 
-        yield MenuItem::linkTo(ReceiptCrudController::class, 'menu.receipts', 'fa fa-file-invoice');
+        yield MenuItem::linkTo(ReceiptCrudController::class, 'menu.receipts', 'fa fa-file-invoice')
+            ->setCssClass('tour-receipts');
 
         yield MenuItem::section('menu.configuration');
         yield MenuItem::linkTo(TaskCrudController::class, 'menu.tasks', 'fa fa-tags');
         yield MenuItem::linkTo(ActivityCrudController::class, 'menu.activities', 'fa fa-calendar-check');
-        yield MenuItem::linkTo(FiscalYearCrudController::class, 'menu.fiscal_years', 'fa fa-calendar-days');
+        yield MenuItem::linkTo(FiscalYearCrudController::class, 'menu.fiscal_years', 'fa fa-calendar-days')
+            ->setCssClass('tour-fiscal-years');
         yield MenuItem::linkTo(UserCrudController::class, 'menu.users', 'fa fa-user-shield');
 
         // linkToUrl, not linkTo: MenuItem::linkTo() points at a controller's index, and
@@ -157,6 +168,6 @@ final class DashboardController extends AbstractDashboardController
                 ->setAction(Action::DETAIL)
                 ->setEntityId($this->tenantContext->getOrganization()->getId()->toRfc4122())
                 ->generateUrl(),
-        );
+        )->setCssClass('tour-my-organization');
     }
 }

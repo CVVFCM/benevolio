@@ -1,0 +1,44 @@
+{#
+    Tour of the first step, « Vos coordonnées ». Renders the tour controller's attributes;
+    included by public/layout.html.twig on its wrapper. Texts are HTML to driver.js: authored
+    strings only, nothing a person typed. A step whose element is absent is skipped.
+#}
+{%- set logged_in = current_volunteer() is not null -%}
+{{ stimulus_controller('tour', {
+    id: 'declaration-person',
+    autostart: autostart,
+    steps: [
+        {
+            element: '[data-tour-step="login"]',
+            title: 'Se connecter, si vous le souhaitez',
+            description: 'Ce n\'est pas obligatoire : vous pouvez déclarer sans compte. Connecté, vous retrouvez le formulaire prérempli, vos déclarations et vos reçus fiscaux.',
+        },
+        {
+            element: '[data-tour-step="space"]',
+            title: 'Votre espace bénévole',
+            description: 'Vos déclarations, vos reçus fiscaux et votre profil. Le formulaire reprend vos coordonnées et votre véhicule.',
+        },
+        {
+            element: '[data-tour-step="steps"]',
+            title: 'Trois étapes',
+            description: 'Vos coordonnées, vos actions, puis l\'attestation. Vous pouvez revenir en arrière sans rien perdre.',
+        },
+        {
+            element: '[data-tour-step="email"]',
+            title: 'Votre adresse électronique',
+            description: logged_in
+                ? 'Celle de votre espace bénévole : la déclaration y est rattachée.'
+                : 'Elle vous reconnaît d\'une déclaration à l\'autre. Un lien vous y sera envoyé pour confirmer votre déclaration : vérifiez-la bien.',
+        },
+        {
+            element: '[data-tour-step="address"]',
+            title: 'Votre adresse postale',
+            description: 'Elle figure sur le reçu fiscal que l\'association pourra vous remettre pour vos frais de déplacement.',
+        },
+        {
+            element: '[data-tour-step="help"]',
+            title: 'Revoir ce guide',
+            description: 'Le bouton « Aide » le relance à tout moment.',
+        },
+    ],
+}) }}

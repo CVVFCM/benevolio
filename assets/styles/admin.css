@@ -197,6 +197,79 @@
     margin-block-start: 1.5rem;
 }
 
+/* ------------------------------------------------------------------ tour -- */
+
+/*
+ * driver.js's popover (the dashboard's guided tour), in EasyAdmin's colours so it follows
+ * its light and dark themes. driver.css is registered just before this file; `.tour` is
+ * the popoverClass the tour controller sets.
+ */
+.driver-popover.tour {
+    max-inline-size: 22rem;
+    padding: 1.25rem;
+    border: 1px solid var(--border-color, #d9dade);
+    border-radius: 8px;
+    background-color: var(--dropdown-bg, #fff);
+    color: var(--text-color, #222);
+    font-family: var(--font-family-base, sans-serif);
+}
+
+.tour .driver-popover-title {
+    padding-inline-end: 2rem;
+    font-size: 1rem;
+}
+
+.tour .driver-popover-description,
+.tour .driver-popover-progress-text {
+    color: var(--text-muted-color, #6c6f7d);
+}
+
+.tour .driver-popover-footer-btn {
+    padding: 0.25rem 0.75rem;
+    border: 1px solid var(--border-color, #d9dade);
+    border-radius: 6px;
+    background-color: transparent;
+    color: var(--text-color, #222);
+    font-family: inherit;
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
+.tour .driver-popover-next-btn {
+    border-color: transparent;
+    background-color: var(--ea-primary, #222);
+    color: var(--ea-primary-foreground, #fff);
+}
+
+/* The arrow is drawn with borders; see the same rules in app.css. */
+.tour .driver-popover-arrow {
+    border-color: var(--dropdown-bg, #fff);
+}
+
+.tour .driver-popover-arrow-side-left {
+    border-top-color: transparent;
+    border-right-color: transparent;
+    border-bottom-color: transparent;
+}
+
+.tour .driver-popover-arrow-side-right {
+    border-top-color: transparent;
+    border-bottom-color: transparent;
+    border-left-color: transparent;
+}
+
+.tour .driver-popover-arrow-side-top {
+    border-right-color: transparent;
+    border-bottom-color: transparent;
+    border-left-color: transparent;
+}
+
+.tour .driver-popover-arrow-side-bottom {
+    border-top-color: transparent;
+    border-right-color: transparent;
+    border-left-color: transparent;
+}
+
 /* ------------------------------------------------------ reçus fiscaux -- */
 
 .receipt-run__intro,

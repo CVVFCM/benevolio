@@ -8,11 +8,11 @@
 <fieldset class="action" data-form-collection-row data-controller="activity-title activity-defaults">
     {# The visible number comes from a CSS counter, so a cloned row is numbered
        correctly without JavaScript renaming anything. #}
-    <legend class="action__legend"><span class="action__legend-text">Action bénévole</span></legend>
+    <legend class="action__legend" data-tour-step="action"><span class="action__legend-text">Action bénévole</span></legend>
 
     <div class="action__panel">
         <div class="action__grid">
-            {{ form_row(action.task) }}
+            {{ form_row(action.task, {row_attr: {'data-tour-step': 'task'}}) }}
             {{ form_row(action.date) }}
             {# An association with no event or action to offer keeps the plain title:
                a list holding only « Autre » would ask a question with one answer. #}
@@ -20,7 +20,7 @@
                 {% do action.activity.setRendered %}
             {% else %}
                 {{ form_row(action.activity, {
-                    row_attr: {class: 'field field--wide'},
+                    row_attr: {class: 'field field--wide', 'data-tour-step': 'activity'},
                     attr: {'data-activity-title-target': 'select', 'data-action': 'activity-title#toggle activity-defaults#fill'},
                 }) }}
             {% endif %}
@@ -30,14 +30,14 @@
             {{ form_row(action.title, {row_attr: {class: 'field field--wide', 'data-activity-title-target': 'title'}}) }}
             {# The three fields an activity pre-fills when chosen (#46):
                activity_defaults_controller.js, on the select's change only. #}
-            {{ form_row(action.workHours, {attr: {'data-activity-defaults-target': 'hours'}}) }}
+            {{ form_row(action.workHours, {row_attr: {'data-tour-step': 'hours'}, attr: {'data-activity-defaults-target': 'hours'}}) }}
             {{ form_row(action.consecutiveDays, {attr: {'data-activity-defaults-target': 'days'}}) }}
             {{ form_row(action.description, {row_attr: {class: 'field field--wide'}}) }}
         </div>
 
         {# Travel is the part that becomes a donation, so it is enclosed and
            explained rather than mixed in with the hours above. #}
-        <fieldset class="action__travel">
+        <fieldset class="action__travel" data-tour-step="travel">
             <legend class="action__travel-legend">Déplacements</legend>
 
             <div class="action__travel-body">

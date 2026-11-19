@@ -24,6 +24,8 @@
  */
 return [
     'app' => ['path' => './assets/app.js', 'entrypoint' => true],
+    'admin' => ['path' => './assets/admin.js', 'entrypoint' => true],
     '@hotwired/stimulus' => ['version' => '3.2.2'],
     '@symfony/stimulus-bundle' => ['path' => './vendor/symfony/stimulus-bundle/assets/dist/loader.js'],
+    'driver.js' => ['version' => '1.14.0'],
 ];

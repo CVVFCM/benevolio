@@ -1,0 +1,27 @@
+{#
+    Tour of the last step, « Attestation ». See _declaration_person.html.twig.
+#}
+{%- set logged_in = current_volunteer() is not null -%}
+{{ stimulus_controller('tour', {
+    id: 'declaration-legal',
+    autostart: autostart,
+    steps: [
+        {
+            element: '[data-tour-step="legal"]',
+            title: 'Deux attestations',
+            description: 'La première certifie l\'exactitude de vos réponses. La seconde est votre renonciation au remboursement de vos frais : c\'est elle qui en fait un don à l\'association. Les deux sont obligatoires.',
+        },
+        {
+            element: '[data-tour-step="submit"]',
+            title: 'Enregistrer',
+            description: logged_in
+                ? 'Connecté, votre déclaration est confirmée dès l\'enregistrement : l\'association la reçoit aussitôt.'
+                : 'Vous recevrez ensuite un courriel : ouvrez son lien dans les 7 jours pour confirmer votre déclaration. Sans cette confirmation, l\'association ne peut pas la traiter.',
+        },
+        {
+            element: '[data-tour-step="help"]',
+            title: 'Revoir ce guide',
+            description: 'Le bouton « Aide » le relance à tout moment.',
+        },
+    ],
+}) }}

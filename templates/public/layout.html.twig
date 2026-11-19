@@ -4,17 +4,34 @@
     Layout for the public pages of one association: the declaration form, and the volunteer
     space. Logged in for this association (current_volunteer(), never app.user), the header
     has two rows — the association and the account, then the space's tabs.
+
+    A page with a guided tour sets `tour` to the template of its steps (templates/public/tour/),
+    and `tour_autostart` to false when it must not open by itself. The tour controller then
+    sits on the whole page, so the « Aide » button in the header can replay it. See
+    assets/controllers/tour_controller.js.
 #}
+
+{# driver.js's stylesheet first, so app.css can restyle the tour with the site's tokens.
+   A <link>, never an import from JavaScript — see base.html.twig. #}
+{% block stylesheets %}
+    {% if tour is defined %}
+        <link rel="stylesheet" href="{{ asset('styles/vendor/driver.css') }}">
+    {% endif %}
+    {{ parent() }}
+{% endblock %}
 
 {% block body %}
     {% set volunteer = current_volunteer() %}
     {% set route = app.request.attributes.get('_route') %}
-    <div class="public">
+    <div class="public"{% if tour is defined %} {{ include(tour, {autostart: tour_autostart ?? true}) }}{% endif %}>
         <header class="public__header">
             <div class="public__bar">
                 <p class="public__org">{{ organization.name }}</p>
 
                 <div class="public__account">
+                    {% if tour is defined %}
+                        <button type="button" class="button button--quiet button--small" data-tour-step="help" data-tour-target="replay" data-action="tour#start" hidden>Aide</button>
+                    {% endif %}
                     {% if volunteer %}
                         <span class="public__who">{{ volunteer.fullName }}</span>
                         <form method="post" action="{{ path('volunteer_logout', {organizationSlug: organization.slug}) }}">
@@ -22,13 +39,13 @@
                             <button type="submit" class="button button--quiet button--small">Se déconnecter</button>
                         </form>
                     {% else %}
-                        <a class="button-link button--quiet button--small" href="{{ path('volunteer_login', {organizationSlug: organization.slug}) }}">Se connecter</a>
+                        <a class="button-link button--quiet button--small" data-tour-step="login" href="{{ path('volunteer_login', {organizationSlug: organization.slug}) }}">Se connecter</a>
                     {% endif %}
                 </div>
             </div>
 
             {% if volunteer %}
-                <nav class="public__tabs" aria-label="Espace bénévole">
+                <nav class="public__tabs" aria-label="Espace bénévole" data-tour-step="space">
                     {% for tab in [
                         {route: 'declaration', label: 'Déclarer', also: []},
                         {route: 'volunteer_declarations', label: 'Mes déclarations', also: ['volunteer_declaration']},
