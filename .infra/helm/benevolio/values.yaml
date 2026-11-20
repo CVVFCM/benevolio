@@ -136,17 +136,21 @@ database:
       memory: 256Mi
     limits:
       memory: 256Mi
-  # Daily pg_dump to Object Storage, under <s3Bucket>/<prefix>, pruned after
-  # `retention` (an rclone duration).
+  # Daily pg_dump into a restic repository at <s3Bucket>/<repository>, encrypted with
+  # secrets.resticPassword. `keep` is restic's retention: so many daily, weekly and monthly
+  # snapshots, the rest pruned.
   backup:
     enabled: true
     schedule: "0 3 * * *"
     timeZone: Europe/Paris
-    prefix: backups
-    retention: 7d
-    rclone:
-      repository: docker.io/rclone/rclone
-      tag: 1.71.2
+    repository: backups/restic
+    keep:
+      daily: 7
+      weekly: 4
+      monthly: 6
+    restic:
+      repository: docker.io/restic/restic
+      tag: 0.19.1
     resources:
       requests:
         cpu: 10m
@@ -169,6 +173,10 @@ secrets:
   # with the literal key "s3mock" and the receipt is lost. A refused deploy is better.
   s3Key: ""
   s3Secret: ""
+  # The restic repository's password (RESTIC_PASSWORD in CD). REQUIRED while
+  # database.backup is enabled. Losing it loses every backup: keep a copy outside the
+  # cluster and outside GitHub, which only lets it be written, never read back.
+  resticPassword: ""
 
 # Database migration job (Helm post-install/post-upgrade hook).
 migrations:
