@@ -1306,7 +1306,7 @@ moving tag.
 **organization** secrets shared with the other repos — `OCI_*`, `OKE_KUBECONFIG`,
 `CLOUDFLARE_API_TOKEN`, and `SCW_ACCESS_KEY` / `SCW_SECRET_KEY` for Object Storage,
 which cvvfcm-v4 already uses under those names. Application ones belong to this
-repo's **`prod` environment** — `APP_SECRET`, `MAILER_DSN`. Never
+repo's **`prod` environment** — `APP_SECRET`, `MAILER_DSN`, `RESTIC_PASSWORD`. Never
 move an application secret up to the organization: it would hand every other repo
 the keys to this database.
 
@@ -1344,15 +1344,25 @@ declares one `Cluster`, `benevolio-db`.
   Doctrine is told, and the `pg_dump` the backup runs (which must not be older than the
   server). Change it and all three move together; a major upgrade of the data itself is
   still a CNPG operation, not a values change.
-- **The backup is a daily `pg_dump`**, not CNPG's physical backup (`database.backup`,
-  `templates/database-backup-cronjob.yaml`): 03:00 Europe/Paris, custom format, uploaded with
-  rclone to `<s3Bucket>/backups/` with the receipts' credentials, and pruned after **7 days**.
-  With one replica on one disk, **it is the only copy that survives losing that node**. The
-  prune runs inside the prefix, which the chart refuses to render empty — the receipts share
-  the bucket. **A `403 AccessDenied` from rclone** (on `ListObjectsV2` and `PutObject`) is
-  the Scaleway key lacking permission on the bucket, not the chart: the job uses the
-  receipts' key — grant it Object Storage access in the bucket's project. Restore:
-  `pg_restore --clean --if-exists --no-owner --no-acl -d "$URI" benevolio-….dump`.
+- **The backup is a daily `pg_dump` into a restic repository**, not CNPG's physical backup
+  (`database.backup`, `templates/database-backup-cronjob.yaml`): 03:00 Europe/Paris, in the
+  application's own bucket at `<s3Bucket>/backups/restic`, with the receipts' credentials.
+  With one replica on one disk, **it is the only copy that survives losing that node**.
+  - The dump is custom format **uncompressed, under a fixed name** (`/dump/benevolio.dump`):
+    restic compresses and deduplicates itself, which a compressed dump would defeat.
+  - Each run: `init` if the repository is new, `unlock` (a killed run's stale lock), `backup`,
+    `forget --prune` keeping **7 daily, 4 weekly, 6 monthly** (`database.backup.keep`), `check`.
+    While a bucket is not full yet, restic also keeps its oldest snapshot; that is by design.
+  - **The repository is encrypted with `RESTIC_PASSWORD`** (`secrets.resticPassword`, required
+    while the backup is enabled). GitHub only lets a secret be written, so **its other copy lives
+    in a password manager**: losing it loses every backup.
+  - **A `403 AccessDenied`** is the Scaleway key lacking permission on the bucket, not the chart:
+    grant it Object Storage access in the bucket's project.
+  - Restore, with `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, **`AWS_DEFAULT_REGION=fr-par`**
+    (without it restic answers « repository does not exist »), `RESTIC_PASSWORD` and
+    `RESTIC_REPOSITORY=s3:https://s3.fr-par.scw.cloud/benevolio/backups/restic`:
+    `restic snapshots`, then
+    `restic dump latest /dump/benevolio.dump | pg_restore --clean --if-exists --no-owner --no-acl -d "$URI"`.
 
 **`secrets.mailerDsn` is required, and shape-checked at render time.** A declaration is
 only final once the volunteer opens an emailed link, so an instance that cannot send mail

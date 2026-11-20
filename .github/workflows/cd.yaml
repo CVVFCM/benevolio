@@ -125,6 +125,8 @@ jobs:
           # cvvfcm-v4 uses — one set of credentials, one naming.
           SCW_ACCESS_KEY: ${{ secrets.SCW_ACCESS_KEY }}
           SCW_SECRET_KEY: ${{ secrets.SCW_SECRET_KEY }}
+          # Encrypts the database backups. An application secret, in the prod environment.
+          RESTIC_PASSWORD: ${{ secrets.RESTIC_PASSWORD }}
         run: |
           # Through a file rather than --set. A secret may legitimately contain a comma,
           # which --set reads as a value separator, and it would then be silently
@@ -139,6 +141,7 @@ jobs:
                   'mailerDsn': os.environ['MAILER_DSN'],
                   's3Key': os.environ['SCW_ACCESS_KEY'],
                   's3Secret': os.environ['SCW_SECRET_KEY'],
+                  'resticPassword': os.environ['RESTIC_PASSWORD'],
               },
           }))
           PY
