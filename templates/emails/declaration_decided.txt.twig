@@ -1,0 +1,42 @@
+Bonjour {{ person.firstName }},
+
+{{ organization.name }} a traité votre déclaration de bénévolat du {{ declaration.submittedAt|format_date('long') }}.
+{% if accepted is not empty %}
+
+Acceptées
+{% for line in accepted %}
+- {{ line.action.date|format_date('short') }} · {{ line.action.task.name }} : {{ line.action.label }}
+  {{ line.action.hours|hours }}{% if line.action.totalDistanceKm > 0 %}, {{ line.action.totalDistanceKm }} km{% endif %}{% if line.waived is not null and line.waived.positive %}, abandon de frais : {{ line.waived|euros }}{% endif %}
+
+{% endfor %}
+{% endif %}
+{% if refused is not empty %}
+
+Refusées
+{% for action in refused %}
+- {{ action.date|format_date('short') }} · {{ action.task.name }} : {{ action.label }}
+  {{ action.hours|hours }}{% if action.totalDistanceKm > 0 %}, {{ action.totalDistanceKm }} km{% endif %}
+
+{% endfor %}
+{% endif %}
+{% if waived.positive %}
+
+Abandon de frais retenu : {{ waived|euros }}
+Ce montant est indicatif. Seul le reçu fiscal que l'association vous enverra
+après la fin de l'année fait foi, et lui seul se reporte sur votre déclaration
+de revenus. Les heures données n'ouvrent pas droit à une réduction d'impôt.
+{% endif %}
+{% if unvalued > 0 %}
+
+{% if unvalued == 1 %}Un déplacement accepté n'a pas encore de montant{% else %}{{ unvalued }} déplacements acceptés n'ont pas encore de montant{% endif %} : l'association
+n'a pas enregistré le barème de la période concernée.
+{% endif %}
+{% if refused is not empty %}
+
+Pour toute question sur une action refusée, adressez-vous à l'association.
+{% endif %}
+
+Vos déclarations sont visibles dans votre espace bénévole :
+{{ spaceUrl }}
+
+{{ organization.name }}

@@ -1,0 +1,16 @@
+Bonjour,
+
+{{ person.fullName }} a confirmé une déclaration de bénévolat auprès de
+{{ organization.name }}. Elle attend maintenant d'être traitée :
+
+{{ declarationUrl }}
+
+Ce qui a été déclaré
+{% for action in declaration.actions %}
+- {{ action.date|format_date('short') }} · {{ action.task.name }} : {{ action.label }}
+  {{ action.hours|hours }}{% if action.totalDistanceKm > 0 %}, {{ action.totalDistanceKm }} km{% endif %}
+
+{% endfor %}
+Total : {{ declaration.totalHours|hours }}{% if declaration.totalDistanceKm > 0 %} et {{ declaration.totalDistanceKm }} km{% endif %}
+
+Ce message est envoyé à chaque administrateur de {{ organization.name }}.

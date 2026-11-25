@@ -19,6 +19,7 @@ use App\Tests\Support\ReloadsEntities;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\Mime\Email;
 use Zenstruck\Foundry\Test\Factories;
 use Zenstruck\Foundry\Test\ResetDatabase;
 
@@ -143,6 +144,30 @@ final class DeclarationDecisionTest extends WebTestCase
 
         self::assertStringContainsString('aucun verdict global ne s\'applique', $this->bodyText());
         self::assertSame(DeclarationState::SUBMITTED, $this->reload($declaration)->getState());
+    }
+
+    /**
+     * The volunteer is told when nothing of theirs is left to rule on (#61): at the last
+     * line, mixed basket or not, and not before.
+     */
+    #[Test]
+    public function ruling_on_the_last_line_tells_the_volunteer(): void
+    {
+        $organization = OrganizationFactory::createOne(['slug' => 'les-jardins']);
+        $declaration = $this->declarationWithLines($organization, 2);
+        $this->loginAsAdminOf($organization);
+
+        $this->submitButton(self::ACTIONS_URL, $this->actionUrl($this->lineAt($declaration, 0), 'validate'));
+        self::assertEmailCount(0);
+
+        $this->submitButton(self::ACTIONS_URL, $this->actionUrl($this->lineAt($declaration, 1), 'refuse'));
+        self::assertEmailCount(1);
+
+        $email = self::getMailerMessage();
+        self::assertInstanceOf(Email::class, $email);
+        self::assertEmailAddressContains($email, 'To', $declaration->getPerson()->getEmail()->value);
+        self::assertEmailTextBodyContains($email, 'Acceptées');
+        self::assertEmailTextBodyContains($email, 'Refusées');
     }
 
     #[Test]

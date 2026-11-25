@@ -48,6 +48,7 @@ final readonly class DeclarationSubmitter
         private EntityManagerInterface $entityManager,
         private DeclarationConfirmationMailer $mailer,
         private DeclarationConfirmer $confirmer,
+        private DeclarationNotifier $notifier,
         private ClockInterface $clock,
     ) {
     }
@@ -91,7 +92,7 @@ final readonly class DeclarationSubmitter
      */
     public function submitAs(Person $volunteer, DeclarationDraft $draft): Declaration
     {
-        return $this->entityManager->wrapInTransaction(
+        $declaration = $this->entityManager->wrapInTransaction(
             function () use ($volunteer, $draft): Declaration {
                 $declaration = $this->createDeclaration($volunteer->getOrganization(), $draft, $volunteer);
                 $this->confirmer->confirmBySubmission($declaration);
@@ -99,6 +100,12 @@ final readonly class DeclarationSubmitter
                 return $declaration;
             },
         );
+
+        // Confirmed as it was filed, so this is when the association hears of it. After the
+        // commit, like the confirmation mail in submit().
+        $this->notifier->notifyConfirmed($declaration);
+
+        return $declaration;
     }
 
     private function createDeclaration(Organization $organization, DeclarationDraft $draft, ?Person $volunteer = null): Declaration

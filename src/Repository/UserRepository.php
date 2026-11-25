@@ -38,6 +38,26 @@ final class UserRepository extends ServiceEntityRepository
     }
 
     /**
+     * The association's accounts that have chosen a password, in a stable order: the ones
+     * an alert is worth sending to. An invitation still pending has no password.
+     *
+     * @return list<User>
+     */
+    public function findActiveOf(Organization $organization): array
+    {
+        /** @var list<User> $users */
+        $users = $this->createQueryBuilder('u')
+            ->andWhere('u.organization = :organization')
+            ->andWhere('u.password IS NOT NULL')
+            ->setParameter('organization', $organization->getId(), 'uuid')
+            ->orderBy('u.email', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        return $users;
+    }
+
+    /**
      * Narrows a query on `$alias` to one organization's accounts.
      *
      * User is not TenantAware — the tenant filter must never touch the user

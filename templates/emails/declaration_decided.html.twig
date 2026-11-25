@@ -1,0 +1,116 @@
+{# Inline styles and a table layout on purpose: mail clients strip <style> blocks
+   and have no CSS grid. This does not share the site's stylesheet. #}
+<!DOCTYPE html>
+<html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Votre déclaration a été traitée</title>
+    </head>
+    <body style="margin:0;padding:24px;background:#f7f4ee;color:#16202b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:16px;line-height:1.6;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:560px;margin:0 auto;">
+            <tr>
+                <td style="padding-bottom:8px;font-size:14px;color:#4c5563;">
+                    {{ organization.name }}
+                </td>
+            </tr>
+            <tr>
+                <td style="background:#fffdfa;border:1px solid #ded6c9;border-radius:10px;padding:32px;">
+                    <h1 style="margin:0 0 16px;font-size:22px;line-height:1.25;">
+                        Votre déclaration a été traitée
+                    </h1>
+
+                    <p style="margin:0 0 16px;">
+                        Bonjour {{ person.firstName }},
+                    </p>
+
+                    <p style="margin:0 0 24px;">
+                        {{ organization.name }} a traité votre déclaration de bénévolat du
+                        {{ declaration.submittedAt|format_date('long') }}.
+                    </p>
+
+                    {% if accepted is not empty %}
+                        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+                               style="margin:0 0 24px;border-top:1px solid #ded6c9;">
+                            <tr>
+                                <td style="padding-top:16px;font-size:14px;">
+                                    <strong style="color:#1d6b3f;">Acceptées</strong>
+                                </td>
+                            </tr>
+                            {% for line in accepted %}
+                                <tr>
+                                    <td style="padding-top:8px;font-size:14px;">
+                                        {{ line.action.date|format_date('short') }} · {{ line.action.task.name }} :
+                                        {{ line.action.label }}<br>
+                                        <span style="color:#4c5563;">
+                                            {{ line.action.hours|hours }}
+                                            {%- if line.action.totalDistanceKm > 0 %}, {{ line.action.totalDistanceKm }} km{% endif -%}
+                                            {%- if line.waived is not null and line.waived.positive %}, abandon de frais : {{ line.waived|euros }}{% endif -%}
+                                        </span>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </table>
+                    {% endif %}
+
+                    {% if refused is not empty %}
+                        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+                               style="margin:0 0 24px;border-top:1px solid #ded6c9;">
+                            <tr>
+                                <td style="padding-top:16px;font-size:14px;">
+                                    <strong style="color:#a3261c;">Refusées</strong>
+                                </td>
+                            </tr>
+                            {% for action in refused %}
+                                <tr>
+                                    <td style="padding-top:8px;font-size:14px;">
+                                        {{ action.date|format_date('short') }} · {{ action.task.name }} :
+                                        {{ action.label }}<br>
+                                        <span style="color:#4c5563;">
+                                            {{ action.hours|hours }}
+                                            {%- if action.totalDistanceKm > 0 %}, {{ action.totalDistanceKm }} km{% endif -%}
+                                        </span>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            <tr>
+                                <td style="padding-top:12px;font-size:14px;color:#4c5563;">
+                                    Pour toute question sur une action refusée, adressez-vous à
+                                    l'association.
+                                </td>
+                            </tr>
+                        </table>
+                    {% endif %}
+
+                    {% if waived.positive %}
+                        <p style="margin:0 0 8px;">
+                            <strong>Abandon de frais retenu : {{ waived|euros }}</strong>
+                        </p>
+                        <p style="margin:0 0 24px;font-size:14px;color:#4c5563;">
+                            Ce montant est indicatif. Seul le reçu fiscal que l'association vous
+                            enverra après la fin de l'année fait foi, et lui seul se reporte sur
+                            votre déclaration de revenus. Les heures données n'ouvrent pas droit à
+                            une réduction d'impôt.
+                        </p>
+                    {% endif %}
+
+                    {% if unvalued > 0 %}
+                        <p style="margin:0 0 24px;font-size:14px;color:#4c5563;">
+                            {% if unvalued == 1 -%}
+                                Un déplacement accepté n'a pas encore de montant
+                            {%- else -%}
+                                {{ unvalued }} déplacements acceptés n'ont pas encore de montant
+                            {%- endif %} :
+                            l'association n'a pas enregistré le barème de la période concernée.
+                        </p>
+                    {% endif %}
+
+                    <p style="margin:0;font-size:14px;color:#4c5563;">
+                        Vos déclarations sont visibles dans
+                        <a href="{{ spaceUrl }}" style="color:#0f5570;">votre espace bénévole</a>.
+                    </p>
+                </td>
+            </tr>
+        </table>
+    </body>
+</html>

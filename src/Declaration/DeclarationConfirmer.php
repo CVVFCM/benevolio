@@ -28,6 +28,7 @@ final readonly class DeclarationConfirmer
         private StateMachine $stateMachine,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
+        private DeclarationNotifier $notifier,
     ) {
     }
 
@@ -93,6 +94,9 @@ final readonly class DeclarationConfirmer
             $declaration->markConfirmed($now);
         });
 
+        // After the commit, and only on this branch: a repeat click confirms nothing.
+        $this->notifier->notifyConfirmed($declaration);
+
         return [$declaration, DeclarationConfirmationResult::CONFIRMED];
     }
 
@@ -108,6 +112,9 @@ final readonly class DeclarationConfirmer
      *
      * Goes through the same `confirm` transition as the link, so the lines move
      * with it (DeclarationConfirmationCascade) exactly as they would on a click.
+     *
+     * No alert to the admins, by decision: one of them has just done this, from the
+     * declaration's own page.
      *
      * @throws DeclarationNotConfirmableException when the declaration is not awaiting confirmation
      */
@@ -130,7 +137,8 @@ final readonly class DeclarationConfirmer
      * DeclarationSubmitter::submitAs(). The login link proved the address; nobody vouches
      * for anyone, so it is recorded as the volunteer's own confirmation.
      *
-     * Runs inside the caller's transaction.
+     * Runs inside the caller's transaction, which is why the admins' alert is not sent from
+     * here: the caller sends it once that transaction has committed.
      */
     public function confirmBySubmission(Declaration $declaration): void
     {
