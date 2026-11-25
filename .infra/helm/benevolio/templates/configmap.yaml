@@ -46,6 +46,8 @@ data:
   {{- else }}
   {{- fail "Either gotenberg.enabled must be true or app.gotenbergDsn must point at an instance: without one, validating a declaration cannot produce a receipt." }}
   {{- end }}
+  # The public demo's association: App\Demo\DemoAssociation. Empty disables it.
+  DEMO_ORGANIZATION_SLUG: {{ ternary .Values.demo.organizationSlug "" .Values.demo.enabled | quote }}
   # Bound FrankenPHP threads/workers (it otherwise sizes from the host core count and
   # OOMs the pod's memory limit). CLI pods (migrate) ignore these.
   FRANKENPHP_CONFIG: {{ printf "num_threads %d" (.Values.web.frankenphp.numThreads | int) | quote }}

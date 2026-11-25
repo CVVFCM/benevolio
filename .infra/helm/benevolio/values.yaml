@@ -178,6 +178,27 @@ secrets:
   # cluster and outside GitHub, which only lets it be written, never read back.
   resticPassword: ""
 
+# The public demo (#62): one fictitious association anyone can use, back office included,
+# with its login printed on /demo. Disabled, the page 404s, nothing links to it and no
+# CronJob is rendered (DEMO_ORGANIZATION_SLUG is sent empty).
+#
+# The CronJob runs `app:demo:reset`, which wipes the association named by `organizationSlug`
+# and seeds it again. It refuses an association with accounts none of which is the demo's,
+# but point it at a real slug and that is the only thing standing between it and a wipe.
+# Create the demo once by hand after the first install:
+#   kubectl -n benevolio exec deploy/benevolio-web -- php bin/console app:demo:reset --force
+demo:
+  enabled: true
+  organizationSlug: demo
+  schedule: "0 3 * * *"
+  timeZone: Etc/UTC
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+
 # Database migration job (Helm post-install/post-upgrade hook).
 migrations:
   enabled: true

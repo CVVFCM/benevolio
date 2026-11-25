@@ -11,6 +11,11 @@
     <url>
         <loc>{{ url('pricing') }}</loc>
     </url>
+    {%- if demo_slug() %}
+        <url>
+            <loc>{{ url('demo') }}</loc>
+        </url>
+    {%- endif %}
     {%- for guide in guides %}
         <url>
             <loc>{{ url('guide', {slug: guide.slug}) }}</loc>

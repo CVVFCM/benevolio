@@ -50,6 +50,9 @@
                 <a href="{{ path('home') }}#fonctionnalites">{{ 'home.nav.features'|trans }}</a>
                 <a href="{{ path('guides') }}">Guides</a>
                 <a href="{{ path('pricing') }}">C'est gratuit</a>
+                {% if demo_slug() %}
+                    <a href="{{ path('demo') }}">Démo</a>
+                {% endif %}
                 {% if organizations is defined and organizations is not empty %}
                     <a href="#associations">{{ 'home.nav.organizations'|trans }}</a>
                 {% endif %}
@@ -65,6 +68,9 @@
             <nav class="site__footer-nav" aria-label="Pied de page">
                 <a href="{{ path('guides') }}">Guides</a>
                 <a href="{{ path('pricing') }}">C'est gratuit</a>
+                {% if demo_slug() %}
+                    <a href="{{ path('demo') }}">Essayer la démo</a>
+                {% endif %}
                 <a href="{{ path('home') }}#faq">Questions fréquentes</a>
             </nav>
             <p>{{ 'app.name'|trans }} · {{ 'app.tagline'|trans }} · édité par le <a href="https://www.cvvfcm.fr/">Club de Voile des Vieilles-Forges</a></p>

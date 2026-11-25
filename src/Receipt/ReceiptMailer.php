@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Receipt;
 
+use App\Demo\DemoAssociation;
 use App\Entity\Receipt;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -28,6 +29,7 @@ final readonly class ReceiptMailer
 {
     public function __construct(
         private MailerInterface $mailer,
+        private DemoAssociation $demo,
         #[Autowire('%app.mail_from%')]
         private string $from,
     ) {
@@ -37,6 +39,12 @@ final readonly class ReceiptMailer
     {
         $organization = $receipt->getOrganization();
         $person = $receipt->getPerson();
+
+        // The demo sends no mail: App\Demo\DemoAssociation. The PDF is still issued, and
+        // downloadable from « Reçus fiscaux ».
+        if ($this->demo->is($organization)) {
+            return;
+        }
 
         $email = new TemplatedEmail()
             ->from(new Address($this->from, $organization->getName()))

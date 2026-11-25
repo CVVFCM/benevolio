@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Public;
 
+use App\Demo\DemoAssociation;
 use App\Exception\UnknownOrganizationException;
 use App\Tenant\TenantContext;
 use Symfony\Component\HttpFoundation\Request;
@@ -39,6 +40,7 @@ final readonly class DeclarationConfirmationController
     public function __construct(
         private Environment $twig,
         private TenantContext $tenantContext,
+        private DemoAssociation $demo,
     ) {
     }
 
@@ -54,6 +56,8 @@ final readonly class DeclarationConfirmationController
         return new Response($this->twig->render('public/declaration/confirmation.html.twig', [
             'organization' => $organization,
             'email' => $this->pendingEmail($request),
+            // Confirmed as filed, with no mail: DeclarationSubmitter.
+            'demo' => $this->demo->is($organization),
         ]));
     }
 

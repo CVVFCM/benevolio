@@ -141,6 +141,9 @@
                 <div class="court__actions">
                     <a class="button-link button--tape" href="{{ mailto }}">{{ 'home.hero.contact'|trans }}</a>
                     <a class="button-link button--line" href="#fonctionnalites">{{ 'home.hero.discover'|trans }}</a>
+                    {% if demo_slug() %}
+                        <a class="button-link button--line" href="{{ path('demo') }}">Essayer la démo</a>
+                    {% endif %}
                 </div>
             </div>
         </div>

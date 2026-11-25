@@ -9,6 +9,7 @@ use App\Declaration\ConfirmationToken;
 use App\Declaration\DeclarationConfirmer;
 use App\Declaration\DeclarationDecider;
 use App\Declaration\DeclarationNotifier;
+use App\Demo\DemoAssociation;
 use App\Entity\Declaration;
 use App\Entity\DeclarationAction;
 use App\Entity\Organization;
@@ -293,6 +294,7 @@ final class DeclarationNotifierTest extends KernelTestCase
             self::getContainer()->get(ContributionValuator::class),
             self::getContainer()->get(UrlGeneratorInterface::class),
             $logger,
+            self::getContainer()->get(DemoAssociation::class),
             'benevolat@example.test',
         );
 

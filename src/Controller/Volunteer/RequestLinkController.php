@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Volunteer;
 
+use App\Demo\DemoAssociation;
 use App\Exception\UnknownOrganizationException;
 use App\Form\Volunteer\VolunteerLoginType;
 use App\Repository\PersonRepository;
@@ -47,12 +48,19 @@ final readonly class RequestLinkController
         private RateLimiterFactoryInterface $volunteerLinkLimiter,
         private RateLimiterFactoryInterface $volunteerLinkIpLimiter,
         private UrlGeneratorInterface $urlGenerator,
+        private DemoAssociation $demo,
     ) {
     }
 
     public function __invoke(Request $request): Response
     {
         $organization = $this->tenantContext->tryGetOrganization() ?? throw new UnknownOrganizationException();
+
+        // The demo sends no mail (App\Demo\DemoAssociation), and the space logs in by a
+        // mailed link only: closed there, saying why.
+        if ($this->demo->is($organization)) {
+            return new Response($this->twig->render('volunteer/demo_closed.html.twig', ['organization' => $organization]));
+        }
 
         if (null !== $this->currentVolunteer->get()) {
             return new RedirectResponse($this->urlGenerator->generate('declaration', ['organizationSlug' => $organization->getSlug()]));

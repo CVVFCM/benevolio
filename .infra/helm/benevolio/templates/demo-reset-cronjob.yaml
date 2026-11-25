@@ -1,0 +1,57 @@
+{{- if .Values.demo.enabled }}
+{{- if not .Values.demo.organizationSlug }}
+{{- fail "demo.organizationSlug is required while demo.enabled is true" }}
+{{- end }}
+# Puts the public demo back every night (#62): App\Demo\DemoReset, through app:demo:reset.
+# The application image, with the same configuration as the web pods: it deletes the demo's
+# receipt PDFs from object storage, so it needs the S3 credentials too. --force, because a
+# non-interactive run refuses to reset without it.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "benevolio.fullname" . }}-demo-reset
+  labels:
+    {{- include "benevolio.labels" . | nindent 4 }}
+    app.kubernetes.io/component: demo-reset
+spec:
+  schedule: {{ .Values.demo.schedule | quote }}
+  timeZone: {{ .Values.demo.timeZone | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            {{- include "benevolio.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: demo-reset
+        spec:
+          restartPolicy: Never
+          {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            {{- toYaml .Values.podSecurityContext | nindent 12 }}
+          containers:
+            - name: demo-reset
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              command:
+                - php
+                - bin/console
+                - app:demo:reset
+                - --no-interaction
+                - --force
+              env:
+                {{- include "benevolio.database.env" . | nindent 16 }}
+              envFrom:
+                - configMapRef:
+                    name: {{ include "benevolio.fullname" . }}-config
+                - secretRef:
+                    name: {{ include "benevolio.fullname" . }}-secret
+              resources:
+                {{- toYaml .Values.demo.resources | nindent 16 }}
+{{- end }}

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Declaration;
 
+use App\Demo\DemoAssociation;
 use App\Entity\Declaration;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -26,6 +27,7 @@ final readonly class DeclarationConfirmationMailer
     public function __construct(
         private MailerInterface $mailer,
         private UrlGeneratorInterface $urlGenerator,
+        private DemoAssociation $demo,
         #[Autowire('%app.mail_from%')]
         private string $from,
     ) {
@@ -35,6 +37,12 @@ final readonly class DeclarationConfirmationMailer
     {
         $organization = $declaration->getOrganization();
         $person = $declaration->getPerson();
+
+        // The demo sends no mail: App\Demo\DemoAssociation. Its declarations are confirmed
+        // as they are filed (DeclarationSubmitter), so this is the backstop.
+        if ($this->demo->is($organization)) {
+            return;
+        }
 
         $url = $this->urlGenerator->generate(
             'declaration_confirm',

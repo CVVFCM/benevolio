@@ -1,0 +1,65 @@
+{% extends 'site/layout.html.twig' %}
+
+{#
+    « Essayer la démo » — App\Controller\DemoController. The demo association's login and its
+    public form, behind the warning that nothing real belongs there. See App\Demo\DemoAssociation.
+#}
+
+{% set indexable = true %}
+
+{% block title %}Essayer Benevolio : la démo en libre accès{% endblock %}
+
+{% block description %}Testez Benevolio sur une association fictive : le formulaire des bénévoles et l'administration, avec un accès ouvert à tous. Remise à zéro chaque nuit.{% endblock %}
+
+{% block structured_data %}
+    {{ include('site/_json_ld.html.twig', {data: {
+        '@context': 'https://schema.org',
+        '@type': 'WebPage',
+        url: url('demo'),
+        name: 'Essayer Benevolio',
+        inLanguage: 'fr',
+    }}) }}
+{% endblock %}
+
+{% block content %}
+    <section class="price-hero court court--ends" aria-labelledby="demo-title">
+        <div class="home__wrap">
+            <h1 id="demo-title" class="price-hero__title">Essayez Benevolio</h1>
+            <p class="price-hero__lede">
+                Une association fictive, ouverte à tous : déclarez du bénévolat comme un bénévole,
+                puis validez-le comme un trésorier.
+            </p>
+        </div>
+    </section>
+
+    <article class="guide home__wrap">
+        <div class="alert alert--danger demo__warning" role="note">
+            <p class="alert__title">N'y saisissez aucune donnée réelle.</p>
+            <p class="alert__hint">
+                Tout le monde partage le même accès : ce que vous saisissez, noms, adresses,
+                courriels, est visible par tous les autres visiteurs. La démo est remise à zéro
+                chaque nuit à 3 h (UTC), et n'envoie aucun courriel.
+            </p>
+        </div>
+
+        <div class="guide__body">
+            <h2>1. Déclarer, comme un bénévole</h2>
+            <p>
+                Le formulaire public de l'association, sans compte. Dans la démo, la déclaration
+                est confirmée tout de suite, sans le lien envoyé par courriel.
+            </p>
+            <p><a class="button-link" href="{{ path('declaration', {organizationSlug: demo_slug}) }}">Ouvrir le formulaire des bénévoles</a></p>
+
+            <h2>2. Valider, comme l'association</h2>
+            <p>
+                L'administration de l'association : déclarations à valider, exercices et barème,
+                écritures comptables, reçus fiscaux.
+            </p>
+            <dl class="demo__login">
+                <div><dt>Adresse électronique</dt><dd><code>{{ admin_email }}</code></dd></div>
+                <div><dt>Mot de passe</dt><dd><code>{{ admin_password }}</code></dd></div>
+            </dl>
+            <p><a class="button-link button--tape" href="{{ path('login') }}">Se connecter à l'administration</a></p>
+        </div>
+    </article>
+{% endblock %}
