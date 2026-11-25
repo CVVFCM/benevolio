@@ -14,6 +14,7 @@ use App\Factory\DeclarationFactory;
 use App\Factory\OrganizationFactory;
 use App\Factory\PersonFactory;
 use App\Factory\ReceiptFactory;
+use App\Factory\UserFactory;
 use App\Receipt\ReceiptStorage;
 use App\State\DeclarationState;
 use App\Tests\Support\LogsInAdmins;
@@ -30,6 +31,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Mime\Email as MimeEmail;
 use Zenstruck\Foundry\Test\Factories;
 use Zenstruck\Foundry\Test\ResetDatabase;
 
@@ -258,6 +260,25 @@ final class VolunteerAccountTest extends WebTestCase
         self::assertTrue($filed[0]->getPerson()->getId()->equals($person->getId()));
         // Confirmed, so the typed identity reached the Person.
         self::assertSame('Rezé', $this->reload($person)->getAddress()->city);
+    }
+
+    /**
+     * Confirmed as it is filed, so filing is when the association's admins hear of it (#61).
+     */
+    #[Test]
+    public function a_logged_in_declaration_tells_the_associations_admins(): void
+    {
+        $organization = $this->association('les-jardins');
+        UserFactory::new()->admin($organization)->create(['email' => 'tresorier@jardins.test']);
+        $this->loginVolunteer($organization, 'connu@example.test');
+
+        $this->completeFlow();
+
+        self::assertResponseRedirects('/a/les-jardins/mes-declarations');
+        self::assertEmailCount(1);
+        $alert = self::getMailerMessage();
+        self::assertInstanceOf(MimeEmail::class, $alert);
+        self::assertEmailAddressContains($alert, 'To', 'tresorier@jardins.test');
     }
 
     #[Test]

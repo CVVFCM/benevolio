@@ -10,6 +10,7 @@ use App\Factory\DeclarationActionFactory;
 use App\Factory\DeclarationFactory;
 use App\Factory\OrganizationFactory;
 use App\Factory\PersonFactory;
+use App\Factory\UserFactory;
 use App\State\DeclarationState;
 use App\Tests\Support\LogsInAdmins;
 use App\Tests\Support\ReloadsEntities;
@@ -113,6 +114,29 @@ final class DeclarationConfirmationTest extends WebTestCase
         $declaration = $this->reloadDeclaration();
         self::assertSame(DeclarationState::SUBMITTED, $declaration->getState());
         self::assertTrue($declaration->isConfirmed());
+    }
+
+    /**
+     * Confirming is when the association has something to rule on, so it is when its
+     * admins hear of it (#61). Submitting told them nothing: only the volunteer was mailed.
+     */
+    #[Test]
+    public function the_button_tells_the_associations_admins(): void
+    {
+        $organization = OrganizationFactory::createOne(['slug' => 'les-jardins', 'name' => 'Les Jardins']);
+        UserFactory::new()->admin($organization)->create(['email' => 'tresorier@jardins.test']);
+        $this->completeFlow();
+        self::assertEmailCount(1);
+        self::assertEmailAddressContains(self::firstEmail(), 'To', $this->reloadDeclaration()->getPerson()->getEmail()->value);
+
+        $this->client->request('GET', $this->confirmationUrl());
+        self::assertEmailCount(0);
+        $this->client->submitForm('Confirmer ma déclaration');
+
+        self::assertEmailCount(1);
+        $alert = self::firstEmail();
+        self::assertEmailAddressContains($alert, 'To', 'tresorier@jardins.test');
+        self::assertEmailTextBodyContains($alert, '/admin/declaration/'.$this->reloadDeclaration()->getId()->toRfc4122());
     }
 
     /**
@@ -316,6 +340,14 @@ final class DeclarationConfirmationTest extends WebTestCase
             $expiresAt->getTimestamp(),
             60,
         );
+    }
+
+    private static function firstEmail(): Email
+    {
+        $message = self::getMailerMessage();
+        self::assertInstanceOf(Email::class, $message);
+
+        return $message;
     }
 
     private function confirmationUrl(): string

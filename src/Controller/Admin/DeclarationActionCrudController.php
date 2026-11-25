@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
+use App\Declaration\DeclarationDecider;
 use App\Entity\DeclarationAction;
 use App\Security\RequiresActionToken;
 use App\Security\Voter\DeclarationActionVoter;
 use App\State\DeclarationActionState;
 use App\Tenant\TenantContext;
-use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
 use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminRoute;
 use EasyCorp\Bundle\EasyAdminBundle\Collection\FieldCollection;
@@ -71,7 +71,7 @@ final class DeclarationActionCrudController extends AbstractCrudController
     public function __construct(
         private readonly TenantContext $tenantContext,
         private readonly StateMachine $stateMachine,
-        private readonly EntityManagerInterface $entityManager,
+        private readonly DeclarationDecider $decider,
         private readonly AdminUrlGeneratorInterface $adminUrlGenerator,
     ) {
     }
@@ -237,10 +237,13 @@ final class DeclarationActionCrudController extends AbstractCrudController
         // rest solely on EasyAdmin having applied the permission upstream.
         $this->denyAccessUnlessGranted(DeclarationActionVoter::VIEW, $action);
 
-        if ($this->stateMachine->can($action, $transition)) {
-            $this->stateMachine->apply($action, $transition);
-            $this->entityManager->flush();
+        // Through the use case, not the state machine: ruling on the last line of a
+        // declaration is what tells its volunteer, and DeclarationDecider knows when.
+        $decided = DeclarationActionState::TRANSITION_VALIDATE === $transition
+            ? $this->decider->validateLine($action)
+            : $this->decider->refuseLine($action);
 
+        if ($decided) {
             $this->addFlash('success', sprintf('« %s » : %s.', $action->getLabel(), $action->getState()->label()));
         } else {
             $this->addFlash('warning', sprintf('« %s » a déjà été traitée.', $action->getLabel()));

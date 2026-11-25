@@ -14,8 +14,9 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use function sprintf;
 
 /**
- * Sends the one email a declaration produces: the confirmation link, with a recap
- * of what was declared.
+ * Sends the one email SUBMITTING a declaration produces: the confirmation link, with a
+ * recap of what was declared. What happens to the declaration afterwards is announced by
+ * DeclarationNotifier.
  *
  * One message, not two. A separate "thank you" alongside a "please confirm" is
  * noise, and it muddles the single action the volunteer has to take.

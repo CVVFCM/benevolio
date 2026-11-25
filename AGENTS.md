@@ -370,6 +370,37 @@ declaration quietly undecidable. Production cannot hit this — `DeclarationSubm
 writes every line first — but the convenient test order does. Either create the lines
 before confirming, or use `DeclarationActionFactory::confirmed()`.
 
+### Alerts — who is told, and when (#61)
+
+`App\Declaration\DeclarationNotifier` sends the two mails that follow a declaration's life.
+Neither is a step of anything: the declaration is confirmed, or ruled on, whether or not
+they arrive.
+
+- **A confirmed declaration is announced to the association's admins**: one message, every
+  account with a password in To (`UserRepository::findActiveOf()`), by decision — they see
+  who else was told. A pending invitation gets nothing, and an association with no active
+  account no mail at all. Sent for the volunteer's click and for a logged-in volunteer's
+  submission, **not** for « Confirmer à la place du bénévole »: the admin who did it is on
+  the page. It carries the volunteer's name, the lines and a link to the declaration in
+  `/admin`, never their email or address.
+- **The volunteer is told once every line has been ruled on**, with the accepted and the
+  refused lines. That is a fact about the **lines**, not the declaration's state: a mixed
+  basket never leaves `submitted` and is finished all the same. `DeclarationDecider` knows
+  when — at the last line of `validateLine()` / `refuseLine()`, or on a bulk verdict —
+  and sends it **once**: a bulk verdict over lines already ruled on one by one says
+  nothing more. **A line's verdict therefore goes through `DeclarationDecider`**, not
+  straight to the state machine, or nobody is told.
+- **The amount in that mail is the abandon de frais of the accepted lines only**, per line
+  and in total, and is marked indicative: a corrected rate changes it, and the receipt
+  alone goes on a tax return. Never the valued hours. An accepted journey no exercice
+  covers is counted and reported as not priced yet, as on a receipt run.
+- **Called by the use cases, after the commit** — not from a `PostTransitionEvent` listener,
+  which runs inside the transaction and would announce what a rollback then undid.
+  `confirmBySubmission()` runs inside its caller's transaction, so
+  `DeclarationSubmitter::submitAs()` sends that one.
+- **A relay that refuses the message is logged as an error and never raised**: the page must
+  not answer 500 for an action that was recorded. The alert is then lost; nothing resends.
+
 ## The public look: the sports hall
 
 The public pages are dressed as the municipal sports hall every club shares (chosen in an

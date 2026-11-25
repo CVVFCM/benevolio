@@ -6,6 +6,7 @@ namespace App\Declaration;
 
 use App\Declaration\Exception\DeclarationNotDecidableException;
 use App\Entity\Declaration;
+use App\Entity\DeclarationAction;
 use App\State\DeclarationActionState;
 use App\State\DeclarationState;
 use Doctrine\ORM\EntityManagerInterface;
@@ -29,6 +30,7 @@ final readonly class DeclarationDecider
     public function __construct(
         private StateMachine $stateMachine,
         private EntityManagerInterface $entityManager,
+        private DeclarationNotifier $notifier,
     ) {
     }
 
@@ -70,6 +72,46 @@ final readonly class DeclarationDecider
             DeclarationActionState::TRANSITION_REFUSE,
             DeclarationState::TRANSITION_REFUSE,
         );
+    }
+
+    /**
+     * Rules on one line, from its own row in the back office.
+     *
+     * @return bool false when the line has already been ruled on, or is not confirmed yet
+     */
+    public function validateLine(DeclarationAction $action): bool
+    {
+        return $this->decideLine($action, DeclarationActionState::TRANSITION_VALIDATE);
+    }
+
+    /**
+     * @return bool false when the line has already been ruled on, or is not confirmed yet
+     */
+    public function refuseLine(DeclarationAction $action): bool
+    {
+        return $this->decideLine($action, DeclarationActionState::TRANSITION_REFUSE);
+    }
+
+    /**
+     * The volunteer is told at the LAST line, whatever the declaration's own state: a mixed
+     * basket never leaves `submitted`, and it is finished all the same.
+     */
+    private function decideLine(DeclarationAction $action, string $transition): bool
+    {
+        if (!$this->stateMachine->can($action, $transition)) {
+            return false;
+        }
+
+        $this->stateMachine->apply($action, $transition);
+        $this->entityManager->flush();
+
+        $declaration = $action->getDeclaration();
+
+        if (!$declaration->hasUndecidedAction()) {
+            $this->notifier->notifyDecided($declaration);
+        }
+
+        return true;
     }
 
     /**
@@ -119,6 +161,10 @@ final readonly class DeclarationDecider
             throw DeclarationNotDecidableException::linesDisagree();
         }
 
+        // Every line ruled on one by one already told the volunteer, at the last of them:
+        // the declaration's own verdict then changes nothing they have not read.
+        $alreadyAnnounced = !$declaration->hasUndecidedAction();
+
         $this->entityManager->wrapInTransaction(function () use ($declaration, $actionTransition, $declarationTransition): void {
             foreach ($declaration->getActions() as $action) {
                 // Lines already carrying this verdict have no transition left.
@@ -129,5 +175,9 @@ final readonly class DeclarationDecider
 
             $this->stateMachine->apply($declaration, $declarationTransition);
         });
+
+        if (!$alreadyAnnounced) {
+            $this->notifier->notifyDecided($declaration);
+        }
     }
 }
