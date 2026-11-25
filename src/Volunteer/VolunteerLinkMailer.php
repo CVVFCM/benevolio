@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Volunteer;
 
+use App\Demo\DemoAssociation;
 use App\Entity\Organization;
 use App\Entity\Person;
 use App\ValueObject\Email;
@@ -25,6 +26,7 @@ final readonly class VolunteerLinkMailer
         private MailerInterface $mailer,
         private VolunteerLink $link,
         private ClockInterface $clock,
+        private DemoAssociation $demo,
         #[Autowire('%app.mail_from%')]
         private string $from,
     ) {
@@ -32,6 +34,12 @@ final readonly class VolunteerLinkMailer
 
     public function send(Organization $organization, Email $email, ?Person $person): void
     {
+        // The demo sends no mail: App\Demo\DemoAssociation. Its « Se connecter » is closed
+        // anyway (RequestLinkController); this is the backstop.
+        if ($this->demo->is($organization)) {
+            return;
+        }
+
         $expiresAt = $this->clock->now()->modify(VolunteerLink::LIFETIME);
 
         $message = new TemplatedEmail()

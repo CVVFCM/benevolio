@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\User;
 
+use App\Demo\DemoAssociation;
 use App\Entity\User;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -39,6 +40,7 @@ final readonly class LoginLinkMailer
 
     public function __construct(
         private MailerInterface $mailer,
+        private DemoAssociation $demo,
         // The main firewall's own handler, not the firewall-aware alias, which
         // picks a firewall from the current request and so fails without one.
         // Lazy, because its SignatureHasher refuses an empty kernel.secret on
@@ -74,6 +76,12 @@ final readonly class LoginLinkMailer
 
     private function send(User $user, int $lifetime, string $subject, string $template): void
     {
+        // The demo sends no mail: App\Demo\DemoAssociation. Its login is public, so an
+        // invitation would mail any address a visitor typed, from our verified sender.
+        if ($this->demo->is($user->getOrganization())) {
+            return;
+        }
+
         $link = $this->loginLinkHandler->createLoginLink($user, null, $lifetime);
 
         $email = new TemplatedEmail()

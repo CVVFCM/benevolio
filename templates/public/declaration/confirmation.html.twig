@@ -1,8 +1,31 @@
 {% extends 'public/layout.html.twig' %}
 
-{% block title %}Confirmez votre déclaration · {{ organization.name }}{% endblock %}
+{% block title %}{{ demo ? 'Déclaration enregistrée' : 'Confirmez votre déclaration' }} · {{ organization.name }}{% endblock %}
 
 {% block main %}
+    {% if demo %}
+        {# The demo sends no mail, so its declarations are confirmed as they are filed:
+           App\Declaration\DeclarationSubmitter. #}
+        <div class="done">
+            <h1>Déclaration enregistrée</h1>
+
+            <div class="done__note">
+                <p>
+                    <strong>C'est une démonstration.</strong>
+                    Dans une vraie association, un lien de confirmation serait envoyé par courriel et
+                    la déclaration ne serait transmise qu'une fois ce lien ouvert. Ici, aucun courriel
+                    n'est envoyé : elle est confirmée tout de suite.
+                </p>
+            </div>
+
+            <p>Connectez-vous à l'administration de la démo pour la valider ou la refuser.</p>
+
+            <p>
+                <a class="button-link button--tape" href="{{ path('demo') }}">Accès à l'administration de la démo</a>
+                <a class="button-link" href="{{ path('declaration', {organizationSlug: organization.slug}) }}">Faire une autre déclaration</a>
+            </p>
+        </div>
+    {% else %}
     <div class="done">
         <div class="done__mark done__mark--pending" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -43,4 +66,5 @@
             </a>
         </p>
     </div>
+    {% endif %}
 {% endblock %}

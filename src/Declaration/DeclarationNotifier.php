@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Declaration;
 
 use App\Accounting\ContributionValuator;
+use App\Demo\DemoAssociation;
 use App\Entity\Declaration;
 use App\Entity\DeclarationAction;
 use App\Entity\User;
@@ -41,6 +42,7 @@ final readonly class DeclarationNotifier
         private ContributionValuator $valuator,
         private UrlGeneratorInterface $urlGenerator,
         private LoggerInterface $logger,
+        private DemoAssociation $demo,
         #[Autowire('%app.mail_from%')]
         private string $from,
     ) {
@@ -57,6 +59,11 @@ final readonly class DeclarationNotifier
     public function notifyConfirmed(Declaration $declaration): void
     {
         $organization = $declaration->getOrganization();
+
+        // The demo sends no mail: App\Demo\DemoAssociation.
+        if ($this->demo->is($organization)) {
+            return;
+        }
         $recipients = array_map(
             static fn (User $user): Address => new Address($user->getEmail()),
             $this->users->findActiveOf($organization),
@@ -103,6 +110,10 @@ final readonly class DeclarationNotifier
     public function notifyDecided(Declaration $declaration): void
     {
         $organization = $declaration->getOrganization();
+
+        if ($this->demo->is($organization)) {
+            return;
+        }
         $person = $declaration->getPerson();
 
         $accepted = [];

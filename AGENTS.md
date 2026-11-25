@@ -86,8 +86,8 @@ differently, so never sum them together:
 **Tasks are rows, not code.** `Task` is `TenantAware`; each association
 manages its own list in `/admin`. `App\Organization\DefaultTasks` seeds five
 starters (*Travaux, Régate, Encadrement, Arbitrage, Autre*) and is called
-**explicitly** from the **three** places an organization is born — the platform CRUD,
-`app:organization:create` and `OrganizationFactory`. A `postPersist` listener would be
+**explicitly** from the **four** places an organization is born — the platform CRUD,
+`app:organization:create`, `OrganizationFactory` and the demo's reset (`App\Demo\DemoReset`). A `postPersist` listener would be
 one place instead of three, but persisting from inside `postPersist` needs a second
 flush and is fragile; the cost is that a fourth creation path would silently skip
 seeding, which `DefaultTasksTest` exists to catch.
@@ -973,9 +973,42 @@ each linking to its declaration form.
   super-admin to `/platform` and anyone else to `/admin`. Saving a chosen password and
   the home page's « Espace administrateur » link go through the same route.
 
+## The public demo (#62)
+
+`/demo` (`App\Controller\DemoController`) prints a shared back-office login
+(`benevolat@cvvfcm.fr` / `demo1234!`, constants on `App\Demo\DemoAssociation`), links to the
+demo's public form, and warns that **everything typed there is seen by every visitor**. Linked
+from the home hero, the site nav and footer; indexable, in the sitemap and `llms.txt`.
+
+- **Which association is the demo is a deployment fact**: `DEMO_ORGANIZATION_SLUG` (default
+  `demo`, in `services.yaml`; the chart's `demo.organizationSlug`). Empty disables the page,
+  its links and the reset. **Not a flag on `Organization`**: a misclick in `/platform` would
+  have a real association wiped at 3:00.
+- **The demo sends no mail, to anyone.** Its login is public, so an invitation, a
+  declaration's confirmation or a receipt would mail any address a visitor typed, from our
+  verified sender. Every mailer asks `DemoAssociation::is()` first (`DeclarationNotifier`,
+  `DeclarationConfirmationMailer`, `LoginLinkMailer`, `VolunteerLinkMailer`, `ReceiptMailer`).
+  **A new mailer must ask too.** Consequences: `DeclarationSubmitter::submit()` confirms a demo
+  declaration as it is filed (`confirmBySubmission()`, as for a logged-in volunteer), and the
+  volunteer space — mailed links only — is closed there (`volunteer/demo_closed.html.twig`, no
+  « Se connecter » in the header). Receipts are still issued; they are downloaded, not mailed.
+- **`app:demo:reset` creates it, and puts it back**: `App\Demo\DemoReset`, one code path for
+  both. A **full restore**: receipts (rows and PDFs), volunteers with their declarations,
+  exercices, activities, tasks and every account but the demo's are deleted, the identity and
+  the owner's password restored, and a sample seeded (dates relative to today, one declaration
+  in each state). The association **row is kept**: its id is in every receipt key and its
+  counter never hands a number out twice. Built from entities and the use cases, **never from
+  the Foundry factories**, which the production image does not have — hence
+  `App\Accounting\PublishedBareme`, which the factory now reads.
+- **It refuses an association with accounts none of which is the demo's**, and a demo login
+  attached elsewhere: the guard against a slug pointed at a real association.
+- **The chart runs it nightly**, `demo-reset-cronjob.yaml`, 03:00 `Etc/UTC`, `--force` (an
+  unattended run without it fails rather than exit 0 having done nothing). On a fresh
+  instance, run it once by hand. `composer reset` runs it in development.
+
 ## SEO & GEO — what is found, and how it is described
 
-The home page, « C'est gratuit » (`/gratuit`) and the guides are the only pages meant to be found,
+The home page, « C'est gratuit » (`/gratuit`), `/demo` and the guides are the only pages meant to be found,
 by search engines and by AI answer engines (ChatGPT search, Perplexity, Google AI Overviews, Bing
 Copilot).
 
@@ -1289,8 +1322,8 @@ Run `bin/console` and `composer` **inside the php container** (`make cli`, or
 `docker compose exec php …`). The entrypoint waits for the DB and applies pending
 migrations on container start.
 
-App served at `https://localhost`. `composer reset` (so `make reset`) leaves three
-logins: **`admin@example.com` / `!ChangeMe!`** — **the owner of CVVFCM**, created by
+App served at `https://localhost`. `composer reset` (so `make reset`) leaves the demo
+association (`/demo`, see *The public demo*) and three logins: **`admin@example.com` / `!ChangeMe!`** — **the owner of CVVFCM**, created by
 the reset script itself through `app:user:create`, so it lands in `/admin` where the
 features are and can delete other admins (the fixtures deliberately create no owner,
 which is what lets the command make this one the owner) — plus the

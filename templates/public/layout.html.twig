@@ -40,7 +40,8 @@
                             <input type="hidden" name="_csrf_token" value="{{ csrf_token('logout') }}" data-controller="csrf-protection">
                             <button type="submit" class="button button--quiet button--small">Se déconnecter</button>
                         </form>
-                    {% else %}
+                    {# Not in the demo: it sends no mail, and the space logs in by a mailed link. #}
+                    {% elseif not is_demo(organization) %}
                         <a class="button-link button--quiet button--small" data-tour-step="login" href="{{ path('volunteer_login', {organizationSlug: organization.slug}) }}">Se connecter</a>
                     {% endif %}
                 </div>

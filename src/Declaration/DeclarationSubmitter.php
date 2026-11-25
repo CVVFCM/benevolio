@@ -6,6 +6,7 @@ namespace App\Declaration;
 
 use App\Declaration\Exception\ActivityNoLongerAvailableException;
 use App\Declaration\Exception\TaskNoLongerAvailableException;
+use App\Demo\DemoAssociation;
 use App\Entity\Activity;
 use App\Entity\Declaration;
 use App\Entity\DeclarationAction;
@@ -50,6 +51,7 @@ final readonly class DeclarationSubmitter
         private DeclarationConfirmer $confirmer,
         private DeclarationNotifier $notifier,
         private ClockInterface $clock,
+        private DemoAssociation $demo,
     ) {
     }
 
@@ -63,6 +65,20 @@ final readonly class DeclarationSubmitter
      */
     public function submit(Organization $organization, DeclarationDraft $draft): Declaration
     {
+        // The demo sends no mail (App\Demo\DemoAssociation), so there would be no link to
+        // click: its declarations are confirmed as they are filed, like a logged-in
+        // volunteer's. The same `confirm` transition, so the lines and the identity follow.
+        if ($this->demo->is($organization)) {
+            return $this->entityManager->wrapInTransaction(
+                function () use ($organization, $draft): Declaration {
+                    $declaration = $this->createDeclaration($organization, $draft);
+                    $this->confirmer->confirmBySubmission($declaration);
+
+                    return $declaration;
+                },
+            );
+        }
+
         $token = ConfirmationToken::generate();
 
         $declaration = $this->entityManager->wrapInTransaction(

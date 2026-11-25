@@ -6,6 +6,7 @@ namespace App\Receipt;
 
 use App\Entity\Person;
 use App\Receipt\Exception\ReceiptAlreadyStoredException;
+use League\Flysystem\FilesystemException;
 use League\Flysystem\FilesystemOperator;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\String\Slugger\SluggerInterface;
@@ -73,6 +74,17 @@ final readonly class ReceiptStorage
     public function read(string $path): string
     {
         return $this->filesystem->read($path);
+    }
+
+    /**
+     * Removes a receipt's PDF. For the public demo's nightly reset only (App\Demo\DemoReset):
+     * a real association's receipts are never deleted, a rectificatif being a new receipt.
+     *
+     * @throws FilesystemException
+     */
+    public function delete(string $path): void
+    {
+        $this->filesystem->delete($path);
     }
 
     private function pathFor(int $year, Person $person, string $number): string

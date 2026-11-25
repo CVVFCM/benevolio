@@ -12,6 +12,12 @@ parameters:
     # land the mail in spam.
     app.mail_from: '%env(MAIL_FROM)%'
 
+    # The public demo's association (#62): see App\Demo\DemoAssociation. Empty disables
+    # the demo — its page, its links and its nightly reset. A slug, never a flag on the row,
+    # so nobody can mark a real association for the nightly wipe from /platform.
+    env(DEMO_ORGANIZATION_SLUG): 'demo'
+    app.demo_slug: '%env(DEMO_ORGANIZATION_SLUG)%'
+
 services:
     # default configuration for services in *this* file
     _defaults:

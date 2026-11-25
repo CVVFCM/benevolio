@@ -85,7 +85,7 @@ final class CrawlerFilesTest extends WebTestCase
             return $values;
         };
 
-        $expected = ['http://benevolat.example.org/', 'http://benevolat.example.org/guides', 'http://benevolat.example.org/gratuit'];
+        $expected = ['http://benevolat.example.org/', 'http://benevolat.example.org/guides', 'http://benevolat.example.org/gratuit', 'http://benevolat.example.org/demo'];
         $lastmods = [];
         foreach (new GuideCatalog()->all() as $guide) {
             $expected[] = 'http://benevolat.example.org/guides/'.$guide->slug;
